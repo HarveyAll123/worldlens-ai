@@ -6,7 +6,7 @@ export type ProviderName =
   | 'historical-basemaps'
   | 'anthropic'
   | 'paypal'
-  | 'supabase';
+  | 'database';
 
 export interface ProviderStatus {
   name: ProviderName;

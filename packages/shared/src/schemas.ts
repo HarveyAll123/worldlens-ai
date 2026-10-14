@@ -108,7 +108,7 @@ export const EventKindSchema = z.enum(['news', 'historical']);
 export type EventKind = z.infer<typeof EventKindSchema>;
 
 export const ProvenanceSchema = z.object({
-  provider: z.enum(['demo', 'curated', 'gdelt', 'wikipedia', 'wikidata', 'manual', 'supabase']),
+  provider: z.enum(['demo', 'curated', 'gdelt', 'wikipedia', 'wikidata', 'manual', 'database']),
   note: z.string().max(400).optional(),
   retrievedAt: z.string().optional(),
 });

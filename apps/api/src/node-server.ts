@@ -10,6 +10,8 @@ import { createApp } from './app';
 import { createDeps } from './deps';
 import type { Env } from './env';
 import { FakePayPal } from './testing/fake-paypal';
+import { isLocalDatabaseUrl, type SqlClient } from './data/sql';
+import { nodePostgresClient } from './data/sql-node';
 
 function loadDevVars(): Record<string, string> {
   const file = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '.dev.vars');
@@ -45,7 +47,12 @@ if (mockPayPal) {
   }) as typeof fetch;
   console.warn('[worldlens-api] TEST MODE: PayPal REST is mocked (WORLDLENS_TEST_PAYPAL_MOCK=1)');
 }
-const deps = createDeps(env, fetchImpl ? { fetchImpl } : {});
+// A local PostgreSQL (localhost) is reached with node-postgres; anything else (Neon) uses the
+// same Neon HTTP driver as the Worker.
+const databaseUrl = env.DATABASE_URL?.trim();
+const sql: SqlClient | undefined =
+  databaseUrl && isLocalDatabaseUrl(databaseUrl) ? nodePostgresClient(databaseUrl) : undefined;
+const deps = createDeps(env, { ...(fetchImpl ? { fetchImpl } : {}), ...(sql ? { sql } : {}) });
 const app = createApp(deps);
 const port = Number(process.env.API_PORT ?? 8787);
 serve({ fetch: app.fetch, port, hostname: '127.0.0.1' }, (info) => {

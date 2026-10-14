@@ -40,7 +40,7 @@ export interface RelatedEvent {
   event: EventSummary;
 }
 
-/** Read/write access to events. Implementations: in-memory (curated + demo + live cache), Supabase. */
+/** Read/write access to events. Implementations: in-memory (curated + demo + live cache), PostgreSQL (Neon). */
 export interface EventRepository {
   readonly name: string;
   listEvents(q: ListEventsQuery): Promise<ListEventsResult>;

@@ -1,5 +1,6 @@
 # Cloudflare Worker for the WorldLens API.
-# Secrets are NOT stored here. Set them with `wrangler secret put NAME` (see MANUAL_SETUP.md)
+# Secrets (PayPal, Anthropic, DATABASE_URL, …) are NOT stored here. Set them with
+# `wrangler secret put NAME` (see MANUAL_SETUP.md)
 # or, for local development, in apps/api/.dev.vars (git-ignored).
 name = "worldlens-api"
 main = "src/index.ts"
@@ -16,7 +17,7 @@ GDELT_ENABLED = "true"
 ALLOWED_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 PUBLIC_APP_URL = "http://localhost:5173"
 
-# News ingestion every 30 minutes (writes to Supabase when configured).
+# News ingestion every 30 minutes (writes to Neon when DATABASE_URL is set).
 [triggers]
 crons = ["*/30 * * * *"]
 

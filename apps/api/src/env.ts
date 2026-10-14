@@ -14,8 +14,8 @@ export interface Env {
   AI_MODEL_FAST?: string;
   AI_DAILY_BUDGET_USD?: string;
   AI_REQUESTS_PER_MINUTE?: string;
-  SUPABASE_URL?: string;
-  SUPABASE_SERVICE_ROLE_KEY?: string;
+  /** Neon (or any PostgreSQL + PostGIS) connection string. Secret. */
+  DATABASE_URL?: string;
   GDELT_ENABLED?: string;
   GDELT_QUERIES?: string;
   HISTORICAL_BASEMAPS_BASE_URL?: string;
@@ -43,7 +43,7 @@ const ConfigSchema = z.object({
     dailyBudgetUsd: z.number().nonnegative(),
     requestsPerMinute: z.number().int().positive(),
   }),
-  supabase: z.object({ url: z.string().nullable(), serviceKey: z.string().nullable() }),
+  database: z.object({ url: z.string().nullable() }),
   gdelt: z.object({ enabled: z.boolean(), queries: z.array(z.string()) }),
   basemapsBaseUrl: z.string(),
   wikipediaUserAgent: z.string(),
@@ -77,7 +77,7 @@ export function loadConfig(env: Env): Config {
       dailyBudgetUsd: Number(blank(env.AI_DAILY_BUDGET_USD) ?? '5'),
       requestsPerMinute: Math.max(1, Math.floor(Number(blank(env.AI_REQUESTS_PER_MINUTE) ?? '8'))),
     },
-    supabase: { url: blank(env.SUPABASE_URL), serviceKey: blank(env.SUPABASE_SERVICE_ROLE_KEY) },
+    database: { url: blank(env.DATABASE_URL) },
     gdelt: {
       enabled: (blank(env.GDELT_ENABLED) ?? 'true') !== 'false',
       queries:

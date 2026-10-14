@@ -3,6 +3,9 @@ PAYPAL_CLIENT_ID=
 PAYPAL_CLIENT_SECRET=
 PAYPAL_WEBHOOK_ID=
 ANTHROPIC_API_KEY=
-SUPABASE_URL=
-SUPABASE_SERVICE_ROLE_KEY=
+# Neon → Connect → pooled connection string for the worldlens_app role (see MANUAL_SETUP.md).
+# A localhost URL (local PostgreSQL + PostGIS) also works with `pnpm dev:node`.
+DATABASE_URL=
+# Only for `pnpm db:migrate`: owner role, direct (unpooled) connection string.
+MIGRATION_DATABASE_URL=
 INGEST_TOKEN=

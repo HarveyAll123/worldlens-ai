@@ -72,20 +72,38 @@ do $$ declare n int; begin
   if n <> 1 then raise exception 'webhook idempotency failed'; end if;
 end $$;
 
--- RLS: anon can read events but not payments.
-set role anon;
+-- Least privilege (db/grants.sql): the API role reads and writes content, can only append to
+-- payment history and webhook receipts, and cannot change the schema.
+set role worldlens_app;
 do $$ declare n int; begin
   select count(*) into n from events;
-  if n < 1 then raise exception 'anon should read events'; end if;
+  if n < 1 then raise exception 'worldlens_app should read events'; end if;
+  select count(*) into n from payment_actions;
+  insert into ingestion_runs (provider, started_at, finished_at) values ('smoke', now(), now());
+  update payment_actions set paypal_status = 'CREATED' where id = 'wl_abcdefgh12';
   begin
-    select count(*) into n from payment_actions;
-    raise exception 'anon must not read payments';
+    delete from payment_actions;
+    raise exception 'worldlens_app must not delete payments';
   exception when insufficient_privilege then null;
   end;
   begin
-    insert into events (id, kind, title, category, time_start, date_precision, location_name, location_precision, geom, provenance)
-    values ('x', 'news', 'x', 'other', now(), 'hour', 'x', 'city', 'SRID=4326;POINT(0 0)', '{}');
-    raise exception 'anon must not write events';
+    update paypal_webhook_events set event_type = 'x';
+    raise exception 'worldlens_app must not rewrite webhook receipts';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    delete from payment_transactions;
+    raise exception 'worldlens_app must not delete payment transactions';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    create table smoke_should_fail (id int);
+    raise exception 'worldlens_app must not create tables';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    drop table events;
+    raise exception 'worldlens_app must not drop tables';
   exception when insufficient_privilege then null;
   end;
 end $$;

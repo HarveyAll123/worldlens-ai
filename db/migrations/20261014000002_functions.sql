@@ -1,4 +1,4 @@
--- Query functions used by the API (via PostgREST /rest/v1/rpc/...) and row-level security.
+-- Query functions used by the API (called with parameterised SQL from apps/api/src/data/postgres.ts).
 
 -- Events intersecting a time window, optionally inside a viewport bbox (antimeridian-aware).
 create or replace function events_in_window(
@@ -20,7 +20,7 @@ returns table (
   lat double precision, lon double precision, participants jsonb, image jsonb, provenance jsonb, updated_at timestamptz
 )
 language sql stable
-set search_path = public, extensions
+set search_path = public
 as $$
   select e.id, e.kind, e.is_demo, e.title, e.summary, e.why_it_matters, e.category, e.tags,
          e.time_start, e.time_end, e.date_precision, e.date_approximate, e.importance, e.confidence,
@@ -51,7 +51,7 @@ returns table (
   lat double precision, lon double precision, participants jsonb, image jsonb, provenance jsonb, updated_at timestamptz
 )
 language sql stable
-set search_path = public, extensions
+set search_path = public
 as $$
   select e.id, e.kind, e.is_demo, e.title, e.summary, e.why_it_matters, e.category, e.tags,
          e.time_start, e.time_end, e.date_precision, e.date_approximate, e.importance, e.confidence,
@@ -75,7 +75,7 @@ returns table (
   status text, source text, license text, citation text, geojson jsonb
 )
 language sql stable
-set search_path = public, extensions
+set search_path = public
 as $$
   select g.id, g.entity_id, g.entity_name, g.entity_type, g.certainty, g.disputed, g.status, g.source,
          g.license, g.citation,
@@ -91,7 +91,7 @@ returns table (
   source text, license text, valid_from timestamptz, valid_to timestamptz, geojson jsonb
 )
 language sql stable
-set search_path = public, extensions
+set search_path = public
 as $$
   select f.id, f.conflict_id, f.name, f.certainty, f.side_a, f.side_b, f.confidence, f.source, f.license,
          f.valid_from, f.valid_to, st_asgeojson(f.geom, 4)::jsonb
@@ -112,44 +112,7 @@ as $$
   ) select count(*)::integer from d;
 $$;
 
--- ───────────────────────────────────────────────────────────── row-level security
--- Public, read-only access to published content; no anonymous access to payments, AI logs
--- or operations. The Worker uses the service-role key, which bypasses RLS.
+-- Access control lives in db/grants.sql (re-applied on every `pnpm db:migrate`).
 
-do $$
-declare t text;
-begin
-  foreach t in array array['news_sources','source_profiles','events','event_locations','event_geometries',
-                           'event_relations','articles','event_articles','historical_entities',
-                           'historical_geometries','conflicts','frontlines','control_zones','media_assets','citations']
-  loop
-    execute format('alter table %I enable row level security', t);
-    execute format('drop policy if exists "public read" on %I', t);
-    execute format('create policy "public read" on %I for select using (true)', t);
-  end loop;
-  foreach t in array array['ai_outputs','payment_actions','payment_transactions','paypal_webhook_events',
-                           'provider_health','ingestion_runs']
-  loop
-    execute format('alter table %I enable row level security', t);
-    -- no policies: only the service role can read or write
-  end loop;
-
-  -- Explicit privileges (defence in depth on top of RLS) for Supabase's API roles.
-  if exists (select 1 from pg_roles where rolname = 'anon') and exists (select 1 from pg_roles where rolname = 'authenticated') then
-    execute 'grant usage on schema public to anon, authenticated';
-    foreach t in array array['news_sources','source_profiles','events','event_locations','event_geometries',
-                             'event_relations','articles','event_articles','historical_entities',
-                             'historical_geometries','conflicts','frontlines','control_zones','media_assets','citations']
-    loop
-      execute format('grant select on %I to anon, authenticated', t);
-    end loop;
-    foreach t in array array['ai_outputs','payment_actions','payment_transactions','paypal_webhook_events',
-                             'provider_health','ingestion_runs']
-    loop
-      execute format('revoke all on %I from anon, authenticated', t);
-    end loop;
-  end if;
-end $$;
-
--- Functions run with invoker rights; restrict the maintenance function to the service role.
+-- The maintenance function is not for general use; db/grants.sql grants it to the API role.
 revoke execute on function prune_live_news(timestamptz) from public;

@@ -46,6 +46,8 @@ export default defineConfig({
         WORLDLENS_TEST_PAYPAL_MOCK: '1',
         HISTORICAL_BASEMAPS_BASE_URL: 'http://127.0.0.1:5173/vendor/historical-basemaps/',
         ANTHROPIC_API_KEY: '',
+        // Hermetic: never write test payments or news to a real database.
+        DATABASE_URL: '',
       },
       timeout: 60_000,
     },

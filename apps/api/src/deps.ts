@@ -14,7 +14,8 @@ import { WikipediaProvider } from './providers/wikipedia';
 import { PayPalClient } from './payments/paypal-client';
 import { PaymentService } from './payments/service';
 import { MemoryPaymentStore, type PaymentStore } from './payments/store';
-import { SupabasePaymentStore, SupabaseNewsRepository } from './data/supabase';
+import { PostgresNewsRepository, PostgresPaymentStore } from './data/postgres';
+import { neonHttpClient, type SqlClient } from './data/sql';
 
 export interface AppDeps {
   config: Config;
@@ -37,6 +38,8 @@ export interface DepOverrides {
   ai?: AiProvider;
   repo?: EventRepository;
   paymentStore?: PaymentStore;
+  /** SQL client to use instead of the Neon HTTP driver (local Postgres in dev/tests). */
+  sql?: SqlClient;
   newId?: () => string;
 }
 
@@ -55,32 +58,19 @@ export function createDeps(env: Env, o: DepOverrides = {}): AppDeps {
   const fetchImpl =
     o.fetchImpl ?? ((input: string | Request, init?: RequestInit) => fetch(input, init));
   const health = new ProviderHealth(now);
-  const supabaseReady = !!(config.supabase.url && config.supabase.serviceKey);
+  const sql = o.sql ?? (config.database.url ? neonHttpClient(config.database.url) : null);
   health.register('gdelt', config.gdelt.enabled);
   health.register('wikipedia', true);
   health.register('wikimedia-commons', true);
   health.register('historical-basemaps', true);
   health.register('anthropic', !!config.ai.apiKey);
   health.register('paypal', !!(config.paypal.clientId && config.paypal.clientSecret));
-  health.register('supabase', supabaseReady);
+  health.register('database', !!sql);
 
   const memory = new MemoryRepository();
-  const repo =
-    o.repo ??
-    (supabaseReady
-      ? new SupabaseNewsRepository(
-          memory,
-          config.supabase.url!,
-          config.supabase.serviceKey!,
-          health,
-          fetchImpl,
-        )
-      : memory);
+  const repo = o.repo ?? (sql ? new PostgresNewsRepository(memory, sql, health) : memory);
   const paymentStore =
-    o.paymentStore ??
-    (supabaseReady
-      ? new SupabasePaymentStore(config.supabase.url!, config.supabase.serviceKey!, fetchImpl)
-      : new MemoryPaymentStore());
+    o.paymentStore ?? (sql ? new PostgresPaymentStore(sql) : new MemoryPaymentStore());
   const ai =
     o.ai ??
     (config.ai.apiKey

@@ -1,6 +1,6 @@
 /**
  * In-memory repository: curated history + labelled demo scenarios + the latest live-news
- * ingestion held in this isolate. Used when Supabase is not configured and as the
+ * ingestion held in this isolate. Used when no database is configured and as the
  * always-available fallback when it is (curated history is shipped with the code).
  */
 import {

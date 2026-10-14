@@ -1,6 +1,6 @@
 /**
  * Server-side payment state. The browser never decides whether a payment succeeded.
- * Implementations: in-memory (development/tests) and Supabase (production; see supabase-store.ts).
+ * Implementations: in-memory (development/tests) and PostgreSQL on Neon (production; see data/postgres.ts).
  */
 import type { PaymentRecord, PaymentState } from '@worldlens/shared';
 
