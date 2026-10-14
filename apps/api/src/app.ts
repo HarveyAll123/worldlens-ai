@@ -3,6 +3,7 @@
  * development and end-to-end tests (src/node-server.ts).
  */
 import { Hono, type Context } from 'hono';
+import { redactSecrets } from './lib/redact';
 import { bodyLimit } from 'hono/body-limit';
 import { cors } from 'hono/cors';
 import { z, ZodError } from 'zod';
@@ -128,7 +129,10 @@ export function createApp(deps: AppDeps, defaults: { defer?: Defer } = {}) {
         { error: 'INVALID_REQUEST', message: err.issues[0]?.message ?? 'Invalid request' },
         400,
       );
-    console.error('[api] unhandled', err);
+    console.error(
+      '[api] unhandled',
+      redactSecrets(err instanceof Error ? (err.stack ?? err.message) : String(err)),
+    );
     return c.json({ error: 'INTERNAL', message: 'Something went wrong.' }, 500);
   });
 

@@ -72,8 +72,8 @@ do $$ declare n int; begin
   if n <> 1 then raise exception 'webhook idempotency failed'; end if;
 end $$;
 
--- Least privilege (db/grants.sql): the API role reads and writes content, can only append to
--- payment history and webhook receipts, and cannot change the schema.
+-- Least privilege (db/grants.sql): the API role reads content and upserts live news, cannot
+-- delete anything, can change only PayPal-derived payment fields, and cannot change the schema.
 set role worldlens_app;
 do $$ declare n int; begin
   select count(*) into n from events;
@@ -94,6 +94,31 @@ do $$ declare n int; begin
   begin
     delete from payment_transactions;
     raise exception 'worldlens_app must not delete payment transactions';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    update payment_actions set amount = 0.01;
+    raise exception 'worldlens_app must not change payment amounts';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    update payment_actions set environment = 'live';
+    raise exception 'worldlens_app must not change the payment environment';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform payload from paypal_webhook_events;
+    raise exception 'worldlens_app must not read raw webhook payloads';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    delete from events;
+    raise exception 'worldlens_app must not delete events';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform prune_live_news(now());
+    raise exception 'worldlens_app must not run the maintenance function';
   exception when insufficient_privilege then null;
   end;
   begin

@@ -178,6 +178,95 @@ describe.skipIf(!url)('PostgreSQL repository (integration)', () => {
     expect(e!.time.start).toBe('-000500-01-01T00:00:00Z');
   });
 
+  it('stores an ingestion even when one article would break a table constraint', async () => {
+    const health = new ProviderHealth();
+    health.register('database', true);
+    const writer = new PostgresNewsRepository(new MemoryRepository(), sql, health);
+    const base = built[0]!;
+    const halfEmoji = 'Quake relief convoy arrives \uD83C';
+    const odd: BuiltEvent = {
+      ...base,
+      event: { ...base.event, id: 'news-constraint-test', title: halfEmoji },
+      articles: [
+        {
+          ...base.articles[0]!,
+          id: 'art-constraint-test',
+          url: 'https://www.example-wire.org/constraint-test',
+          headline: halfEmoji,
+          imageUrl: 'http://localhost/not-https.jpg',
+          snippet: 'x'.repeat(700),
+        },
+      ],
+    };
+    await writer.replaceLiveNews([odd], NOW);
+    expect(health.get('database').state).toBe('ok');
+    const rows = await sql.query<{ image_url: string | null; snippet: string; headline: string }>(
+      "select image_url, snippet, headline from articles where id = 'art-constraint-test'",
+    );
+    expect(rows[0]?.image_url).toBeNull();
+    expect(rows[0]?.snippet).toHaveLength(600);
+    expect(rows[0]?.headline.endsWith('\uFFFD')).toBe(true);
+  });
+
+  it('concurrent ingestions of overlapping batches do not deadlock', async () => {
+    const base = built[0]!;
+    // Each event has its own publisher, so both transactions lock many rows in every table.
+    const batch: BuiltEvent[] = Array.from({ length: 300 }, (_, i) => {
+      const n = String(i).padStart(3, '0');
+      const source = {
+        ...base.sources[0]!,
+        id: `src-concurrency-${n}`,
+        domain: `wire-${n}.example.org`,
+      };
+      return {
+        ...base,
+        sources: [source],
+        event: { ...base.event, id: `news-concurrency-${n}` },
+        articles: [
+          {
+            ...base.articles[0]!,
+            id: `art-concurrency-${n}`,
+            sourceId: source.id,
+            url: `https://www.example-wire.org/concurrency-${n}`,
+          },
+        ],
+      };
+    });
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const healths = [new ProviderHealth(), new ProviderHealth()];
+      for (const h of healths) h.register('database', true);
+      await Promise.all([
+        new PostgresNewsRepository(new MemoryRepository(), sql, healths[0]!).replaceLiveNews(
+          batch,
+          NOW,
+        ),
+        new PostgresNewsRepository(new MemoryRepository(), sql, healths[1]!).replaceLiveNews(
+          [...batch].reverse(),
+          NOW,
+        ),
+      ]);
+      expect(healths.map((h) => h.get('database').state)).toEqual(['ok', 'ok']);
+    }
+  });
+
+  it('a curated source sharing a domain with an earlier automatic source does not block ingestion', async () => {
+    await sql.query(
+      "insert into news_sources (id, name, domain) values ('src-auto-0000000000', 'AFP (auto)', 'afp.com') on conflict do nothing",
+    );
+    const { events } = await ingest([
+      art('Flooding displaces thousands in Sylhet, Bangladesh', 'afp.com', 15),
+      art('Sylhet floods force thousands from their homes in Bangladesh', 'reuters.com', 10),
+    ]);
+    expect(events.length).toBeGreaterThan(0);
+    const health = new ProviderHealth();
+    health.register('database', true);
+    await new PostgresNewsRepository(new MemoryRepository(), sql, health).replaceLiveNews(
+      events,
+      NOW,
+    );
+    expect(health.get('database').state).toBe('ok');
+  });
+
   it('degrades to memory and reports the database as down when queries fail', async () => {
     const health = new ProviderHealth();
     health.register('database', true);
@@ -251,13 +340,31 @@ describe.skipIf(!url)('PostgreSQL payment store (integration)', () => {
     await expect(store.create({ ...record, id: 'not-a-payment-id' })).rejects.toThrow();
   });
 
-  it('processes each webhook event id once', async () => {
-    expect(await store.markWebhookProcessed('WH-INT-1', 'PAYMENT.CAPTURE.COMPLETED', '{}')).toBe(
-      true,
+  it('treats a webhook as a duplicate only once its processing completed', async () => {
+    const claim = () => store.claimWebhook('WH-INT-1', 'PAYMENT.CAPTURE.COMPLETED', '{}');
+    expect(await claim()).toBe(true);
+    // Processing failed (never completed): PayPal's retry is handled again.
+    expect(await claim()).toBe(true);
+    await store.completeWebhook('WH-INT-1');
+    expect(await claim()).toBe(false);
+  });
+
+  it('compare-and-set: an update based on a stale state changes nothing', async () => {
+    const before = await store.get(record.id);
+    expect(before?.state).toBe('CAPTURED');
+    const stale = await store.update(
+      record.id,
+      { state: 'APPROVED', updatedAt: '2026-10-14T09:03:00Z' },
+      { expectState: 'CREATED' },
     );
-    expect(await store.markWebhookProcessed('WH-INT-1', 'PAYMENT.CAPTURE.COMPLETED', '{}')).toBe(
-      false,
+    expect(stale).toBeNull();
+    expect(await store.get(record.id)).toEqual(before);
+    const refunded = await store.update(
+      record.id,
+      { state: 'REFUNDED', updatedAt: '2026-10-14T09:04:00Z' },
+      { expectState: 'CAPTURED' },
     );
+    expect(refunded?.state).toBe('REFUNDED');
   });
 
   it('appends to the payment audit log', async () => {

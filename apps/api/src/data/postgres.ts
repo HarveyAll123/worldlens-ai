@@ -16,13 +16,14 @@ import {
   type Frontline,
   type NewsSource,
   type PaymentRecord,
+  type PaymentState,
   type SearchResult,
   type WorldEvent,
 } from '@worldlens/shared';
 import type { BuiltEvent } from '../pipeline/build-events';
 import type { IngestionRun } from '../pipeline/ingest';
 import type { ProviderHealth } from '../providers/health';
-import type { PaymentStore } from '../payments/store';
+import type { PaymentPatch, PaymentStore } from '../payments/store';
 import { toSummary, type MemoryRepository } from './memory-repository';
 import type {
   EventRepository,
@@ -30,7 +31,7 @@ import type {
   ListEventsResult,
   RelatedEvent,
 } from './repository';
-import type { SqlClient } from './sql';
+import { sqlState, type SqlClient } from './sql';
 
 /** Drivers return timestamptz as Date (pg-types); keep a string form for the shared schemas. */
 type Ts = Date | string;
@@ -147,9 +148,32 @@ export function eventToRow(e: WorldEvent, nowMs: number) {
   };
 }
 
-const uniqueBy = <T>(items: T[], key: (t: T) => string): T[] => [
-  ...new Map(items.map((i) => [key(i), i])).values(),
-];
+/** Deduplicated and sorted by key: every transaction then locks rows in the same order. */
+const uniqueSortedBy = <T>(items: T[], key: (t: T) => string): T[] =>
+  [...new Map(items.map((i) => [key(i), i])).entries()]
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([, v]) => v);
+
+/**
+ * What provider health (public) may say about a database failure: PostgreSQL's own message
+ * for SQL errors, a fixed text for connection/configuration errors — driver messages for the
+ * latter can contain the connection string.
+ */
+export function describeDbError(err: unknown): Error {
+  const code = sqlState(err);
+  if (code)
+    return new Error(`${err instanceof Error ? err.message : 'SQL error'} (SQLSTATE ${code})`);
+  return new Error('could not reach the database (connection or configuration error)');
+}
+
+/** Lone UTF-16 surrogates (e.g. an emoji cut in half) are invalid in jsonb; replace them. */
+const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
+const toJsonParam = (rows: unknown[]): string =>
+  JSON.stringify(rows, (_k, v: unknown) =>
+    typeof v === 'string' ? v.replace(LONE_SURROGATE, '\uFFFD') : v,
+  );
+const httpsOrNull = (u: string | null | undefined): string | null =>
+  u && u.startsWith('https://') ? u : null;
 
 const EVENT_COLUMNS = `id, kind, is_demo, title, summary, why_it_matters, category, tags, time_start,
   time_end, date_precision, date_approximate, importance, confidence, article_count, source_count,
@@ -222,7 +246,7 @@ export class PostgresNewsRepository implements EventRepository {
       this.health.ok('database');
       return v;
     } catch (err) {
-      this.health.fail('database', err);
+      this.health.fail('database', describeDbError(err));
       return fallback();
     }
   }
@@ -247,6 +271,7 @@ export class PostgresNewsRepository implements EventRepository {
             q.bbox?.north ?? null,
             q.limit,
           ],
+          { idempotent: true },
         );
         const dbEvents: EventSummary[] = rows.map((r) => toSummary(rowToEvent(r)));
         const fresh = dbEvents.filter((e) => !base.events.some((b) => b.id === e.id));
@@ -274,6 +299,7 @@ export class PostgresNewsRepository implements EventRepository {
         const rows = await this.db.query<EventRow>(
           `select ${EVENT_COLUMNS} from event_by_id($1::text)`,
           [id],
+          { idempotent: true },
         );
         if (!rows[0]) return null;
         const e = rowToEvent(rows[0]);
@@ -305,6 +331,7 @@ export class PostgresNewsRepository implements EventRepository {
            order by a.published_at desc, a.id
            limit 200`,
           [eventId],
+          { idempotent: true },
         );
         return rows.map((a) => ({
           id: a.id,
@@ -341,6 +368,7 @@ export class PostgresNewsRepository implements EventRepository {
           `select id, name, domain, country, source_type, ownership, national_perspective
            from news_sources where id = any($1::text[])`,
           [missing],
+          { idempotent: true },
         );
         return [
           ...known,
@@ -400,25 +428,27 @@ export class PostgresNewsRepository implements EventRepository {
     this.lastIngestedAt = new Date(nowMs).toISOString();
     this.lastCount = events.length;
     if (events.length === 0) return;
-    const sources = uniqueBy(
+    // Rows are shaped to satisfy the table constraints, so one odd article (an http:// image,
+    // an over-long snippet) cannot roll back the whole ingestion.
+    const sources = uniqueSortedBy(
       events.flatMap((b) => b.sources),
       (s) => s.id,
     ).map((s) => ({
       id: s.id,
       name: s.name,
       domain: s.domain,
-      country: s.country,
+      country: s.country && s.country.length === 2 ? s.country : null,
       source_type: s.sourceType,
       ownership: s.ownership,
       national_perspective: s.nationalPerspective,
       is_demo: s.isDemo,
     }));
-    const eventRows = uniqueBy(
+    const eventRows = uniqueSortedBy(
       events.map((b) => eventToRow(b.event, nowMs)),
       (e) => e.id,
     );
-    const articles = uniqueBy(
-      events.flatMap((b) => b.articles),
+    const articles = uniqueSortedBy(
+      events.flatMap((b) => b.articles).filter((a) => a.url.startsWith('https://')),
       (a) => a.id,
     ).map((a) => ({
       id: a.id,
@@ -428,20 +458,25 @@ export class PostgresNewsRepository implements EventRepository {
       published_at: a.publishedAt,
       language: a.language,
       source_country: a.sourceCountry,
-      snippet: a.snippet ?? null,
-      image_url: a.imageUrl ?? null,
+      snippet: a.snippet ? a.snippet.slice(0, 600) : null,
+      image_url: httpsOrNull(a.imageUrl),
     }));
-    const links = uniqueBy(
-      events.flatMap((b) => b.articles.map((a) => ({ event_id: b.event.id, article_id: a.id }))),
+    const stored = new Set(articles.map((a) => a.id));
+    const links = uniqueSortedBy(
+      events.flatMap((b) =>
+        b.articles
+          .filter((a) => stored.has(a.id))
+          .map((a) => ({ event_id: b.event.id, article_id: a.id })),
+      ),
       (l) => `${l.event_id}|${l.article_id}`,
     );
     await this.guard(
       () =>
         this.db.transaction([
-          { text: UPSERT_SOURCES, params: [JSON.stringify(sources)] },
-          { text: UPSERT_EVENTS, params: [JSON.stringify(eventRows)] },
-          { text: UPSERT_ARTICLES, params: [JSON.stringify(articles)] },
-          { text: LINK_ARTICLES, params: [JSON.stringify(links)] },
+          { text: UPSERT_SOURCES, params: [toJsonParam(sources)] },
+          { text: UPSERT_EVENTS, params: [toJsonParam(eventRows)] },
+          { text: UPSERT_ARTICLES, params: [toJsonParam(articles)] },
+          { text: LINK_ARTICLES, params: [toJsonParam(links)] },
         ]),
       () => undefined,
     );
@@ -511,25 +546,19 @@ const toRecord = (r: PaymentRow): PaymentRecord => ({
   lastError: r.last_error,
 });
 
-/** PaymentRecord field → column. Only these fixed names are ever interpolated into SQL. */
+/** Updatable field → column. Only these fixed names are ever interpolated into SQL. */
 const PAYMENT_FIELDS = {
   paypalOrderId: 'paypal_order_id',
-  actionOptionId: 'action_option_id',
-  eventId: 'event_id',
-  amount: 'amount',
-  currency: 'currency',
   state: 'state',
-  environment: 'environment',
   captureId: 'capture_id',
   paypalStatus: 'paypal_status',
-  createdAt: 'created_at',
-  updatedAt: 'updated_at',
   lastError: 'last_error',
-} as const satisfies Partial<Record<keyof PaymentRecord, string>>;
+  updatedAt: 'updated_at',
+} as const satisfies Record<keyof PaymentPatch, string>;
 
 /**
  * Server-side payment state. Webhook idempotency relies on the primary key of
- * paypal_webhook_events (`insert … on conflict do nothing returning`).
+ * paypal_webhook_events plus its processed_at column (see claimWebhook).
  */
 export class PostgresPaymentStore implements PaymentStore {
   readonly name: string;
@@ -564,6 +593,7 @@ export class PostgresPaymentStore implements PaymentStore {
     const rows = await this.db.query<PaymentRow>(
       `select ${PAYMENT_COLUMNS} from payment_actions where id = $1`,
       [id],
+      { idempotent: true },
     );
     return rows[0] ? toRecord(rows[0]) : null;
   }
@@ -572,11 +602,16 @@ export class PostgresPaymentStore implements PaymentStore {
     const rows = await this.db.query<PaymentRow>(
       `select ${PAYMENT_COLUMNS} from payment_actions where paypal_order_id = $1`,
       [orderId],
+      { idempotent: true },
     );
     return rows[0] ? toRecord(rows[0]) : null;
   }
 
-  async update(id: string, patch: Partial<PaymentRecord>): Promise<PaymentRecord | null> {
+  async update(
+    id: string,
+    patch: PaymentPatch,
+    opts: { expectState?: PaymentState } = {},
+  ): Promise<PaymentRecord | null> {
     const sets: string[] = [];
     const params: unknown[] = [id];
     for (const [field, column] of Object.entries(PAYMENT_FIELDS) as Array<
@@ -587,26 +622,42 @@ export class PostgresPaymentStore implements PaymentStore {
       params.push(value);
       sets.push(`${column} = $${params.length}`);
     }
-    if (sets.length === 0) return this.get(id);
+    let where = 'id = $1';
+    if (opts.expectState !== undefined) {
+      params.push(opts.expectState);
+      where += ` and state = $${params.length}`;
+    }
+    if (sets.length === 0) {
+      const current = await this.get(id);
+      return current && (opts.expectState === undefined || current.state === opts.expectState)
+        ? current
+        : null;
+    }
     const rows = await this.db.query<PaymentRow>(
-      `update payment_actions set ${sets.join(', ')} where id = $1 returning ${PAYMENT_COLUMNS}`,
+      `update payment_actions set ${sets.join(', ')} where ${where} returning ${PAYMENT_COLUMNS}`,
       params,
     );
     return rows[0] ? toRecord(rows[0]) : null;
   }
 
-  async markWebhookProcessed(
-    eventId: string,
-    eventType: string,
-    payload: string,
-  ): Promise<boolean> {
-    // Returns a row only when this event id was not stored before.
+  async claimWebhook(eventId: string, eventType: string, payload: string): Promise<boolean> {
+    // A row comes back for a new event id, or for one whose earlier processing never
+    // completed (processed_at is null); a fully processed event returns nothing.
     const rows = await this.db.query<{ event_id: string }>(
       `insert into paypal_webhook_events (event_id, event_type, payload) values ($1, $2, $3)
-       on conflict (event_id) do nothing returning event_id`,
+       on conflict (event_id) do update set processed_at = null
+         where paypal_webhook_events.processed_at is null
+       returning event_id`,
       [eventId, eventType, payload],
     );
     return rows.length > 0;
+  }
+
+  async completeWebhook(eventId: string): Promise<void> {
+    await this.db.query(
+      'update paypal_webhook_events set processed_at = now() where event_id = $1',
+      [eventId],
+    );
   }
 
   async log(paymentId: string, kind: string, detail: Record<string, unknown>): Promise<void> {

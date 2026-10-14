@@ -14,7 +14,7 @@ export interface Env {
   AI_MODEL_FAST?: string;
   AI_DAILY_BUDGET_USD?: string;
   AI_REQUESTS_PER_MINUTE?: string;
-  /** Neon (or any PostgreSQL + PostGIS) connection string. Secret. */
+  /** Neon connection string (secret). The Node dev server also accepts other PostgreSQL URLs. */
   DATABASE_URL?: string;
   GDELT_ENABLED?: string;
   GDELT_QUERIES?: string;

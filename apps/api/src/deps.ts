@@ -15,7 +15,7 @@ import { PayPalClient } from './payments/paypal-client';
 import { PaymentService } from './payments/service';
 import { MemoryPaymentStore, type PaymentStore } from './payments/store';
 import { PostgresNewsRepository, PostgresPaymentStore } from './data/postgres';
-import { neonHttpClient, type SqlClient } from './data/sql';
+import { classifyDatabaseUrl, neonHttpClient, type SqlClient } from './data/sql';
 
 export interface AppDeps {
   config: Config;
@@ -58,14 +58,28 @@ export function createDeps(env: Env, o: DepOverrides = {}): AppDeps {
   const fetchImpl =
     o.fetchImpl ?? ((input: string | Request, init?: RequestInit) => fetch(input, init));
   const health = new ProviderHealth(now);
-  const sql = o.sql ?? (config.database.url ? neonHttpClient(config.database.url) : null);
+  // The Worker speaks to Neon over HTTPS only. Anything else fails closed with a fixed message
+  // (never the URL itself, which holds the password); the Node dev server passes `o.sql` for
+  // other PostgreSQL servers.
+  const target = !o.sql && config.database.url ? classifyDatabaseUrl(config.database.url) : null;
+  const sql = o.sql ?? (target?.kind === 'neon' ? neonHttpClient(target.url) : null);
+  const databaseProblem =
+    target && target.kind !== 'neon'
+      ? target.kind === 'invalid'
+        ? target.reason
+        : 'DATABASE_URL must be a Neon connection string (host *.neon.tech) in the Worker; other PostgreSQL servers work only with the Node dev server (pnpm dev:node).'
+      : null;
   health.register('gdelt', config.gdelt.enabled);
   health.register('wikipedia', true);
   health.register('wikimedia-commons', true);
   health.register('historical-basemaps', true);
   health.register('anthropic', !!config.ai.apiKey);
   health.register('paypal', !!(config.paypal.clientId && config.paypal.clientSecret));
-  health.register('database', !!sql);
+  health.register('database', !!sql || !!databaseProblem);
+  if (databaseProblem) {
+    health.fail('database', new Error(databaseProblem));
+    console.warn(`[worldlens-api] database disabled: ${databaseProblem}`);
+  }
 
   const memory = new MemoryRepository();
   const repo = o.repo ?? (sql ? new PostgresNewsRepository(memory, sql, health) : memory);

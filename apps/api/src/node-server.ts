@@ -10,7 +10,7 @@ import { createApp } from './app';
 import { createDeps } from './deps';
 import type { Env } from './env';
 import { FakePayPal } from './testing/fake-paypal';
-import { isLocalDatabaseUrl, type SqlClient } from './data/sql';
+import { classifyDatabaseUrl, type SqlClient } from './data/sql';
 import { nodePostgresClient } from './data/sql-node';
 
 function loadDevVars(): Record<string, string> {
@@ -18,8 +18,8 @@ function loadDevVars(): Record<string, string> {
   if (!existsSync(file)) return {};
   const out: Record<string, string> = {};
   for (const line of readFileSync(file, 'utf8').split('\n')) {
-    const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/.exec(line);
-    if (m && m[2] !== '') out[m[1]!] = m[2]!.replace(/^"|"$/g, '');
+    const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/.exec(line);
+    if (m && m[2] !== '') out[m[1]!] = m[2]!.replace(/^(['"])(.*)\1$/, '$2');
   }
   return out;
 }
@@ -47,11 +47,13 @@ if (mockPayPal) {
   }) as typeof fetch;
   console.warn('[worldlens-api] TEST MODE: PayPal REST is mocked (WORLDLENS_TEST_PAYPAL_MOCK=1)');
 }
-// A local PostgreSQL (localhost) is reached with node-postgres; anything else (Neon) uses the
-// same Neon HTTP driver as the Worker.
-const databaseUrl = env.DATABASE_URL?.trim();
+// Neon uses the same HTTP driver as the Worker; any other PostgreSQL (e.g. a local one) is
+// reached with node-postgres over TCP.
+const target = env.DATABASE_URL?.trim() ? classifyDatabaseUrl(env.DATABASE_URL) : null;
 const sql: SqlClient | undefined =
-  databaseUrl && isLocalDatabaseUrl(databaseUrl) ? nodePostgresClient(databaseUrl) : undefined;
+  target && (target.kind === 'local' || target.kind === 'other')
+    ? nodePostgresClient(target.url)
+    : undefined;
 const deps = createDeps(env, { ...(fetchImpl ? { fetchImpl } : {}), ...(sql ? { sql } : {}) });
 const app = createApp(deps);
 const port = Number(process.env.API_PORT ?? 8787);

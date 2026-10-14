@@ -71,6 +71,7 @@ const WebhookEventSchema = z.object({
     })
     .passthrough(),
 });
+type WebhookEvent = z.infer<typeof WebhookEventSchema>;
 
 const WEBHOOK_STATE: Record<string, PaymentState | 'REFRESH'> = {
   'CHECKOUT.ORDER.APPROVED': 'APPROVED',
@@ -257,11 +258,32 @@ export class PaymentService {
     return record;
   }
 
+  /**
+   * Applies PayPal's authoritative order state. If another request changed the record since
+   * it was read (compare-and-set lost), re-read and decide again against the newer state.
+   */
   private async apply(
     record: PaymentRecord,
     order: PayPalOrder,
     source: string,
   ): Promise<PaymentRecord> {
+    let current = record;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const result = await this.applyOnce(current, order, source);
+      if (result) return result;
+      const fresh = await this.d.store.get(current.id);
+      if (!fresh) throw new PaymentError('UNKNOWN_PAYMENT', 'Unknown payment.', 404);
+      current = fresh;
+    }
+    return current;
+  }
+
+  /** Returns null when the stored state changed underneath (caller re-reads). */
+  private async applyOnce(
+    record: PaymentRecord,
+    order: PayPalOrder,
+    source: string,
+  ): Promise<PaymentRecord | null> {
     const target = stateFromOrder(order);
     const capture = firstCapture(order);
     if (
@@ -272,11 +294,15 @@ export class PaymentService {
         expected: record.amount,
         got: capture.amount,
       });
-      return (await this.d.store.update(record.id, {
-        state: canTransition(record.state, 'FAILED') ? 'FAILED' : record.state,
-        lastError: 'Captured amount does not match the reviewed amount.',
-        updatedAt: new Date(this.d.now()).toISOString(),
-      }))!;
+      return this.d.store.update(
+        record.id,
+        {
+          state: canTransition(record.state, 'FAILED') ? 'FAILED' : record.state,
+          lastError: 'Captured amount does not match the reviewed amount.',
+          updatedAt: new Date(this.d.now()).toISOString(),
+        },
+        { expectState: record.state },
+      );
     }
     if (!canTransition(record.state, target)) {
       await this.d.store.log(record.id, 'transition_ignored', {
@@ -286,20 +312,25 @@ export class PaymentService {
       });
       return record;
     }
-    const next = await this.d.store.update(record.id, {
-      state: target,
-      paypalStatus: order.status,
-      captureId: capture?.id ?? record.captureId,
-      lastError: null,
-      updatedAt: new Date(this.d.now()).toISOString(),
-    });
+    const next = await this.d.store.update(
+      record.id,
+      {
+        state: target,
+        paypalStatus: order.status,
+        captureId: capture?.id ?? record.captureId,
+        lastError: null,
+        updatedAt: new Date(this.d.now()).toISOString(),
+      },
+      { expectState: record.state },
+    );
+    if (!next) return null;
     await this.d.store.log(record.id, 'state', {
       from: record.state,
       to: target,
       source,
       captureId: capture?.id,
     });
-    return next!;
+    return next;
   }
 
   async capture(orderId: string): Promise<PaymentRecord> {
@@ -317,13 +348,18 @@ export class PaymentService {
       } else {
         const message = err instanceof Error ? err.message : String(err);
         const declined = err instanceof PayPalApiError && err.issue === 'INSTRUMENT_DECLINED';
-        await this.d.store.update(record.id, {
-          state: canTransition(record.state, 'FAILED') ? 'FAILED' : record.state,
-          lastError: declined
-            ? 'The funding source was declined. Please try again with PayPal.'
-            : message,
-          updatedAt: new Date(this.d.now()).toISOString(),
-        });
+        // Compare-and-set: if a webhook already moved the payment on, keep its newer state.
+        await this.d.store.update(
+          record.id,
+          {
+            state: canTransition(record.state, 'FAILED') ? 'FAILED' : record.state,
+            lastError: declined
+              ? 'The funding source was declined. Please try again with PayPal.'
+              : message,
+            updatedAt: new Date(this.d.now()).toISOString(),
+          },
+          { expectState: record.state },
+        );
         await this.d.store.log(record.id, 'capture_failed', { message });
         throw new PaymentError(
           declined ? 'INSTRUMENT_DECLINED' : 'CAPTURE_FAILED',
@@ -343,10 +379,13 @@ export class PaymentService {
     const record = await this.d.store.getByOrderId(orderId);
     if (!record) return null;
     if (!canTransition(record.state, 'CANCELLED') || record.state === 'CANCELLED') return record;
-    const next = await this.d.store.update(record.id, {
-      state: 'CANCELLED',
-      updatedAt: new Date(this.d.now()).toISOString(),
-    });
+    const next = await this.d.store.update(
+      record.id,
+      { state: 'CANCELLED', updatedAt: new Date(this.d.now()).toISOString() },
+      { expectState: record.state },
+    );
+    // Lost the race (e.g. captured meanwhile): the newer state stands.
+    if (!next) return this.d.store.get(record.id);
     await this.d.store.log(record.id, 'cancelled_by_user', {});
     return next;
   }
@@ -380,14 +419,18 @@ export class PaymentService {
     const parsed = WebhookEventSchema.safeParse(JSON.parse(rawBody));
     if (!parsed.success) return { status: 'ignored' };
     const evt = parsed.data;
-    const first = await this.d.store.markWebhookProcessed(
-      evt.id,
-      evt.event_type,
-      rawBody.slice(0, 20_000),
-    );
+    const first = await this.d.store.claimWebhook(evt.id, evt.event_type, rawBody.slice(0, 20_000));
     if (!first) return { status: 'duplicate', eventType: evt.event_type };
+    // If processing throws, the receipt stays unprocessed and PayPal's retry is handled again.
+    const outcome = await this.processWebhook(evt);
+    await this.d.store.completeWebhook(evt.id);
+    return { status: outcome, eventType: evt.event_type };
+  }
+
+  private async processWebhook(evt: WebhookEvent): Promise<'processed' | 'ignored'> {
+    const client = this.requireClient();
     const target = WEBHOOK_STATE[evt.event_type];
-    if (!target) return { status: 'ignored', eventType: evt.event_type };
+    if (!target) return 'ignored';
     const orderId = evt.event_type.startsWith('CHECKOUT.')
       ? evt.resource.id
       : evt.resource.supplementary_data?.related_ids?.order_id;
@@ -395,23 +438,43 @@ export class PaymentService {
     if (!record && evt.resource.custom_id && PAYMENT_ID_RE.test(evt.resource.custom_id)) {
       record = await this.d.store.get(evt.resource.custom_id);
     }
-    if (!record && orderId && ORDER_ID_RE.test(orderId))
-      record = await this.adopt(orderId).catch(() => null);
-    if (!record) return { status: 'ignored', eventType: evt.event_type };
+    if (!record && orderId && ORDER_ID_RE.test(orderId)) {
+      // Not ours, or unknown to PayPal: nothing to do. Anything else (network, database) is
+      // transient and must surface so PayPal retries.
+      record = await this.adopt(orderId).catch((err: unknown) => {
+        if (
+          err instanceof PaymentError &&
+          (err.code === 'FOREIGN_ORDER' || err.code === 'UNKNOWN_ORDER')
+        )
+          return null;
+        throw err;
+      });
+    }
+    if (!record) return 'ignored';
     if (target === 'REFRESH') {
       if (record.paypalOrderId)
         await this.apply(record, await client.getOrder(record.paypalOrderId), 'webhook');
-    } else if (canTransition(record.state, target)) {
-      await this.d.store.update(record.id, {
-        state: target,
-        ...(evt.event_type.startsWith('PAYMENT.CAPTURE.') && evt.resource.id
-          ? { captureId: evt.resource.id }
-          : {}),
-        paypalStatus: evt.resource.status ?? record.paypalStatus,
-        updatedAt: new Date(this.d.now()).toISOString(),
-      });
+    } else {
+      for (let attempt = 0; attempt < 3 && canTransition(record.state, target); attempt++) {
+        const next = await this.d.store.update(
+          record.id,
+          {
+            state: target,
+            ...(evt.event_type.startsWith('PAYMENT.CAPTURE.') && evt.resource.id
+              ? { captureId: evt.resource.id }
+              : {}),
+            paypalStatus: evt.resource.status ?? record.paypalStatus,
+            updatedAt: new Date(this.d.now()).toISOString(),
+          },
+          { expectState: record.state },
+        );
+        if (next) break;
+        const fresh = await this.d.store.get(record.id);
+        if (!fresh) break;
+        record = fresh;
+      }
     }
     await this.d.store.log(record.id, 'webhook', { eventId: evt.id, type: evt.event_type, target });
-    return { status: 'processed', eventType: evt.event_type };
+    return 'processed';
   }
 }

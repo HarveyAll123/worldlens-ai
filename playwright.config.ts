@@ -40,7 +40,9 @@ export default defineConfig({
     {
       command: 'pnpm --filter @worldlens/api start:node',
       url: 'http://127.0.0.1:8787/api/health',
-      reuseExistingServer: !process.env.CI,
+      // Never reuse a running dev API: it could have real PayPal credentials or a database.
+      // If port 8787 is busy, stop `pnpm dev` first.
+      reuseExistingServer: false,
       env: {
         GDELT_ENABLED: 'false',
         WORLDLENS_TEST_PAYPAL_MOCK: '1',

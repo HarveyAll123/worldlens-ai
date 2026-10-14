@@ -1,3 +1,5 @@
+import { redactSecrets } from '../lib/redact';
+
 /** Tracks the last known state of each external provider so the UI can explain degradations. */
 export type ProviderName =
   | 'gdelt'
@@ -43,7 +45,7 @@ export class ProviderHealth {
     const s = this.get(name);
     s.state = s.lastSuccessAt ? 'degraded' : 'down';
     s.lastErrorAt = new Date(this.now()).toISOString();
-    s.lastError = (err instanceof Error ? err.message : String(err)).slice(0, 200);
+    s.lastError = redactSecrets(err instanceof Error ? err.message : String(err)).slice(0, 200);
   }
 
   get(name: ProviderName): ProviderStatus {

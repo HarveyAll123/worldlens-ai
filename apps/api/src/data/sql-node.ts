@@ -3,7 +3,7 @@
  * against a local PostgreSQL + PostGIS. Never imported by the Worker.
  */
 import pg from 'pg';
-import type { SqlClient, SqlQuery } from './sql';
+import type { QueryOptions, SqlClient, SqlQuery } from './sql';
 
 export function nodePostgresClient(
   connectionString: string,
@@ -14,9 +14,13 @@ export function nodePostgresClient(
     max: opts.max ?? 4,
     statement_timeout: opts.statementTimeoutMs ?? 8000,
   });
+  // An idle client dropped by the server (restart, admin termination) must not crash the
+  // process; the next query reconnects.
+  pool.on('error', (err) => console.warn('[db] idle connection error:', err.message));
   return {
     kind: 'node-postgres',
-    async query<T>(text: string, params: unknown[] = []): Promise<T[]> {
+    async query<T>(text: string, params: unknown[] = [], _opts?: QueryOptions): Promise<T[]> {
+      // pg.Pool replaces broken connections itself, so reads are not retried here.
       const res = await pool.query(text, params);
       return res.rows as T[];
     },

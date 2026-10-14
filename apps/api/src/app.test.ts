@@ -11,13 +11,24 @@ import {
   type AiTurnResponse,
 } from './ai/provider';
 import { FakePayPal } from './testing/fake-paypal';
+import { MemoryPaymentStore, type PaymentStore } from './payments/store';
+import { redactSecrets } from './lib/redact';
+import { classifyDatabaseUrl } from './data/sql';
+import { describeDbError } from './data/postgres';
 import { selectBorderSnapshot, HistoricalBordersProvider } from './providers/borders';
 import { ProviderHealth } from './providers/health';
 
 const NOW = utcMs(2026, 10, 14, 11, 25, 42);
 const offlineFetch = async () => new Response('offline', { status: 503 });
 
-function setup(opts: { env?: Partial<Env>; ai?: AiProvider; paypal?: FakePayPal } = {}) {
+function setup(
+  opts: {
+    env?: Partial<Env>;
+    ai?: AiProvider;
+    paypal?: FakePayPal;
+    paymentStore?: PaymentStore;
+  } = {},
+) {
   const paypal = opts.paypal;
   const env: Env = {
     GDELT_ENABLED: 'false',
@@ -35,6 +46,7 @@ function setup(opts: { env?: Partial<Env>; ai?: AiProvider; paypal?: FakePayPal 
     now: () => NOW,
     fetchImpl: paypal ? paypal.fetch : offlineFetch,
     ...(opts.ai ? { ai: opts.ai } : {}),
+    ...(opts.paymentStore ? { paymentStore: opts.paymentStore } : {}),
     newId: () => `testid${String(++n).padStart(6, '0')}`,
   });
   const app = createApp(deps);
@@ -508,6 +520,139 @@ describe('PayPal sandbox payments', () => {
     const rec = await deps.paymentStore.get(paymentId);
     expect(rec?.state).toBe('CAPTURED');
     expect(rec?.captureId).toBe('CAP123');
+  });
+
+  const webhookRequest = (id: string, type: string, resource: Record<string, unknown>) =>
+    ({
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'paypal-auth-algo': 'SHA256withRSA',
+        'paypal-cert-url': 'https://api.sandbox.paypal.com/v1/notifications/certs/CERT',
+        'paypal-transmission-id': `tx-${id}`,
+        'paypal-transmission-sig': 'valid-signature',
+        'paypal-transmission-time': '2026-10-14T11:30:00Z',
+      },
+      body: JSON.stringify({ id, event_type: type, resource }),
+    }) satisfies RequestInit;
+
+  it('handles a webhook again after its processing failed instead of dropping it', async () => {
+    const store = new MemoryPaymentStore();
+    let failNext = false;
+    const flaky: PaymentStore = Object.assign(Object.create(store) as PaymentStore, {
+      getByOrderId: async (orderId: string) => {
+        if (failNext) {
+          failNext = false;
+          throw new Error('database unreachable');
+        }
+        return store.getByOrderId(orderId);
+      },
+    });
+    const { post, req } = setup({ paypal: new FakePayPal(), paymentStore: flaky });
+    const { orderId, paymentId } = (await post('/api/payments/orders', order())).body as {
+      orderId: string;
+      paymentId: string;
+    };
+    const resource = {
+      id: 'CAP777',
+      status: 'COMPLETED',
+      custom_id: paymentId,
+      supplementary_data: { related_ids: { order_id: orderId } },
+    };
+    failNext = true;
+    const first = await req(
+      '/api/paypal/webhook',
+      webhookRequest('WH-R1', 'PAYMENT.CAPTURE.COMPLETED', resource),
+    );
+    expect(first.status).toBe(500); // PayPal will retry
+    const retry = await req(
+      '/api/paypal/webhook',
+      webhookRequest('WH-R1', 'PAYMENT.CAPTURE.COMPLETED', resource),
+    );
+    expect(await retry.json()).toMatchObject({ status: 'processed' });
+    expect((await store.get(paymentId))?.state).toBe('CAPTURED');
+    const again = await req(
+      '/api/paypal/webhook',
+      webhookRequest('WH-R1', 'PAYMENT.CAPTURE.COMPLETED', resource),
+    );
+    expect(await again.json()).toMatchObject({ status: 'duplicate' });
+  });
+
+  it('a webhook decided on a stale read cannot overwrite a concurrent capture', async () => {
+    const store = new MemoryPaymentStore();
+    let stale = false;
+    // The webhook's read returns the record as it was before capture() (another isolate).
+    const racing: PaymentStore = Object.assign(Object.create(store) as PaymentStore, {
+      getByOrderId: async (orderId: string) => {
+        const r = await store.getByOrderId(orderId);
+        return r && stale ? { ...r, state: 'CREATED' as const, captureId: null } : r;
+      },
+    });
+    const pp = new FakePayPal();
+    const { post, req } = setup({ paypal: pp, paymentStore: racing });
+    const { orderId, paymentId } = (await post('/api/payments/orders', order())).body as {
+      orderId: string;
+      paymentId: string;
+    };
+    pp.approve(orderId);
+    expect((await post(`/api/payments/orders/${orderId}/capture`, {})).status).toBe(200);
+    stale = true;
+    const r = await req(
+      '/api/paypal/webhook',
+      webhookRequest('WH-S1', 'CHECKOUT.ORDER.APPROVED', { id: orderId, status: 'APPROVED' }),
+    );
+    expect(r.status).toBe(200);
+    const rec = await store.get(paymentId);
+    expect(rec?.state).toBe('CAPTURED');
+    expect(rec?.captureId).not.toBeNull();
+  });
+});
+
+describe('database configuration never leaks credentials', () => {
+  const PASSWORD = 'S3cretPassw0rd';
+  it.each([
+    [`psql 'postgresql://worldlens_app:${PASSWORD}@ep-x-pooler.us-east-2.aws.neon.tech/neondb'`],
+    [`postgresql://worldlens_app:ab/${PASSWORD}@ep-x-pooler.us-east-2.aws.neon.tech/neondb`],
+    [`postgresql://app:${PASSWORD}@db.example.org/worldlens`],
+  ])('reports a fixed reason for %#', async (url) => {
+    const { json } = setup({ env: { DATABASE_URL: url } });
+    const health = await json('/api/health');
+    const text = JSON.stringify(health.body);
+    expect(text).not.toContain(PASSWORD);
+    const db = (
+      health.body.providers as Array<{ name: string; state: string; lastError: string }>
+    ).find((p) => p.name === 'database');
+    expect(db?.state).toBe('down');
+    expect(db?.lastError).toMatch(/DATABASE_URL/);
+    expect(health.body.repository).toBe('memory');
+  });
+
+  it('only Neon hosts go to the Neon HTTP driver', () => {
+    expect(
+      classifyDatabaseUrl('postgresql://u:p@ep-a-pooler.eu-central-1.aws.neon.tech/db').kind,
+    ).toBe('neon');
+    expect(classifyDatabaseUrl("'postgresql://u:p@ep-a.us-east-2.aws.neon.tech/db'").kind).toBe(
+      'neon',
+    );
+    expect(classifyDatabaseUrl('postgresql://u:p@LOCALHOST:5432/db').kind).toBe('local');
+    expect(classifyDatabaseUrl('postgres://u:p@127.0.0.2/db').kind).toBe('local');
+    expect(classifyDatabaseUrl('postgresql://u:p@neon.tech.evil.example/db').kind).toBe('other');
+    expect(classifyDatabaseUrl('https://u:p@ep-a.aws.neon.tech/db').kind).toBe('invalid');
+  });
+
+  it('redacts connection strings from driver errors', () => {
+    const driverMessage = `Database connection string provided to neon() is not a valid URL (connection string: 'postgresql://worldlens_app:${PASSWORD}@ep-x.aws.neon.tech/neondb')`;
+    expect(redactSecrets(driverMessage)).not.toContain(PASSWORD);
+    expect(redactSecrets(`fetch https://user:${PASSWORD}@example.org/x failed`)).not.toContain(
+      PASSWORD,
+    );
+    expect(describeDbError(new Error(driverMessage)).message).not.toContain(PASSWORD);
+    const sqlError = Object.assign(new Error('permission denied for table events'), {
+      code: '42501',
+    });
+    expect(describeDbError(sqlError).message).toBe(
+      'permission denied for table events (SQLSTATE 42501)',
+    );
   });
 });
 

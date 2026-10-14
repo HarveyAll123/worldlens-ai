@@ -1,4 +1,4 @@
--- WorldLens core schema (PostgreSQL + PostGIS; hosted on Neon, also runs on any Postgres 15+).
+-- WorldLens core schema (PostgreSQL + PostGIS; hosted on Neon, tested on PostgreSQL 16 + PostGIS 3).
 -- Temporal columns use timestamptz (supports years far before 1800) plus explicit
 -- precision metadata; geometry uses PostGIS with GiST indexes.
 
