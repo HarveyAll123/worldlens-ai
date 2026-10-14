@@ -17,7 +17,7 @@ npx wrangler secret put INGEST_TOKEN
 npx wrangler deploy
 ```
 
-Smoke test: `curl https://<worker>/api/health`. The dry-run bundle is ~2.2 MB raw / ~444 KB gzip (the Neon driver adds ~218 KB).
+Smoke test: `curl https://<worker>/api/health`. The dry-run bundle is 2257 KiB raw / 446 KiB gzip (the Neon driver adds ~218 KB).
 
 Manual ingestion: `curl -X POST -H "Authorization: Bearer $INGEST_TOKEN" https://<worker>/api/ingest/run`.
 
@@ -38,19 +38,24 @@ Alternatively serve the API under the same origin with a Worker route (`example.
 ## 3. Database (Neon)
 
 1. Create a Neon project.
-2. In the Neon SQL Editor, connected as the owner role (e.g. `neondb_owner`), create the API's role **with SQL** — not in the Neon console, because roles created there (or via the CLI/API) inherit `neon_superuser`:
+2. Connected as the owner role (e.g. `neondb_owner`), create the API's role **with SQL** — not in the Neon console, because roles created there (or via the CLI/API) inherit `neon_superuser`. Preferred, in `psql` over the direct connection string:
 
    ```sql
-   create role worldlens_app with login password '<password>';  -- e.g. openssl rand -hex 32 (hex needs no URL-encoding)
+   create role worldlens_app with login;
+   \password worldlens_app   -- psql asks for the password and sends only a SCRAM hash
    ```
 
-3. From the repo root, apply migrations and grants as the owner over the **direct** (unpooled) connection string — host without `-pooler`; the first migration enables PostGIS:
+   Use a generated password, e.g. `openssl rand -hex 32` (hex needs no URL-encoding). `create role worldlens_app with login password '<password>';` in the Neon SQL Editor also works, but leaves the plaintext password in the editor's history and logs.
+
+3. Put the owner's **direct** (unpooled) connection string — host without `-pooler`; the first migration enables PostGIS — in the git-ignored `apps/api/.dev.vars` rather than on the command line (shell history), then apply migrations and grants from the repo root:
 
    ```bash
-   MIGRATION_DATABASE_URL='postgresql://neondb_owner:<password>@ep-<id>.<region>.aws.neon.tech/neondb?sslmode=require' pnpm db:migrate
+   # apps/api/.dev.vars:
+   # MIGRATION_DATABASE_URL=postgresql://neondb_owner:<password>@ep-<id>.<region>.aws.neon.tech/neondb?sslmode=require
+   pnpm db:migrate
    ```
 
-   `MIGRATION_DATABASE_URL` can also go in `apps/api/.dev.vars`. The runner applies each new file in `db/migrations/` once (recorded in `schema_migrations`) and re-applies `db/grants.sql` on every run, so re-running it is safe.
+   `pnpm db:migrate` reads only `MIGRATION_DATABASE_URL` (the environment first, then `apps/api/.dev.vars`; quotes tolerated) — it does not fall back to `DATABASE_URL`. It never prints the connection string and redacts it from errors. The runner applies each new file in `db/migrations/` once (recorded in `schema_migrations`) and re-applies `db/grants.sql` on every run (revoke everything from `worldlens_app`, then grant exactly what the API uses), so re-running it is safe; run it again after pulling new migrations.
 
 4. Give the Worker the **pooled** connection string for `worldlens_app` (Neon console → Connect, pooled string, with user and password replaced):
 
@@ -60,9 +65,9 @@ Alternatively serve the API under the same origin with a Worker route (`example.
    # postgresql://worldlens_app:<password>@ep-<id>-pooler.<region>.aws.neon.tech/neondb?sslmode=require
    ```
 
-   `GET /api/health` then reports `repository: "neon+memory"` and a `database` provider. See MANUAL_SETUP.md.
+   `GET /api/health` then reports `repository: "neon+memory"` and a `database` provider. The Worker accepts only `postgresql://`/`postgres://` URLs for Neon hosts (`*.neon.tech`): any other host, or a value that cannot be parsed, disables the database — `repository` stays `"memory"` and the `database` provider is `down` with a fixed, non-secret message in `lastError`. See MANUAL_SETUP.md.
 
-Without `DATABASE_URL` the API runs from memory; ingested live news and payments then live in isolate memory — acceptable for a demo because capture can re-derive the record from PayPal (`custom_id`), but use Neon for anything persistent.
+Without a usable `DATABASE_URL` the API runs from memory; ingested live news and payments then live in isolate memory — acceptable for a demo because capture can re-derive the record from PayPal (`custom_id`), but use Neon for anything persistent.
 
 ## 4. After deploying
 
@@ -72,4 +77,4 @@ Without `DATABASE_URL` the API runs from memory; ingested live news and payments
 
 ## CI suggestion
 
-`pnpm install --frozen-lockfile && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm test:e2e`. The e2e suite starts its own servers and uses PayPal **test doubles** (`WORLDLENS_TEST_PAYPAL_MOCK=1` on the Node dev server only — never in the Worker).
+`pnpm install --frozen-lockfile && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm test:e2e`. The e2e suite starts its own servers and uses PayPal **test doubles** (`WORLDLENS_TEST_PAYPAL_MOCK=1` on the Node dev server only — never in the Worker). It never reuses a running API, so port 8787 must be free (stop `pnpm dev` / `pnpm dev:node` first).

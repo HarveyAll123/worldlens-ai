@@ -29,7 +29,7 @@ import { findCountry, resolvePlace } from '@worldlens/shared/geo-data';
 import type { EventRepository } from '../data/repository';
 import type { HistoricalBordersProvider } from '../providers/borders';
 import { selectBorderSnapshot } from '../providers/borders';
-import type { PaymentService } from '../payments/service';
+import { PaymentError, type PaymentService } from '../payments/service';
 
 export interface ToolContext {
   repo: EventRepository;
@@ -408,7 +408,14 @@ export async function runServerTool(
       } catch (err) {
         return {
           ok: false,
-          result: { error: err instanceof Error ? err.message : 'Payment status unavailable' },
+          // Only our own, user-facing payment errors are passed on (to the model and the public
+          // tool trace); anything else may be a driver message with internal details.
+          result: {
+            error:
+              err instanceof PaymentError
+                ? err.message
+                : 'Payment status is unavailable right now. Do not assume the payment succeeded.',
+          },
           citations,
         };
       }

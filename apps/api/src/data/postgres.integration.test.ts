@@ -340,13 +340,25 @@ describe.skipIf(!url)('PostgreSQL payment store (integration)', () => {
     await expect(store.create({ ...record, id: 'not-a-payment-id' })).rejects.toThrow();
   });
 
-  it('treats a webhook as a duplicate only once its processing completed', async () => {
-    const claim = () => store.claimWebhook('WH-INT-1', 'PAYMENT.CAPTURE.COMPLETED', '{}');
-    expect(await claim()).toBe(true);
-    // Processing failed (never completed): PayPal's retry is handled again.
-    expect(await claim()).toBe(true);
+  it('webhook leases: one delivery processes, copies wait, a failed attempt is retried', async () => {
+    const claim = (id = 'WH-INT-1') => store.claimWebhook(id, 'PAYMENT.CAPTURE.COMPLETED', '{}');
+    expect(await claim()).toBe('claimed');
+    expect(await claim()).toBe('in-progress'); // a concurrent copy is told to come back later
+    await store.releaseWebhook('WH-INT-1'); // processing failed
+    expect(await claim()).toBe('claimed'); // PayPal's retry is processed
     await store.completeWebhook('WH-INT-1');
-    expect(await claim()).toBe(false);
+    expect(await claim()).toBe('done');
+
+    // Simultaneous first deliveries: exactly one takes the lease.
+    const results = await Promise.all(Array.from({ length: 8 }, () => claim('WH-INT-2')));
+    expect(results.filter((r) => r === 'claimed')).toHaveLength(1);
+    expect(results.filter((r) => r === 'in-progress')).toHaveLength(7);
+
+    // An abandoned attempt (worker died) is taken over once its lease has expired.
+    await sql.query(
+      "update paypal_webhook_events set claimed_at = now() - interval '3 minutes' where event_id = 'WH-INT-2'",
+    );
+    expect(await claim('WH-INT-2')).toBe('claimed');
   });
 
   it('compare-and-set: an update based on a stale state changes nothing', async () => {

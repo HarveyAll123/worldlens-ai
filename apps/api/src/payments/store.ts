@@ -12,6 +12,10 @@ export type PaymentPatch = Partial<
   >
 >;
 
+export type WebhookClaim = 'claimed' | 'in-progress' | 'done';
+/** How long a processing attempt may hold a webhook event before another delivery takes over. */
+export const WEBHOOK_LEASE_MS = 2 * 60_000;
+
 export interface PaymentStore {
   readonly name: string;
   create(record: PaymentRecord): Promise<void>;
@@ -28,12 +32,15 @@ export interface PaymentStore {
     opts?: { expectState?: PaymentState },
   ): Promise<PaymentRecord | null>;
   /**
-   * Records a webhook delivery. Returns false only if the same event id was already
-   * processed to completion (idempotency); a delivery whose processing failed can be retried.
+   * Records a webhook delivery and takes a short processing lease on its event id:
+   * 'claimed' (process it), 'in-progress' (another delivery holds the lease) or 'done'
+   * (already processed to completion — a duplicate).
    */
-  claimWebhook(eventId: string, eventType: string, payload: string): Promise<boolean>;
+  claimWebhook(eventId: string, eventType: string, payload: string): Promise<WebhookClaim>;
   /** Marks a claimed webhook event as fully processed. */
   completeWebhook(eventId: string): Promise<void>;
+  /** Gives up the lease after a failed attempt, so PayPal's retry is processed. */
+  releaseWebhook(eventId: string): Promise<void>;
   log(paymentId: string, kind: string, detail: Record<string, unknown>): Promise<void>;
 }
 
@@ -61,8 +68,8 @@ export class MemoryPaymentStore implements PaymentStore {
   readonly name = 'memory';
   private records = new Map<string, PaymentRecord>();
   private byOrder = new Map<string, string>();
-  /** event id → processed to completion */
-  private webhooks = new Map<string, boolean>();
+  private webhooks = new Map<string, { processed: boolean; claimedAt: number | null }>();
+  constructor(private readonly now: () => number = Date.now) {}
   readonly events: Array<{ paymentId: string; kind: string; detail: Record<string, unknown> }> = [];
 
   async create(record: PaymentRecord): Promise<void> {
@@ -89,13 +96,20 @@ export class MemoryPaymentStore implements PaymentStore {
     if (next.paypalOrderId) this.byOrder.set(next.paypalOrderId, id);
     return { ...next };
   }
-  async claimWebhook(eventId: string): Promise<boolean> {
-    if (this.webhooks.get(eventId)) return false;
-    this.webhooks.set(eventId, false);
-    return true;
+  async claimWebhook(eventId: string): Promise<WebhookClaim> {
+    const w = this.webhooks.get(eventId);
+    if (w?.processed) return 'done';
+    if (w && w.claimedAt !== null && this.now() - w.claimedAt < WEBHOOK_LEASE_MS)
+      return 'in-progress';
+    this.webhooks.set(eventId, { processed: false, claimedAt: this.now() });
+    return 'claimed';
   }
   async completeWebhook(eventId: string): Promise<void> {
-    this.webhooks.set(eventId, true);
+    this.webhooks.set(eventId, { processed: true, claimedAt: null });
+  }
+  async releaseWebhook(eventId: string): Promise<void> {
+    const w = this.webhooks.get(eventId);
+    if (w && !w.processed) w.claimedAt = null;
   }
   async log(paymentId: string, kind: string, detail: Record<string, unknown>): Promise<void> {
     this.events.push({ paymentId, kind, detail });

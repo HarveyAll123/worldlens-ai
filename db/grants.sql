@@ -12,16 +12,38 @@
 -- Grants cover exactly what apps/api/src/data/postgres.ts does; widen them with a feature.
 
 do $$
-declare t text;
+declare
+  t text;
+  me oid := (select oid from pg_roles where rolname = current_user);
 begin
   if not exists (select 1 from pg_roles where rolname = 'worldlens_app') then
     raise notice 'role worldlens_app does not exist; skipping grants (see db/grants.sql)';
     return;
   end if;
 
-  execute 'revoke all on all tables in schema public from worldlens_app';
-  execute 'revoke all on all sequences in schema public from worldlens_app';
-  execute 'revoke all on all functions in schema public from worldlens_app';
+  -- Start from nothing on the schema's own objects. Extension objects (PostGIS) are skipped:
+  -- they belong to another role on Neon, and revoking there only produces warnings.
+  for t in select format('%I.%I', n.nspname, c.relname)
+           from pg_class c join pg_namespace n on n.oid = c.relnamespace
+           where n.nspname = 'public' and c.relowner = me and c.relkind in ('r', 'p', 'v', 'm', 'f')
+             and not exists (select 1 from pg_depend d where d.objid = c.oid and d.deptype = 'e')
+  loop
+    execute format('revoke all on table %s from worldlens_app', t);
+  end loop;
+  for t in select format('%I.%I', n.nspname, c.relname)
+           from pg_class c join pg_namespace n on n.oid = c.relnamespace
+           where n.nspname = 'public' and c.relowner = me and c.relkind = 'S'
+             and not exists (select 1 from pg_depend d where d.objid = c.oid and d.deptype = 'e')
+  loop
+    execute format('revoke all on sequence %s from worldlens_app', t);
+  end loop;
+  for t in select p.oid::regprocedure::text
+           from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = 'public' and p.proowner = me
+             and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
+  loop
+    execute format('revoke all on function %s from worldlens_app', t);
+  end loop;
   execute 'grant usage on schema public to worldlens_app';
 
   -- Published content is readable; nothing is ever deleted by the API.
@@ -44,9 +66,9 @@ begin
   execute 'grant update (paypal_order_id, state, capture_id, paypal_status, last_error, updated_at) on payment_actions to worldlens_app';
   execute 'grant select, insert on payment_transactions to worldlens_app';
   execute 'grant usage on sequence payment_transactions_id_seq to worldlens_app';
-  -- Webhook receipts: insert, and mark processed. Raw payloads (payer details) are not readable.
+  -- Webhook receipts: insert, lease and mark processed. Raw payloads (payer details) are not readable.
   execute 'grant insert on paypal_webhook_events to worldlens_app';
-  execute 'grant select (event_id, processed_at), update (processed_at) on paypal_webhook_events to worldlens_app';
+  execute 'grant select (event_id, processed_at, claimed_at), update (processed_at, claimed_at) on paypal_webhook_events to worldlens_app';
 
   execute 'grant execute on function events_in_window(timestamptz, timestamptz, text[], boolean, double precision, double precision, double precision, double precision, integer) to worldlens_app';
   execute 'grant execute on function event_by_id(text) to worldlens_app';

@@ -25,6 +25,10 @@ export class PaymentError extends Error {
   }
 }
 
+/** The record kept changing underneath (sustained contention): ask the caller to retry. */
+const busy = () =>
+  new PaymentError('PAYMENT_BUSY', 'The payment is being updated; please retry shortly.', 503);
+
 export const ORDER_ID_RE = /^[A-Z0-9]{5,40}$/;
 const PAYMENT_ID_RE = /^wl_[a-z0-9]{8,40}$/;
 
@@ -275,7 +279,7 @@ export class PaymentService {
       if (!fresh) throw new PaymentError('UNKNOWN_PAYMENT', 'Unknown payment.', 404);
       current = fresh;
     }
-    return current;
+    throw busy();
   }
 
   /** Returns null when the stored state changed underneath (caller re-reads). */
@@ -419,10 +423,19 @@ export class PaymentService {
     const parsed = WebhookEventSchema.safeParse(JSON.parse(rawBody));
     if (!parsed.success) return { status: 'ignored' };
     const evt = parsed.data;
-    const first = await this.d.store.claimWebhook(evt.id, evt.event_type, rawBody.slice(0, 20_000));
-    if (!first) return { status: 'duplicate', eventType: evt.event_type };
-    // If processing throws, the receipt stays unprocessed and PayPal's retry is handled again.
-    const outcome = await this.processWebhook(evt);
+    const claim = await this.d.store.claimWebhook(evt.id, evt.event_type, rawBody.slice(0, 20_000));
+    if (claim === 'done') return { status: 'duplicate', eventType: evt.event_type };
+    if (claim === 'in-progress')
+      // Another delivery of this event is being processed; a non-2xx makes PayPal retry later.
+      throw new PaymentError('WEBHOOK_IN_PROGRESS', 'This event is already being processed.', 409);
+    let outcome: 'processed' | 'ignored';
+    try {
+      outcome = await this.processWebhook(evt);
+    } catch (err) {
+      // Leave the receipt unprocessed and free for PayPal's retry.
+      await this.d.store.releaseWebhook(evt.id).catch(() => undefined);
+      throw err;
+    }
     await this.d.store.completeWebhook(evt.id);
     return { status: outcome, eventType: evt.event_type };
   }
@@ -455,6 +468,7 @@ export class PaymentService {
       if (record.paypalOrderId)
         await this.apply(record, await client.getOrder(record.paypalOrderId), 'webhook');
     } else {
+      let applied = false;
       for (let attempt = 0; attempt < 3 && canTransition(record.state, target); attempt++) {
         const next = await this.d.store.update(
           record.id,
@@ -468,11 +482,15 @@ export class PaymentService {
           },
           { expectState: record.state },
         );
-        if (next) break;
+        if (next) {
+          applied = true;
+          break;
+        }
         const fresh = await this.d.store.get(record.id);
         if (!fresh) break;
         record = fresh;
       }
+      if (!applied && canTransition(record.state, target)) throw busy();
     }
     await this.d.store.log(record.id, 'webhook', { eventId: evt.id, type: evt.event_type, target });
     return 'processed';

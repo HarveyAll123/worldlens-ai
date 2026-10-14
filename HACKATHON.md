@@ -18,7 +18,7 @@ Run `git log --stat` for the exact history. The application code was written wit
 | **JavaScript SDK v6** (`@paypal/paypal-js/sdk-v6`) | `createInstance` → `findEligibleMethods` → `createPayPalOneTimePaymentSession` → `session.start({presentationMode:'auto'}, orderPromise)` behind PayPal's `<paypal-button>`             |
 | **Orders API v2**                                  | server-side create (`intent: CAPTURE`, `NO_SHIPPING`, `PAY_NOW`), capture and get, all idempotent with `PayPal-Request-Id`                                                              |
 | **OAuth 2.0 client credentials**                   | server-side access tokens, cached until expiry                                                                                                                                          |
-| **Webhooks + verify-webhook-signature**            | order/capture lifecycle events, verified with PayPal before use, de-duplicated by event id                                                                                              |
+| **Webhooks + verify-webhook-signature**            | order/capture lifecycle events, verified with PayPal before use, de-duplicated by event id once processed (a delivery whose processing failed is handled again on PayPal's retry)       |
 | Agent Toolkit / MCP (evaluated)                    | not embedded at runtime — WorldLens deliberately gives the model no money-moving tools (see PROVIDERS.md); PayPal's MCP server is documented for developer inspection of sandbox orders |
 
 **The Take Action flow** — on a humanitarian (DEMO) event, or when the user asks the assistant “I have $20. How can I help?”:
@@ -27,7 +27,7 @@ Run `git log --stat` for the exact history. The application code was written wit
 2. The review screen shows beneficiary, purpose, amount, and a **SANDBOX DEMO — NO REAL MONEY TRANSFERRED** banner. The user must tick an acknowledgement that the recipient is a demo merchant, not a charity.
 3. The browser asks the API to create the order; the API re-validates the option, the amount, the reviewed terms and the sandbox environment. The client ID is public; the **secret never leaves the server**.
 4. The user approves in PayPal's own window. The API captures the order and records the result from **PayPal's capture response** (status, capture id, amount). Only `CAPTURED` from PayPal produces a receipt; cancel and error paths say plainly that no payment was made.
-5. Webhooks (when configured) reconcile later state changes (`PENDING`, `DENIED`, `REFUNDED`, `REVERSED`) through a strict state machine.
+5. Webhooks (when configured) reconcile later state changes (`PENDING`, `DENIED`, `REFUNDED`, `REVERSED`) through a strict state machine with compare-and-set updates, so a webhook racing the capture cannot overwrite a newer state.
 
 Live mode is refused by this build (`PAYPAL_ENVIRONMENT` must be `sandbox`).
 
@@ -66,7 +66,7 @@ Setup: `pnpm install && pnpm dev:node`, open http://127.0.0.1:5173 (credentials 
 - [ ] Register the webhook and confirm one verified delivery (simulator or real payment)
 - [ ] Add `ANTHROPIC_API_KEY` and run the demo prompts against the real model; set a spend limit
 - [ ] Optional: `VITE_MAPTILER_API_KEY` for satellite imagery and terrain; enable `GDELT_ENABLED` and confirm live ingestion
-- [ ] Optional persistence on Neon (MANUAL_SETUP.md): create a Neon project, create the `worldlens_app` role with SQL, run `pnpm db:migrate` as the owner over the direct connection string, set the pooled connection string for `worldlens_app` with `wrangler secret put DATABASE_URL`, and confirm `GET /api/health` reports `repository: "neon+memory"` and the `database` provider `ok` after the app has loaded events once (until now tested only against a local PostgreSQL 16 + PostGIS 3 — the build environment could not reach Neon)
+- [ ] Optional persistence on Neon (MANUAL_SETUP.md): create a Neon project, create the `worldlens_app` role with SQL (`create role worldlens_app with login;` + `\password worldlens_app` in psql), put the owner's direct connection string in `apps/api/.dev.vars` as `MIGRATION_DATABASE_URL` and run `pnpm db:migrate`, set the pooled `*.neon.tech` connection string for `worldlens_app` with `wrangler secret put DATABASE_URL`, and confirm `GET /api/health` reports `repository: "neon+memory"` and the `database` provider `ok` after the app has loaded events once; `repository: "memory"` with `database` `down` means the URL was rejected (see its `lastError`). Until now tested only against a local PostgreSQL 16 + PostGIS 3 — the build environment could not reach Neon
 - [ ] Deploy (DEPLOYMENT.md) and put the **hosted URL** in README.md
 - [ ] Record the **YouTube demo (< 3 minutes)** following the script above and link it in README.md
 - [ ] Measure performance on a real GPU (`PW_GPU=1`, see PERFORMANCE.md) before quoting any FPS figure

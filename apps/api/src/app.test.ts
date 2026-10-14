@@ -578,6 +578,19 @@ describe('PayPal sandbox payments', () => {
     expect(await again.json()).toMatchObject({ status: 'duplicate' });
   });
 
+  it('answers 409 while another delivery of the same event is being processed', async () => {
+    const store = new MemoryPaymentStore();
+    const { post, req } = setup({ paypal: new FakePayPal(), paymentStore: store });
+    const { orderId } = (await post('/api/payments/orders', order())).body as { orderId: string };
+    const resource = { id: orderId, status: 'APPROVED' };
+    expect(await store.claimWebhook('WH-L1')).toBe('claimed'); // in flight elsewhere
+    const r = await req(
+      '/api/paypal/webhook',
+      webhookRequest('WH-L1', 'CHECKOUT.ORDER.APPROVED', resource),
+    );
+    expect(r.status).toBe(409);
+  });
+
   it('a webhook decided on a stale read cannot overwrite a concurrent capture', async () => {
     const store = new MemoryPaymentStore();
     let stale = false;

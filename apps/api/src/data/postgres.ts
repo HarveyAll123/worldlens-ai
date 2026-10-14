@@ -23,7 +23,12 @@ import {
 import type { BuiltEvent } from '../pipeline/build-events';
 import type { IngestionRun } from '../pipeline/ingest';
 import type { ProviderHealth } from '../providers/health';
-import type { PaymentPatch, PaymentStore } from '../payments/store';
+import {
+  WEBHOOK_LEASE_MS,
+  type PaymentPatch,
+  type PaymentStore,
+  type WebhookClaim,
+} from '../payments/store';
 import { toSummary, type MemoryRepository } from './memory-repository';
 import type {
   EventRepository,
@@ -558,7 +563,7 @@ const PAYMENT_FIELDS = {
 
 /**
  * Server-side payment state. Webhook idempotency relies on the primary key of
- * paypal_webhook_events plus its processed_at column (see claimWebhook).
+ * paypal_webhook_events plus its processed_at / claimed_at columns (see claimWebhook).
  */
 export class PostgresPaymentStore implements PaymentStore {
   readonly name: string;
@@ -640,22 +645,38 @@ export class PostgresPaymentStore implements PaymentStore {
     return rows[0] ? toRecord(rows[0]) : null;
   }
 
-  async claimWebhook(eventId: string, eventType: string, payload: string): Promise<boolean> {
-    // A row comes back for a new event id, or for one whose earlier processing never
-    // completed (processed_at is null); a fully processed event returns nothing.
+  async claimWebhook(eventId: string, eventType: string, payload: string): Promise<WebhookClaim> {
+    // A row comes back when this call took the lease: a new event id, or one that is neither
+    // processed nor held by a live lease (an earlier attempt failed or was abandoned).
     const rows = await this.db.query<{ event_id: string }>(
-      `insert into paypal_webhook_events (event_id, event_type, payload) values ($1, $2, $3)
-       on conflict (event_id) do update set processed_at = null
+      `insert into paypal_webhook_events (event_id, event_type, payload, claimed_at)
+       values ($1, $2, $3, now())
+       on conflict (event_id) do update set claimed_at = now()
          where paypal_webhook_events.processed_at is null
+           and (paypal_webhook_events.claimed_at is null
+                or paypal_webhook_events.claimed_at < now() - $4::interval)
        returning event_id`,
-      [eventId, eventType, payload],
+      [eventId, eventType, payload, `${WEBHOOK_LEASE_MS / 1000} seconds`],
     );
-    return rows.length > 0;
+    if (rows.length > 0) return 'claimed';
+    const state = await this.db.query<{ processed_at: Ts | null }>(
+      'select processed_at from paypal_webhook_events where event_id = $1',
+      [eventId],
+      { idempotent: true },
+    );
+    return state[0]?.processed_at ? 'done' : 'in-progress';
   }
 
   async completeWebhook(eventId: string): Promise<void> {
     await this.db.query(
-      'update paypal_webhook_events set processed_at = now() where event_id = $1',
+      'update paypal_webhook_events set processed_at = now(), claimed_at = null where event_id = $1',
+      [eventId],
+    );
+  }
+
+  async releaseWebhook(eventId: string): Promise<void> {
+    await this.db.query(
+      'update paypal_webhook_events set claimed_at = null where event_id = $1 and processed_at is null',
       [eventId],
     );
   }
