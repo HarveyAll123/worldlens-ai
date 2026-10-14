@@ -33,7 +33,10 @@ export function costUsd(model: string, u: Usage): number {
   const cacheRead = u.cache_read_input_tokens ?? 0;
   const cacheWrite = u.cache_creation_input_tokens ?? 0;
   return (
-    (u.input_tokens * p.input + cacheWrite * p.input * 1.25 + cacheRead * p.cacheRead + u.output_tokens * p.output) /
+    (u.input_tokens * p.input +
+      cacheWrite * p.input * 1.25 +
+      cacheRead * p.cacheRead +
+      u.output_tokens * p.output) /
     1_000_000
   );
 }

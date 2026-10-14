@@ -117,12 +117,18 @@ export class PaymentService {
       );
     }
     if (this.d.client.environment !== 'sandbox') {
-      throw new PaymentError('LIVE_DISABLED', 'Live payments are disabled in this build. Use the PayPal sandbox.', 403);
+      throw new PaymentError(
+        'LIVE_DISABLED',
+        'Live payments are disabled in this build. Use the PayPal sandbox.',
+        403,
+      );
     }
     return this.d.client;
   }
 
-  async create(req: CreatePaymentRequest): Promise<{ paymentId: string; orderId: string; record: PaymentRecord }> {
+  async create(
+    req: CreatePaymentRequest,
+  ): Promise<{ paymentId: string; orderId: string; record: PaymentRecord }> {
     const client = this.requireClient();
     const nowMs = this.d.now();
     const option = this.d.repo.actionOption(req.actionOptionId);
@@ -130,7 +136,11 @@ export class PaymentService {
     const event = await this.d.repo.getEvent(req.eventId, nowMs);
     if (!event) throw new PaymentError('UNKNOWN_EVENT', 'Unknown event.', 404);
     if (!this.d.repo.actionOptions(event).some((o) => o.id === option.id)) {
-      throw new PaymentError('OPTION_NOT_AVAILABLE', 'This action is not offered for this event.', 400);
+      throw new PaymentError(
+        'OPTION_NOT_AVAILABLE',
+        'This action is not offered for this event.',
+        400,
+      );
     }
     const amount = Number(req.amount);
     if (!Number.isFinite(amount) || amount < option.minAmount || amount > option.maxAmount) {
@@ -140,8 +150,15 @@ export class PaymentService {
         400,
       );
     }
-    if (req.reviewedTerms.beneficiary !== option.beneficiary.name || req.reviewedTerms.purpose !== option.purpose) {
-      throw new PaymentError('TERMS_MISMATCH', 'The reviewed terms do not match this action. Please review again.', 409);
+    if (
+      req.reviewedTerms.beneficiary !== option.beneficiary.name ||
+      req.reviewedTerms.purpose !== option.purpose
+    ) {
+      throw new PaymentError(
+        'TERMS_MISMATCH',
+        'The reviewed terms do not match this action. Please review again.',
+        409,
+      );
     }
     const amountStr = amount.toFixed(2);
     const id = `wl_${this.d.newId()}`;
@@ -162,7 +179,11 @@ export class PaymentService {
       lastError: null,
     };
     await this.d.store.create(record);
-    await this.d.store.log(id, 'review_confirmed', { optionId: option.id, eventId: event.id, amount: amountStr });
+    await this.d.store.log(id, 'review_confirmed', {
+      optionId: option.id,
+      eventId: event.id,
+      amount: amountStr,
+    });
     try {
       const base = this.d.config.publicAppUrl.replace(/\/$/, '');
       const order = await client.createOrder({
@@ -186,9 +207,17 @@ export class PaymentService {
       return { paymentId: id, orderId: order.id, record: updated! };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      await this.d.store.update(id, { state: 'FAILED', lastError: message, updatedAt: new Date(this.d.now()).toISOString() });
+      await this.d.store.update(id, {
+        state: 'FAILED',
+        lastError: message,
+        updatedAt: new Date(this.d.now()).toISOString(),
+      });
       await this.d.store.log(id, 'order_create_failed', { message });
-      throw new PaymentError('PAYPAL_ERROR', 'PayPal could not create the order. No payment was made.', 502);
+      throw new PaymentError(
+        'PAYPAL_ERROR',
+        'PayPal could not create the order. No payment was made.',
+        502,
+      );
     }
   }
 
@@ -228,11 +257,21 @@ export class PaymentService {
     return record;
   }
 
-  private async apply(record: PaymentRecord, order: PayPalOrder, source: string): Promise<PaymentRecord> {
+  private async apply(
+    record: PaymentRecord,
+    order: PayPalOrder,
+    source: string,
+  ): Promise<PaymentRecord> {
     const target = stateFromOrder(order);
     const capture = firstCapture(order);
-    if (capture?.amount && (capture.amount.value !== record.amount || capture.amount.currency_code !== record.currency)) {
-      await this.d.store.log(record.id, 'amount_mismatch', { expected: record.amount, got: capture.amount });
+    if (
+      capture?.amount &&
+      (capture.amount.value !== record.amount || capture.amount.currency_code !== record.currency)
+    ) {
+      await this.d.store.log(record.id, 'amount_mismatch', {
+        expected: record.amount,
+        got: capture.amount,
+      });
       return (await this.d.store.update(record.id, {
         state: canTransition(record.state, 'FAILED') ? 'FAILED' : record.state,
         lastError: 'Captured amount does not match the reviewed amount.',
@@ -240,7 +279,11 @@ export class PaymentService {
       }))!;
     }
     if (!canTransition(record.state, target)) {
-      await this.d.store.log(record.id, 'transition_ignored', { from: record.state, to: target, source });
+      await this.d.store.log(record.id, 'transition_ignored', {
+        from: record.state,
+        to: target,
+        source,
+      });
       return record;
     }
     const next = await this.d.store.update(record.id, {
@@ -250,12 +293,18 @@ export class PaymentService {
       lastError: null,
       updatedAt: new Date(this.d.now()).toISOString(),
     });
-    await this.d.store.log(record.id, 'state', { from: record.state, to: target, source, captureId: capture?.id });
+    await this.d.store.log(record.id, 'state', {
+      from: record.state,
+      to: target,
+      source,
+      captureId: capture?.id,
+    });
     return next!;
   }
 
   async capture(orderId: string): Promise<PaymentRecord> {
-    if (!ORDER_ID_RE.test(orderId)) throw new PaymentError('BAD_ORDER_ID', 'Invalid order id.', 400);
+    if (!ORDER_ID_RE.test(orderId))
+      throw new PaymentError('BAD_ORDER_ID', 'Invalid order id.', 400);
     const client = this.requireClient();
     const record = (await this.d.store.getByOrderId(orderId)) ?? (await this.adopt(orderId));
     if (record.state === 'CAPTURED' || record.state === 'REFUNDED') return record;
@@ -270,13 +319,17 @@ export class PaymentService {
         const declined = err instanceof PayPalApiError && err.issue === 'INSTRUMENT_DECLINED';
         await this.d.store.update(record.id, {
           state: canTransition(record.state, 'FAILED') ? 'FAILED' : record.state,
-          lastError: declined ? 'The funding source was declined. Please try again with PayPal.' : message,
+          lastError: declined
+            ? 'The funding source was declined. Please try again with PayPal.'
+            : message,
           updatedAt: new Date(this.d.now()).toISOString(),
         });
         await this.d.store.log(record.id, 'capture_failed', { message });
         throw new PaymentError(
           declined ? 'INSTRUMENT_DECLINED' : 'CAPTURE_FAILED',
-          declined ? 'PayPal declined the funding source. No payment was captured.' : 'PayPal capture failed. No payment was confirmed.',
+          declined
+            ? 'PayPal declined the funding source. No payment was captured.'
+            : 'PayPal capture failed. No payment was confirmed.',
           declined ? 422 : 502,
         );
       }
@@ -285,11 +338,15 @@ export class PaymentService {
   }
 
   async cancel(orderId: string): Promise<PaymentRecord | null> {
-    if (!ORDER_ID_RE.test(orderId)) throw new PaymentError('BAD_ORDER_ID', 'Invalid order id.', 400);
+    if (!ORDER_ID_RE.test(orderId))
+      throw new PaymentError('BAD_ORDER_ID', 'Invalid order id.', 400);
     const record = await this.d.store.getByOrderId(orderId);
     if (!record) return null;
     if (!canTransition(record.state, 'CANCELLED') || record.state === 'CANCELLED') return record;
-    const next = await this.d.store.update(record.id, { state: 'CANCELLED', updatedAt: new Date(this.d.now()).toISOString() });
+    const next = await this.d.store.update(record.id, {
+      state: 'CANCELLED',
+      updatedAt: new Date(this.d.now()).toISOString(),
+    });
     await this.d.store.log(record.id, 'cancelled_by_user', {});
     return next;
   }
@@ -308,17 +365,26 @@ export class PaymentService {
     return this.apply(record, order, 'refresh');
   }
 
-  async webhook(headers: Headers, rawBody: string): Promise<{ status: 'processed' | 'duplicate' | 'ignored'; eventType?: string }> {
+  async webhook(
+    headers: Headers,
+    rawBody: string,
+  ): Promise<{ status: 'processed' | 'duplicate' | 'ignored'; eventType?: string }> {
     const client = this.requireClient();
     const webhookId = this.d.config.paypal.webhookId;
-    if (!webhookId) throw new PaymentError('WEBHOOK_NOT_CONFIGURED', 'PAYPAL_WEBHOOK_ID is not configured.', 503);
+    if (!webhookId)
+      throw new PaymentError('WEBHOOK_NOT_CONFIGURED', 'PAYPAL_WEBHOOK_ID is not configured.', 503);
     if (rawBody.length > 200_000) throw new PaymentError('TOO_LARGE', 'Payload too large.', 400);
     const verified = await client.verifyWebhook(headers, rawBody, webhookId);
-    if (!verified) throw new PaymentError('BAD_SIGNATURE', 'Webhook signature verification failed.', 401);
+    if (!verified)
+      throw new PaymentError('BAD_SIGNATURE', 'Webhook signature verification failed.', 401);
     const parsed = WebhookEventSchema.safeParse(JSON.parse(rawBody));
     if (!parsed.success) return { status: 'ignored' };
     const evt = parsed.data;
-    const first = await this.d.store.markWebhookProcessed(evt.id, evt.event_type, rawBody.slice(0, 20_000));
+    const first = await this.d.store.markWebhookProcessed(
+      evt.id,
+      evt.event_type,
+      rawBody.slice(0, 20_000),
+    );
     if (!first) return { status: 'duplicate', eventType: evt.event_type };
     const target = WEBHOOK_STATE[evt.event_type];
     if (!target) return { status: 'ignored', eventType: evt.event_type };
@@ -329,14 +395,18 @@ export class PaymentService {
     if (!record && evt.resource.custom_id && PAYMENT_ID_RE.test(evt.resource.custom_id)) {
       record = await this.d.store.get(evt.resource.custom_id);
     }
-    if (!record && orderId && ORDER_ID_RE.test(orderId)) record = await this.adopt(orderId).catch(() => null);
+    if (!record && orderId && ORDER_ID_RE.test(orderId))
+      record = await this.adopt(orderId).catch(() => null);
     if (!record) return { status: 'ignored', eventType: evt.event_type };
     if (target === 'REFRESH') {
-      if (record.paypalOrderId) await this.apply(record, await client.getOrder(record.paypalOrderId), 'webhook');
+      if (record.paypalOrderId)
+        await this.apply(record, await client.getOrder(record.paypalOrderId), 'webhook');
     } else if (canTransition(record.state, target)) {
       await this.d.store.update(record.id, {
         state: target,
-        ...(evt.event_type.startsWith('PAYMENT.CAPTURE.') && evt.resource.id ? { captureId: evt.resource.id } : {}),
+        ...(evt.event_type.startsWith('PAYMENT.CAPTURE.') && evt.resource.id
+          ? { captureId: evt.resource.id }
+          : {}),
         paypalStatus: evt.resource.status ?? record.paypalStatus,
         updatedAt: new Date(this.d.now()).toISOString(),
       });

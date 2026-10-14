@@ -31,7 +31,10 @@ export class FakePayPal {
   }
 
   private json(status: number, body: unknown): Response {
-    return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   private view(o: FakeOrder) {
@@ -46,11 +49,28 @@ export class FakePayPal {
           description: o.description,
           amount: o.amount,
           ...(o.captureId
-            ? { payments: { captures: [{ id: o.captureId, status: o.captureStatus, amount: o.amount, custom_id: o.custom_id }] } }
+            ? {
+                payments: {
+                  captures: [
+                    {
+                      id: o.captureId,
+                      status: o.captureStatus,
+                      amount: o.amount,
+                      custom_id: o.custom_id,
+                    },
+                  ],
+                },
+              }
             : {}),
         },
       ],
-      links: [{ href: `https://www.sandbox.paypal.com/checkoutnow?token=${o.id}`, rel: 'payer-action', method: 'GET' }],
+      links: [
+        {
+          href: `https://www.sandbox.paypal.com/checkoutnow?token=${o.id}`,
+          rel: 'payer-action',
+          method: 'GET',
+        },
+      ],
     };
   }
 
@@ -59,14 +79,22 @@ export class FakePayPal {
     const method = (init?.method ?? 'GET').toUpperCase();
     this.calls.push({ method, path: url.pathname });
     if (!url.hostname.endsWith('paypal.com')) return new Response('not found', { status: 404 });
-    if (url.pathname === '/v1/oauth2/token') return this.json(200, { access_token: 'fake-token', expires_in: 3600 });
+    if (url.pathname === '/v1/oauth2/token')
+      return this.json(200, { access_token: 'fake-token', expires_in: 3600 });
     if (url.pathname === '/v1/notifications/verify-webhook-signature') {
       const body = JSON.parse(String(init?.body ?? '{}')) as { transmission_sig?: string };
-      return this.json(200, { verification_status: body.transmission_sig === 'valid-signature' ? 'SUCCESS' : 'FAILURE' });
+      return this.json(200, {
+        verification_status: body.transmission_sig === 'valid-signature' ? 'SUCCESS' : 'FAILURE',
+      });
     }
     if (url.pathname === '/v2/checkout/orders' && method === 'POST') {
       const body = JSON.parse(String(init?.body ?? '{}')) as {
-        purchase_units: Array<{ amount: FakeOrder['amount']; custom_id: string; reference_id: string; description: string }>;
+        purchase_units: Array<{
+          amount: FakeOrder['amount'];
+          custom_id: string;
+          reference_id: string;
+          description: string;
+        }>;
       };
       const pu = body.purchase_units[0]!;
       const id = `FAKE${String(++this.seq).padStart(6, '0')}ORDER`;
@@ -85,15 +113,27 @@ export class FakePayPal {
     const m = /^\/v2\/checkout\/orders\/([A-Z0-9]+)(\/capture)?$/.exec(url.pathname);
     if (m) {
       const o = this.orders.get(m[1]!);
-      if (!o) return this.json(404, { name: 'RESOURCE_NOT_FOUND', details: [{ issue: 'INVALID_RESOURCE_ID' }] });
+      if (!o)
+        return this.json(404, {
+          name: 'RESOURCE_NOT_FOUND',
+          details: [{ issue: 'INVALID_RESOURCE_ID' }],
+        });
       if (!m[2]) return this.json(200, this.view(o));
       if (this.nextCaptureIssue) {
         const issue = this.nextCaptureIssue;
         this.nextCaptureIssue = null;
         return this.json(422, { name: 'UNPROCESSABLE_ENTITY', details: [{ issue }] });
       }
-      if (o.status === 'COMPLETED') return this.json(422, { name: 'UNPROCESSABLE_ENTITY', details: [{ issue: 'ORDER_ALREADY_CAPTURED' }] });
-      if (o.status !== 'APPROVED') return this.json(422, { name: 'UNPROCESSABLE_ENTITY', details: [{ issue: 'ORDER_NOT_APPROVED' }] });
+      if (o.status === 'COMPLETED')
+        return this.json(422, {
+          name: 'UNPROCESSABLE_ENTITY',
+          details: [{ issue: 'ORDER_ALREADY_CAPTURED' }],
+        });
+      if (o.status !== 'APPROVED')
+        return this.json(422, {
+          name: 'UNPROCESSABLE_ENTITY',
+          details: [{ issue: 'ORDER_NOT_APPROVED' }],
+        });
       o.status = 'COMPLETED';
       o.captureId = `CAP${o.id}`;
       o.captureStatus = 'COMPLETED';

@@ -84,7 +84,10 @@ function build(d: Def): WorldEvent {
     articleCount: 0,
     sourceCount: 0,
     hasTakeAction: false,
-    provenance: { provider: 'curated', note: 'WorldLens curated dataset (see CONTENT_LICENSING.md)' },
+    provenance: {
+      provider: 'curated',
+      note: 'WorldLens curated dataset (see CONTENT_LICENSING.md)',
+    },
   };
 }
 
@@ -125,7 +128,8 @@ const DEFS: Def[] = [
     category: 'conflict',
     importance: 4,
     wiki: 'Battle_of_Austerlitz',
-    summary: "Napoleon's French army defeated a larger Russian and Austrian army near Austerlitz in Moravia.",
+    summary:
+      "Napoleon's French army defeated a larger Russian and Austrian army near Austerlitz in Moravia.",
     why: 'Austria signed the Peace of Pressburg weeks later and left the War of the Third Coalition.',
     participants: [
       ['First French Empire', 'country'],
@@ -263,7 +267,7 @@ const DEFS: Def[] = [
     importance: 5,
     wiki: 'Battle_of_Waterloo',
     summary:
-      "Napoleon was defeated near Waterloo, in present-day Belgium, by an Anglo-allied army under the Duke of Wellington and a Prussian army under Gebhard von Blücher.",
+      'Napoleon was defeated near Waterloo, in present-day Belgium, by an Anglo-allied army under the Duke of Wellington and a Prussian army under Gebhard von Blücher.',
     why: "It ended Napoleon's Hundred Days; he abdicated for the second time four days later.",
     participants: [
       ['First French Empire', 'country'],
@@ -329,7 +333,7 @@ const DEFS: Def[] = [
     importance: 4,
     wiki: 'Indian_Rebellion_of_1857',
     summary:
-      "A rebellion against East India Company rule began with a mutiny of sepoys at Meerut and spread across much of northern and central India.",
+      'A rebellion against East India Company rule began with a mutiny of sepoys at Meerut and spread across much of northern and central India.',
     why: 'After it was suppressed, the British Crown took over direct rule of India from the East India Company (Government of India Act 1858).',
     participants: [
       ['East India Company', 'organization'],
@@ -509,7 +513,8 @@ const DEFS: Def[] = [
     category: 'diplomacy',
     importance: 4,
     wiki: 'Berlin_Conference',
-    summary: 'European powers and the United States met in Berlin to set rules for colonial claims in Africa.',
+    summary:
+      'European powers and the United States met in Berlin to set rules for colonial claims in Africa.',
     why: "It accelerated the 'Scramble for Africa', after which nearly all of the continent was under European colonial control by 1914.",
     tags: ['colonialism', 'territorial-change'],
   },
@@ -629,7 +634,8 @@ const DEFS: Def[] = [
     category: 'politics',
     importance: 4,
     wiki: 'Wuchang_uprising',
-    summary: 'An armed uprising in Wuchang triggered the Xinhai Revolution, which overthrew the Qing dynasty.',
+    summary:
+      'An armed uprising in Wuchang triggered the Xinhai Revolution, which overthrew the Qing dynasty.',
     why: 'The Republic of China was established on 1 January 1912, ending more than two thousand years of imperial rule.',
     tags: ['revolution', 'china'],
   },
@@ -766,7 +772,8 @@ const DEFS: Def[] = [
     category: 'economy',
     importance: 4,
     wiki: 'Wall_Street_crash_of_1929',
-    summary: 'Share prices on the New York Stock Exchange collapsed over several days in late October 1929.',
+    summary:
+      'Share prices on the New York Stock Exchange collapsed over several days in late October 1929.',
     why: 'The crash marked the onset of the Great Depression, the worldwide economic slump of the 1930s.',
   },
   {
@@ -852,7 +859,8 @@ const DEFS: Def[] = [
     category: 'conflict',
     importance: 4,
     wiki: 'Marco_Polo_Bridge_incident',
-    summary: 'A clash between Chinese and Japanese troops near Beijing escalated into full-scale war.',
+    summary:
+      'A clash between Chinese and Japanese troops near Beijing escalated into full-scale war.',
     why: 'It is generally regarded as the start of the Second Sino-Japanese War.',
     participants: [
       ['Republic of China', 'country'],
@@ -872,7 +880,8 @@ const DEFS: Def[] = [
     category: 'territorial',
     importance: 4,
     wiki: 'Anschluss',
-    summary: 'German troops entered Austria on 12 March 1938, and Austria was annexed into Nazi Germany the next day.',
+    summary:
+      'German troops entered Austria on 12 March 1938, and Austria was annexed into Nazi Germany the next day.',
     why: 'It was followed within months by German demands on Czechoslovakia.',
     participants: [
       ['Nazi Germany', 'country'],
@@ -996,7 +1005,8 @@ const DEFS: Def[] = [
     category: 'conflict',
     importance: 5,
     wiki: 'Attack_on_Pearl_Harbor',
-    summary: 'Japan launched a surprise air attack on the US Pacific Fleet at Pearl Harbor, Hawaii.',
+    summary:
+      'Japan launched a surprise air attack on the US Pacific Fleet at Pearl Harbor, Hawaii.',
     why: 'The United States declared war on Japan the next day and entered the Second World War.',
     participants: [
       ['Empire of Japan', 'country'],
@@ -1017,7 +1027,8 @@ const DEFS: Def[] = [
     category: 'conflict',
     importance: 5,
     wiki: 'Normandy_landings',
-    summary: 'Allied forces landed on five beaches in Normandy in the largest seaborne invasion in history.',
+    summary:
+      'Allied forces landed on five beaches in Normandy in the largest seaborne invasion in history.',
     why: 'It opened a Western Front against Germany in occupied Europe.',
     participants: [
       ['Allies', 'group'],
@@ -1078,7 +1089,8 @@ const DEFS: Def[] = [
     category: 'territorial',
     importance: 4,
     wiki: 'Berlin_Declaration_(1945)',
-    summary: 'The four Allied powers declared that they had assumed supreme authority over Germany.',
+    summary:
+      'The four Allied powers declared that they had assumed supreme authority over Germany.',
     why: 'Germany was administered in four occupation zones, and Berlin in four sectors.',
     participants: [
       ['United States', 'country'],
@@ -1280,7 +1292,8 @@ const DEFS: Def[] = [
     category: 'diplomacy',
     importance: 4,
     wiki: 'Treaty_of_San_Francisco',
-    summary: 'Japan signed a peace treaty with 48 Allied nations; it entered into force in April 1952, ending the occupation of Japan.',
+    summary:
+      'Japan signed a peace treaty with 48 Allied nations; it entered into force in April 1952, ending the occupation of Japan.',
     why: "Japan renounced its claims to Taiwan, Korea and other territories. The treaty did not specify to whom Taiwan was transferred — a point still cited in debates about Taiwan's status.",
     tags: ['taiwan', 'peace-settlement', 'territorial-change'],
   },
@@ -1357,7 +1370,8 @@ const DEFS: Def[] = [
     category: 'diplomacy',
     importance: 3,
     wiki: 'Bandung_Conference',
-    summary: 'Representatives of 29 Asian and African states met in Bandung to discuss decolonisation and cooperation.',
+    summary:
+      'Representatives of 29 Asian and African states met in Bandung to discuss decolonisation and cooperation.',
     why: 'It is widely seen as a precursor of the Non-Aligned Movement.',
     tags: ['decolonisation', 'indonesia'],
   },
@@ -1407,7 +1421,8 @@ const DEFS: Def[] = [
     category: 'territorial',
     importance: 4,
     wiki: 'Berlin_Wall',
-    summary: 'East German authorities sealed the border between East and West Berlin and began building the Berlin Wall.',
+    summary:
+      'East German authorities sealed the border between East and West Berlin and began building the Berlin Wall.',
     why: 'The Wall became the most visible symbol of the Cold War division of Europe until 1989.',
     tags: ['germany', 'cold-war'],
     conflictId: 'conflict-cold-war',
@@ -1511,7 +1526,8 @@ const DEFS: Def[] = [
     category: 'conflict',
     importance: 4,
     wiki: 'Bangladesh_Liberation_War',
-    summary: 'East Pakistan fought for independence from Pakistan; India intervened in December 1971.',
+    summary:
+      'East Pakistan fought for independence from Pakistan; India intervened in December 1971.',
     why: 'Pakistani forces surrendered in Dhaka on 16 December 1971, and Bangladesh became an independent state.',
     tags: ['territorial-change'],
   },
@@ -1581,7 +1597,8 @@ const DEFS: Def[] = [
     category: 'disaster',
     importance: 4,
     wiki: 'Chernobyl_disaster',
-    summary: 'Reactor No. 4 at the Chernobyl Nuclear Power Plant in Soviet Ukraine exploded during a safety test.',
+    summary:
+      'Reactor No. 4 at the Chernobyl Nuclear Power Plant in Soviet Ukraine exploded during a safety test.',
     why: 'By most measures the worst nuclear accident in history, it contaminated large areas of Europe; an exclusion zone remains in place.',
     tags: ['nuclear'],
   },
@@ -1673,7 +1690,8 @@ const DEFS: Def[] = [
     category: 'territorial',
     importance: 5,
     wiki: 'German_reunification',
-    summary: 'The German Democratic Republic acceded to the Federal Republic of Germany, reunifying Germany.',
+    summary:
+      'The German Democratic Republic acceded to the Federal Republic of Germany, reunifying Germany.',
     why: "The Two Plus Four Treaty settled Germany's external borders, including the Oder–Neisse line with Poland.",
     tags: ['territorial-change', 'germany', 'cold-war'],
     conflictId: 'conflict-cold-war',
@@ -1690,7 +1708,8 @@ const DEFS: Def[] = [
     category: 'territorial',
     importance: 5,
     wiki: 'Dissolution_of_the_Soviet_Union',
-    summary: 'The Soviet Union was formally dissolved, the day after Mikhail Gorbachev resigned as its president.',
+    summary:
+      'The Soviet Union was formally dissolved, the day after Mikhail Gorbachev resigned as its president.',
     why: 'Fifteen independent states emerged, including Russia, Ukraine and Kazakhstan, ending the Cold War.',
     tags: ['territorial-change', 'cold-war', 'ukraine'],
     conflictId: 'conflict-cold-war',
@@ -1729,7 +1748,8 @@ const DEFS: Def[] = [
     category: 'territorial',
     importance: 4,
     wiki: 'Handover_of_Hong_Kong',
-    summary: "The United Kingdom transferred sovereignty over Hong Kong to the People's Republic of China.",
+    summary:
+      "The United Kingdom transferred sovereignty over Hong Kong to the People's Republic of China.",
     why: "Hong Kong became a Special Administrative Region under the 'one country, two systems' principle.",
     tags: ['territorial-change', 'hong-kong'],
   },
@@ -1877,7 +1897,8 @@ const DEFS: Def[] = [
     category: 'conflict',
     importance: 5,
     wiki: 'Russian_invasion_of_Ukraine',
-    summary: 'Russia launched a full-scale invasion of Ukraine, attacking from the north, east and south.',
+    summary:
+      'Russia launched a full-scale invasion of Ukraine, attacking from the north, east and south.',
     why: 'It is the largest conventional war in Europe since the Second World War and has caused mass casualties and displacement.',
     participants: [
       ['Russia', 'country'],
@@ -1919,7 +1940,8 @@ const DEFS: Def[] = [
     category: 'disaster',
     importance: 4,
     wiki: '2023_Turkey–Syria_earthquakes',
-    summary: 'Two major earthquakes, of magnitude 7.8 and 7.5, struck southern Turkey and northern Syria.',
+    summary:
+      'Two major earthquakes, of magnitude 7.8 and 7.5, struck southern Turkey and northern Syria.',
     why: 'More than 50,000 people were killed, making it one of the deadliest earthquakes of the 21st century.',
     tags: ['earthquake'],
   },

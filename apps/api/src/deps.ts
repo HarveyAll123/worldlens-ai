@@ -43,13 +43,17 @@ export interface DepOverrides {
 function randomId(): string {
   const bytes = new Uint8Array(12);
   crypto.getRandomValues(bytes);
-  return [...bytes].map((b) => b.toString(36).padStart(2, '0')).join('').slice(0, 20);
+  return [...bytes]
+    .map((b) => b.toString(36).padStart(2, '0'))
+    .join('')
+    .slice(0, 20);
 }
 
 export function createDeps(env: Env, o: DepOverrides = {}): AppDeps {
   const config = loadConfig(env);
   const now = o.now ?? Date.now;
-  const fetchImpl = o.fetchImpl ?? ((input: string | Request, init?: RequestInit) => fetch(input, init));
+  const fetchImpl =
+    o.fetchImpl ?? ((input: string | Request, init?: RequestInit) => fetch(input, init));
   const health = new ProviderHealth(now);
   const supabaseReady = !!(config.supabase.url && config.supabase.serviceKey);
   health.register('gdelt', config.gdelt.enabled);
@@ -64,7 +68,13 @@ export function createDeps(env: Env, o: DepOverrides = {}): AppDeps {
   const repo =
     o.repo ??
     (supabaseReady
-      ? new SupabaseNewsRepository(memory, config.supabase.url!, config.supabase.serviceKey!, health, fetchImpl)
+      ? new SupabaseNewsRepository(
+          memory,
+          config.supabase.url!,
+          config.supabase.serviceKey!,
+          health,
+          fetchImpl,
+        )
       : memory);
   const paymentStore =
     o.paymentStore ??
@@ -74,21 +84,42 @@ export function createDeps(env: Env, o: DepOverrides = {}): AppDeps {
   const ai =
     o.ai ??
     (config.ai.apiKey
-      ? new AnthropicProvider(config.ai.apiKey, { fast: config.ai.fastModel, strong: config.ai.strongModel })
+      ? new AnthropicProvider(config.ai.apiKey, {
+          fast: config.ai.fastModel,
+          strong: config.ai.strongModel,
+        })
       : new NullAiProvider());
   const budget = new AiBudget(config.ai.dailyBudgetUsd, now);
   const client =
     config.paypal.clientId && config.paypal.clientSecret
-      ? new PayPalClient(config.paypal.clientId, config.paypal.clientSecret, config.paypal.environment, fetchImpl, now)
+      ? new PayPalClient(
+          config.paypal.clientId,
+          config.paypal.clientSecret,
+          config.paypal.environment,
+          fetchImpl,
+          now,
+        )
       : null;
-  const payments = new PaymentService({ client, store: paymentStore, repo, config, now, newId: o.newId ?? randomId });
+  const payments = new PaymentService({
+    client,
+    store: paymentStore,
+    repo,
+    config,
+    now,
+    newId: o.newId ?? randomId,
+  });
 
   return {
     config,
     repo,
     health,
     wikipedia: new WikipediaProvider(config.wikipediaUserAgent, health, fetchImpl),
-    borders: new HistoricalBordersProvider(config.basemapsBaseUrl, health, fetchImpl, env.GEO_CACHE),
+    borders: new HistoricalBordersProvider(
+      config.basemapsBaseUrl,
+      health,
+      fetchImpl,
+      env.GEO_CACHE,
+    ),
     news: config.gdelt.enabled ? new GdeltProvider(fetchImpl) : null,
     ai,
     budget,

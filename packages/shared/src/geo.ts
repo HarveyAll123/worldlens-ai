@@ -15,7 +15,8 @@ export function haversineKm(lat1: number, lon1: number, lat2: number, lon2: numb
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
   const a =
-    Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
   return 2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(a)));
 }
 
@@ -98,15 +99,17 @@ export function simplifyRing(ring: LonLat[], tolerance: number): LonLat[] | null
 
 type Poly = LonLat[][];
 export type PolyGeometry =
-  | { type: 'Polygon'; coordinates: Poly }
-  | { type: 'MultiPolygon'; coordinates: Poly[] };
+  { type: 'Polygon'; coordinates: Poly } | { type: 'MultiPolygon'; coordinates: Poly[] };
 
 /** Simplify a (Multi)Polygon, dropping parts that vanish. Returns null if nothing remains. */
 export function simplifyPolygonGeometry(g: PolyGeometry, tolerance: number): PolyGeometry | null {
   const simplifyPoly = (poly: Poly): Poly | null => {
     const outer = poly[0] ? simplifyRing(poly[0], tolerance) : null;
     if (!outer) return null;
-    const holes = poly.slice(1).map((r) => simplifyRing(r, tolerance)).filter((r): r is LonLat[] => !!r);
+    const holes = poly
+      .slice(1)
+      .map((r) => simplifyRing(r, tolerance))
+      .filter((r): r is LonLat[] => !!r);
     return [outer, ...holes];
   };
   if (g.type === 'Polygon') {
@@ -145,7 +148,8 @@ export function countVertices(g: PolyGeometry): number {
 export function roundGeometry<T extends PolyGeometry>(g: T, digits = 3): T {
   const f = 10 ** digits;
   const r = (v: number) => Math.round(v * f) / f;
-  const mapPoly = (poly: Poly): Poly => poly.map((ring) => ring.map(([x, y]) => [r(x), r(y)] as LonLat));
+  const mapPoly = (poly: Poly): Poly =>
+    poly.map((ring) => ring.map(([x, y]) => [r(x), r(y)] as LonLat));
   if (g.type === 'Polygon') return { ...g, coordinates: mapPoly(g.coordinates) };
   return { ...g, coordinates: (g.coordinates as Poly[]).map(mapPoly) } as T;
 }

@@ -149,7 +149,8 @@ export function linkScore(a: ArticleFeatures, c: Cluster, opts: ClusterOptions):
   let geo = 0.4;
   if (a.location && c.location) {
     const d = haversineKm(a.location.lat, a.location.lon, c.location.lat, c.location.lon);
-    if (specificPlaces(a.location) && specificPlaces(c.location) && d > opts.maxPlaceDistanceKm) return null;
+    if (specificPlaces(a.location) && specificPlaces(c.location) && d > opts.maxPlaceDistanceKm)
+      return null;
     const coarse = a.location.precision === 'country' || c.location.precision === 'country';
     geo = d <= 100 ? 1 : d <= 400 ? 0.6 : d <= 900 ? 0.25 : 0;
     if (coarse) geo = Math.min(geo, 0.5);
@@ -177,7 +178,14 @@ export function linkScore(a: ArticleFeatures, c: Cluster, opts: ClusterOptions):
   if (lexical < 0.2 && head < 0.35 && !corroborated) return null;
   if (ent === 0 && lexical < 0.45) return null;
 
-  return 0.35 * lexical + 0.15 * head + 0.2 * ent + 0.15 * geo + 0.1 * time + 0.05 * Math.max(0, affinity);
+  return (
+    0.35 * lexical +
+    0.15 * head +
+    0.2 * ent +
+    0.15 * geo +
+    0.1 * time +
+    0.05 * Math.max(0, affinity)
+  );
 }
 
 function addToCluster(c: Cluster, a: ArticleFeatures, score: number): void {
@@ -190,7 +198,8 @@ function addToCluster(c: Cluster, a: ArticleFeatures, score: number): void {
   c.lastMs = Math.max(c.lastMs, a.article.publishedAtMs);
   c.location = resolveLocation(c.members.map((m) => m.candidates));
   const cats = new Map<EventCategory, number>();
-  for (const m of c.members) cats.set(m.category, (cats.get(m.category) ?? 0) + m.categoryConfidence);
+  for (const m of c.members)
+    cats.set(m.category, (cats.get(m.category) ?? 0) + m.categoryConfidence);
   const [best] = [...cats.entries()].sort((x, y) => y[1] - x[1]);
   if (best) {
     c.category = best[0];

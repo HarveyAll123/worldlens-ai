@@ -30,7 +30,8 @@ export const FRONTLINES: Frontline[] = [
     sideB: 'US zone (South Korea from 1948)',
     disputed: false,
     confidence: 0.9,
-    source: 'Defined by the 38th parallel north (US–Soviet agreement, August 1945). Coastal endpoints approximate.',
+    source:
+      'Defined by the 38th parallel north (US–Soviet agreement, August 1945). Coastal endpoints approximate.',
     license: 'Public domain (geometric definition)',
     notes: 'Replaced in 1953 by the Military Demarcation Line, whose geometry is not yet loaded.',
   },

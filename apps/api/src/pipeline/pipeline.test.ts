@@ -28,7 +28,9 @@ function art(title: string, domain: string, minutes: number, path = title): Gdel
 
 describe('normalisation and dedupe', () => {
   it('canonicalises URLs and strips tracking parameters', () => {
-    expect(canonicalizeUrl('http://WWW.Example.com/a/?utm_source=x&id=2#frag')).toBe('https://www.example.com/a?id=2');
+    expect(canonicalizeUrl('http://WWW.Example.com/a/?utm_source=x&id=2#frag')).toBe(
+      'https://www.example.com/a?id=2',
+    );
     expect(canonicalizeUrl('javascript:alert(1)')).toBeNull();
   });
   it('parses GDELT seendate', () => {
@@ -61,7 +63,9 @@ describe('normalisation and dedupe', () => {
 
 describe('entities, location and category', () => {
   it('extracts places, countries, regions and acronyms deterministically', () => {
-    const e = extractEntities("Russian missile strike hits Kharkiv as UN urges restraint in Ukraine's east");
+    const e = extractEntities(
+      "Russian missile strike hits Kharkiv as UN urges restraint in Ukraine's east",
+    );
     expect(e.places.map((p) => p.name)).toContain('Kharkiv');
     expect(e.countries).toContain('UKR');
     expect(e.demonyms).toContain('RUS');
@@ -69,15 +73,21 @@ describe('entities, location and category', () => {
     const lower = extractEntities('who will tell us what happened');
     expect(lower.organizations).toHaveLength(0);
     expect(lower.countries).toHaveLength(0);
-    expect(extractEntities('Tensions rise in the South China Sea').regions.map((r) => r.name)).toEqual(['South China Sea']);
+    expect(
+      extractEntities('Tensions rise in the South China Sea').regions.map((r) => r.name),
+    ).toEqual(['South China Sea']);
   });
   it('prefers a specific place over the containing country', () => {
-    const loc = resolveLocation([locationCandidates(extractEntities('Missile strike hits Kharkiv, Ukraine'))]);
+    const loc = resolveLocation([
+      locationCandidates(extractEntities('Missile strike hits Kharkiv, Ukraine')),
+    ]);
     expect(loc?.name).toMatch(/Kharkiv/);
     expect(loc?.precision).toBe('city');
   });
   it('does not invent a location when none is mentioned', () => {
-    expect(resolveLocation([locationCandidates(extractEntities('Markets rally on rate cut hopes'))])).toBeNull();
+    expect(
+      resolveLocation([locationCandidates(extractEntities('Markets rally on rate cut hopes'))]),
+    ).toBeNull();
   });
   it('categorises headlines', () => {
     expect(categorize('Magnitude 6.8 earthquake strikes off Sulawesi').category).toBe('disaster');
@@ -87,13 +97,18 @@ describe('entities, location and category', () => {
 });
 
 describe('clustering', () => {
-  const titles = (c: ReturnType<typeof clusterArticles>[number]) => c.members.map((m) => m.article.headline);
+  const titles = (c: ReturnType<typeof clusterArticles>[number]) =>
+    c.members.map((m) => m.article.headline);
 
   it('groups different publishers covering the same event', () => {
     const clusters = clusterArticles(
       normalizeGdelt([
         art('Magnitude 6.8 earthquake strikes off Sulawesi, Indonesia', 'reuters.com', 0),
-        art("Strong quake hits Indonesia's Sulawesi island, tsunami warning issued", 'apnews.com', 20),
+        art(
+          "Strong quake hits Indonesia's Sulawesi island, tsunami warning issued",
+          'apnews.com',
+          20,
+        ),
         art('Sulawesi earthquake kills at least 12, officials say', 'bbc.com', 90),
         art('Indonesia Sulawesi quake: rescuers search for survivors', 'aljazeera.com', 180),
       ]),
@@ -149,7 +164,12 @@ describe('ingestion run', () => {
       },
     };
     const health = new ProviderHealth();
-    const { run, events } = await runIngestion({ provider: failing, queries: ['q'], health, nowMs: BASE });
+    const { run, events } = await runIngestion({
+      provider: failing,
+      queries: ['q'],
+      health,
+      nowMs: BASE,
+    });
     expect(events).toHaveLength(0);
     expect(run.errors[0]).toContain('boom');
     expect(health.get('gdelt').state).toBe('down');
@@ -165,7 +185,12 @@ describe('ingestion run', () => {
       ],
     };
     const health = new ProviderHealth();
-    const { run, events } = await runIngestion({ provider, queries: ['q'], health, nowMs: BASE + 3_600_000 });
+    const { run, events } = await runIngestion({
+      provider,
+      queries: ['q'],
+      health,
+      nowMs: BASE + 3_600_000,
+    });
     expect(run.fetched).toBe(3);
     expect(events).toHaveLength(1); // the market story has no location and is not placed
     const ev = events[0]!.event;

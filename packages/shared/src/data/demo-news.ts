@@ -81,7 +81,8 @@ const DEFS: DemoEventDef[] = [
       {
         source: 'demo-src-continental-daily',
         slug: 'joint-readiness-patrol',
-        headline: "Eastern Theatre Command holds joint readiness patrol, calls it a 'stern warning'",
+        headline:
+          "Eastern Theatre Command holds joint readiness patrol, calls it a 'stern warning'",
         snippet:
           "A spokesperson described the drills as routine combat-readiness patrols and a warning against 'separatist' activity, according to state broadcaster reports.",
         hoursAgo: 4.5,
@@ -114,14 +115,16 @@ const DEFS: DemoEventDef[] = [
         source: 'demo-src-pacific-wire',
         slug: 'drills-second-day',
         headline: 'Coast guard says it shadowed vessels near outlying islands',
-        snippet: 'The coast guard said it had shadowed vessels near outlying islands and urged restraint.',
+        snippet:
+          'The coast guard said it had shadowed vessels near outlying islands and urged restraint.',
         hoursAgo: 1,
       },
       {
         source: 'demo-src-manila-courier',
         slug: 'manila-urges-calm',
         headline: 'Manila urges calm, says it is monitoring the situation north of Luzon',
-        snippet: 'The foreign ministry said it was in contact with partners and monitoring developments.',
+        snippet:
+          'The foreign ministry said it was in contact with partners and monitoring developments.',
         hoursAgo: 1.5,
       },
     ],
@@ -157,7 +160,8 @@ const DEFS: DemoEventDef[] = [
         source: 'demo-src-continental-daily',
         slug: 'coast-guard-expels',
         headline: "Coast guard 'expels' vessel that 'intruded' near Huangyan Dao",
-        snippet: "A coast guard statement said it took 'necessary control measures' in accordance with the law.",
+        snippet:
+          "A coast guard statement said it took 'necessary control measures' in accordance with the law.",
         hoursAgo: 8,
       },
       {
@@ -199,14 +203,16 @@ const DEFS: DemoEventDef[] = [
         source: 'demo-src-relief-bulletin',
         slug: 'priority-needs',
         headline: 'Scenario update: shelter and clean water identified as priority needs',
-        snippet: 'In this demo scenario, responders list emergency shelter, clean water and medical supplies as priorities.',
+        snippet:
+          'In this demo scenario, responders list emergency shelter, clean water and medical supplies as priorities.',
         hoursAgo: 18,
       },
       {
         source: 'demo-src-harbour-herald',
         slug: 'aid-groups-prepare',
         headline: 'Scenario: aid groups prepare emergency response',
-        snippet: 'Fictional report describing logistics for delivering supplies to affected districts.',
+        snippet:
+          'Fictional report describing logistics for delivering supplies to affected districts.',
         hoursAgo: 12,
       },
     ],
@@ -276,7 +282,8 @@ const DEFS: DemoEventDef[] = [
     iso3: 'CHE',
     category: 'economy',
     importance: 2,
-    summary: 'Synthetic demo scenario. Fictional outlets report talks among trade ministers about disruptions to shipping routes.',
+    summary:
+      'Synthetic demo scenario. Fictional outlets report talks among trade ministers about disruptions to shipping routes.',
     why: 'Demo scenario text. Shipping disruptions can raise freight costs and delay supply chains worldwide.',
     participants: [{ name: 'Trade ministers (scenario)', type: 'group' }],
     tags: ['trade', 'shipping', 'demo'],
@@ -308,7 +315,8 @@ const DEFS: DemoEventDef[] = [
     iso3: 'NOR',
     category: 'science',
     importance: 2,
-    summary: 'Synthetic demo scenario. A fictional research cruise reports completing a sea-ice survey.',
+    summary:
+      'Synthetic demo scenario. A fictional research cruise reports completing a sea-ice survey.',
     why: 'Demo scenario text. Arctic sea-ice observations feed climate models and shipping forecasts.',
     participants: [{ name: 'Research institute (scenario)', type: 'organization' }],
     tags: ['arctic', 'climate', 'demo'],

@@ -41,7 +41,9 @@ export const OrderSchema = z.object({
       }),
     )
     .optional(),
-  links: z.array(z.object({ href: z.string(), rel: z.string(), method: z.string().optional() })).optional(),
+  links: z
+    .array(z.object({ href: z.string(), rel: z.string(), method: z.string().optional() }))
+    .optional(),
 });
 export type PayPalOrder = z.infer<typeof OrderSchema>;
 
@@ -99,7 +101,13 @@ export class PayPalClient {
       body: 'grant_type=client_credentials',
     });
     const text = await res.text();
-    if (!res.ok) throw new PayPalApiError(`PayPal auth failed (HTTP ${res.status})`, res.status, text.slice(0, 300), null);
+    if (!res.ok)
+      throw new PayPalApiError(
+        `PayPal auth failed (HTTP ${res.status})`,
+        res.status,
+        text.slice(0, 300),
+        null,
+      );
     const t = TokenSchema.parse(JSON.parse(text));
     this.token = { value: t.access_token, expiresAt: this.now() + t.expires_in * 1000 };
     return t.access_token;
@@ -137,7 +145,12 @@ export class PayPalClient {
       } catch {
         /* not JSON */
       }
-      throw new PayPalApiError(`PayPal ${method} ${path.split('?')[0]} failed (HTTP ${res.status}${issue ? `, ${issue}` : ''})`, res.status, text.slice(0, 500), issue);
+      throw new PayPalApiError(
+        `PayPal ${method} ${path.split('?')[0]} failed (HTTP ${res.status}${issue ? `, ${issue}` : ''})`,
+        res.status,
+        text.slice(0, 500),
+        issue,
+      );
     }
     return schema.parse(JSON.parse(text));
   }
@@ -176,10 +189,15 @@ export class PayPalClient {
   }
 
   captureOrder(orderId: string, requestId: string): Promise<PayPalOrder> {
-    return this.call('POST', `/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, OrderSchema, {
-      body: '{}',
-      requestId,
-    });
+    return this.call(
+      'POST',
+      `/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`,
+      OrderSchema,
+      {
+        body: '{}',
+        requestId,
+      },
+    );
   }
 
   /**

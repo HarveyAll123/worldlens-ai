@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { PoliticalRatingSchema, SafeUrlSchema, UNRATED } from '../schemas';
-import { CLIENT_TOOL_NAMES, SERVER_TOOL_NAMES, parseClientAction, toolInputJsonSchema } from '../tools';
+import {
+  CLIENT_TOOL_NAMES,
+  SERVER_TOOL_NAMES,
+  parseClientAction,
+  toolInputJsonSchema,
+} from '../tools';
 
 describe('political ratings', () => {
   it('accepts UNRATED without methodology', () => {

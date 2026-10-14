@@ -28,7 +28,10 @@ const GdeltResponseSchema = z.object({ articles: z.array(z.unknown()).optional()
 
 export interface NewsProvider {
   readonly name: string;
-  fetchRecent(query: string, opts: { timespan: string; maxRecords: number }): Promise<GdeltArticle[]>;
+  fetchRecent(
+    query: string,
+    opts: { timespan: string; maxRecords: number },
+  ): Promise<GdeltArticle[]>;
 }
 
 export class GdeltProvider implements NewsProvider {
@@ -46,7 +49,10 @@ export class GdeltProvider implements NewsProvider {
     return u.toString();
   }
 
-  async fetchRecent(query: string, opts: { timespan: string; maxRecords: number }): Promise<GdeltArticle[]> {
+  async fetchRecent(
+    query: string,
+    opts: { timespan: string; maxRecords: number },
+  ): Promise<GdeltArticle[]> {
     const res = await fetchWithTimeout(this.buildUrl(query, opts), {
       provider: 'gdelt',
       timeoutMs: 9000,
@@ -55,16 +61,22 @@ export class GdeltProvider implements NewsProvider {
       headers: { Accept: 'application/json' },
     });
     const text = await res.text();
-    if (!res.ok) throw new UpstreamError(`gdelt: HTTP ${res.status}`, 'gdelt', res.status, text.slice(0, 200));
+    if (!res.ok)
+      throw new UpstreamError(`gdelt: HTTP ${res.status}`, 'gdelt', res.status, text.slice(0, 200));
     // GDELT returns plain-text notices (e.g. rate-limit messages) with HTTP 200.
     let json: unknown;
     try {
       json = JSON.parse(text);
     } catch {
-      throw new UpstreamError(`gdelt: non-JSON response: ${text.slice(0, 120)}`, 'gdelt', res.status);
+      throw new UpstreamError(
+        `gdelt: non-JSON response: ${text.slice(0, 120)}`,
+        'gdelt',
+        res.status,
+      );
     }
     const parsed = GdeltResponseSchema.safeParse(json);
-    if (!parsed.success) throw new UpstreamError('gdelt: unexpected response shape', 'gdelt', res.status);
+    if (!parsed.success)
+      throw new UpstreamError('gdelt: unexpected response shape', 'gdelt', res.status);
     const out: GdeltArticle[] = [];
     for (const raw of parsed.data.articles ?? []) {
       const a = GdeltArticleSchema.safeParse(raw);

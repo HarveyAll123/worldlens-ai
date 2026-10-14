@@ -31,8 +31,16 @@ export const ACTION_OPTIONS: ActionOption[] = [
     minAmount: 1,
     maxAmount: 500,
     informationalLinks: [
-      { name: 'IFRC (International Federation of Red Cross and Red Crescent Societies)', url: 'https://www.ifrc.org/', note: INFO_ONLY },
-      { name: 'ReliefWeb (UN OCHA)', url: 'https://reliefweb.int/', note: 'Humanitarian situation reports.' },
+      {
+        name: 'IFRC (International Federation of Red Cross and Red Crescent Societies)',
+        url: 'https://www.ifrc.org/',
+        note: INFO_ONLY,
+      },
+      {
+        name: 'ReliefWeb (UN OCHA)',
+        url: 'https://reliefweb.int/',
+        note: 'Humanitarian situation reports.',
+      },
     ],
     sandbox: true,
   },
@@ -41,7 +49,8 @@ export const ACTION_OPTIONS: ActionOption[] = [
     eventIds: ['demo-news-sylhet-flood-relief'],
     appliesToLiveCategories: [],
     title: 'Flood relief kits (sandbox demo)',
-    description: 'Simulates a contribution toward food, water and hygiene kits in the demo flood scenario.',
+    description:
+      'Simulates a contribution toward food, water and hygiene kits in the demo flood scenario.',
     purpose: 'Flood relief — demo scenario',
     beneficiary: BENEFICIARY,
     currency: 'USD',
@@ -50,7 +59,11 @@ export const ACTION_OPTIONS: ActionOption[] = [
     maxAmount: 500,
     informationalLinks: [
       { name: 'UNICEF', url: 'https://www.unicef.org/', note: INFO_ONLY },
-      { name: 'ReliefWeb (UN OCHA)', url: 'https://reliefweb.int/', note: 'Humanitarian situation reports.' },
+      {
+        name: 'ReliefWeb (UN OCHA)',
+        url: 'https://reliefweb.int/',
+        note: 'Humanitarian situation reports.',
+      },
     ],
     sandbox: true,
   },
@@ -59,7 +72,8 @@ export const ACTION_OPTIONS: ActionOption[] = [
     eventIds: ['demo-news-attica-wildfire-recovery'],
     appliesToLiveCategories: [],
     title: 'Wildfire recovery (sandbox demo)',
-    description: 'Simulates a contribution toward temporary housing and reforestation in the demo wildfire scenario.',
+    description:
+      'Simulates a contribution toward temporary housing and reforestation in the demo wildfire scenario.',
     purpose: 'Wildfire recovery — demo scenario',
     beneficiary: BENEFICIARY,
     currency: 'USD',
@@ -67,7 +81,11 @@ export const ACTION_OPTIONS: ActionOption[] = [
     minAmount: 1,
     maxAmount: 500,
     informationalLinks: [
-      { name: 'ReliefWeb (UN OCHA)', url: 'https://reliefweb.int/', note: 'Humanitarian situation reports.' },
+      {
+        name: 'ReliefWeb (UN OCHA)',
+        url: 'https://reliefweb.int/',
+        note: 'Humanitarian situation reports.',
+      },
     ],
     sandbox: true,
   },
@@ -85,8 +103,16 @@ export const ACTION_OPTIONS: ActionOption[] = [
     minAmount: 1,
     maxAmount: 100,
     informationalLinks: [
-      { name: 'ReliefWeb (UN OCHA)', url: 'https://reliefweb.int/', note: 'Find appeals and situation reports. ' + INFO_ONLY },
-      { name: 'IFRC (International Federation of Red Cross and Red Crescent Societies)', url: 'https://www.ifrc.org/', note: INFO_ONLY },
+      {
+        name: 'ReliefWeb (UN OCHA)',
+        url: 'https://reliefweb.int/',
+        note: 'Find appeals and situation reports. ' + INFO_ONLY,
+      },
+      {
+        name: 'IFRC (International Federation of Red Cross and Red Crescent Societies)',
+        url: 'https://www.ifrc.org/',
+        note: INFO_ONLY,
+      },
     ],
     sandbox: true,
   },

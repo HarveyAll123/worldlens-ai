@@ -73,12 +73,17 @@ export class MemoryRepository implements EventRepository {
   /** Demo timestamps are relative to "now"; rebuild hourly so they stay in the LIVE window. */
   private demoData(nowMs: number): DemoNews {
     const hour = Math.floor(nowMs / HOUR);
-    if (!this.demo || this.demo.builtAtHour !== hour) this.demo = { builtAtHour: hour, data: buildDemoNews(nowMs) };
+    if (!this.demo || this.demo.builtAtHour !== hour)
+      this.demo = { builtAtHour: hour, data: buildDemoNews(nowMs) };
     return this.demo.data;
   }
 
   private allEvents(nowMs: number): WorldEvent[] {
-    return [...HISTORICAL_EVENTS, ...this.demoData(nowMs).events, ...[...this.live.values()].map((b) => b.event)];
+    return [
+      ...HISTORICAL_EVENTS,
+      ...this.demoData(nowMs).events,
+      ...[...this.live.values()].map((b) => b.event),
+    ];
   }
 
   private ensureIndex(nowMs: number): void {
@@ -105,7 +110,9 @@ export class MemoryRepository implements EventRepository {
       if (q.bbox && !bboxContains(q.bbox, e.location.lat, e.location.lon)) continue;
       matches.push(e);
     }
-    matches.sort((a, b) => b.importance - a.importance || parseIso(b.time.start) - parseIso(a.time.start));
+    matches.sort(
+      (a, b) => b.importance - a.importance || parseIso(b.time.start) - parseIso(a.time.start),
+    );
     return {
       events: matches.slice(0, q.limit).map(toSummary),
       total: matches.length,
@@ -157,7 +164,10 @@ export class MemoryRepository implements EventRepository {
     return out.sort((a, b) => parseIso(b.event.time.start) - parseIso(a.event.time.start));
   }
 
-  async search(query: string, opts: { limit: number; nowMs: number; includeDemo: boolean }): Promise<SearchResult[]> {
+  async search(
+    query: string,
+    opts: { limit: number; nowMs: number; includeDemo: boolean },
+  ): Promise<SearchResult[]> {
     this.ensureIndex(opts.nowMs);
     return this.index.search(query, opts);
   }
@@ -179,7 +189,9 @@ export class MemoryRepository implements EventRepository {
     return ACTION_OPTIONS.filter((o) =>
       event.isDemo
         ? o.eventIds.includes(event.id)
-        : event.kind === 'news' && event.confidence >= 0.5 && o.appliesToLiveCategories.includes(event.category),
+        : event.kind === 'news' &&
+          event.confidence >= 0.5 &&
+          o.appliesToLiveCategories.includes(event.category),
     );
   }
 
@@ -203,7 +215,8 @@ export class MemoryRepository implements EventRepository {
   async replaceLiveNews(events: BuiltEvent[], nowMs: number): Promise<void> {
     // Keep only events inside the live window; newest ingestion wins for an id.
     const cutoff = nowMs - TEMPORAL_CONFIG.liveWindowHours * HOUR;
-    for (const [id, b] of this.live) if (parseIso(b.event.updatedAt ?? b.event.time.start) < cutoff) this.live.delete(id);
+    for (const [id, b] of this.live)
+      if (parseIso(b.event.updatedAt ?? b.event.time.start) < cutoff) this.live.delete(id);
     for (const b of events) {
       this.live.set(b.event.id, b);
       for (const s of b.sources) if (!this.sources.has(s.id)) this.sources.set(s.id, s);

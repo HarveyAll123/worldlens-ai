@@ -21,7 +21,15 @@ export const TEMPORAL_CONFIG = {
 } as const;
 
 /** Granularities, coarsest → finest. */
-export const GRANULARITIES = ['century', 'decade', 'year', 'month', 'day', 'hour', 'minute'] as const;
+export const GRANULARITIES = [
+  'century',
+  'decade',
+  'year',
+  'month',
+  'day',
+  'hour',
+  'minute',
+] as const;
 export type Granularity = (typeof GRANULARITIES)[number];
 export const GranularitySchema = z.enum(GRANULARITIES);
 
@@ -236,7 +244,8 @@ export function isFinerOrEqual(a: Granularity, b: Granularity): boolean {
 
 export function finestOf(values: Granularity[]): Granularity | null {
   let best: Granularity | null = null;
-  for (const v of values) if (best === null || GRANULARITY_RANK[v] > GRANULARITY_RANK[best]) best = v;
+  for (const v of values)
+    if (best === null || GRANULARITY_RANK[v] > GRANULARITY_RANK[best]) best = v;
   return best;
 }
 
@@ -253,7 +262,8 @@ export function allowedResolutions(
 ): Resolution[] {
   const out: Resolution[] = ['century', 'decade', 'year'];
   const cap: Granularity =
-    finestDataPrecision ?? (nowMs - ms < 366 * MS.day ? 'day' : yearOf(ms) >= 1900 ? 'month' : 'year');
+    finestDataPrecision ??
+    (nowMs - ms < 366 * MS.day ? 'day' : yearOf(ms) >= 1900 ? 'month' : 'year');
   for (const r of ['month', 'day', 'hour'] as const) {
     if (isFinerOrEqual(cap, r)) out.push(r);
   }

@@ -27,7 +27,9 @@ import { fetchJson, type FetchLike } from '../lib/http';
 import type { ProviderHealth } from './health';
 
 /** Snapshot years available in the pinned historical-basemaps commit (≥ 1783). */
-export const BASEMAP_YEARS = [1783, 1800, 1815, 1878, 1880, 1900, 1914, 1920, 1930, 1938, 1945, 1960, 1994, 2000, 2010];
+export const BASEMAP_YEARS = [
+  1783, 1800, 1815, 1878, 1880, 1900, 1914, 1920, 1930, 1938, 1945, 1960, 1994, 2000, 2010,
+];
 /** Natural Earth modern boundaries are shown from this year onward. */
 export const MODERN_FROM_YEAR = 2011;
 export const SNAPSHOT_TOLERANCE_YEARS = 5;
@@ -80,7 +82,8 @@ export function selectBorderSnapshot(dateMs: number): BorderSelection {
     };
   }
   let best: number | null = null;
-  for (const y of BASEMAP_YEARS) if (best === null || Math.abs(y - year) < Math.abs(best - year)) best = y;
+  for (const y of BASEMAP_YEARS)
+    if (best === null || Math.abs(y - year) < Math.abs(best - year)) best = y;
   if (best === null || Math.abs(best - year) > SNAPSHOT_TOLERANCE_YEARS) {
     return {
       available: false,

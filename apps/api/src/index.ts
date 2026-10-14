@@ -12,7 +12,9 @@ function depsFor(env: Env): AppDeps {
 
 export default {
   fetch(request: Request, env: Env, ctx: ExecutionContext): Response | Promise<Response> {
-    const app = createApp(depsFor(env), { defer: (p) => ctx.waitUntil(p.catch((e: unknown) => console.error('[deferred]', e))) });
+    const app = createApp(depsFor(env), {
+      defer: (p) => ctx.waitUntil(p.catch((e: unknown) => console.error('[deferred]', e))),
+    });
     return app.fetch(request, env, ctx);
   },
   async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {

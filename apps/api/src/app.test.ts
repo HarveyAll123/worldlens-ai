@@ -4,7 +4,12 @@ import { utcMs, type ClientAction } from '@worldlens/shared';
 import { createApp } from './app';
 import { createDeps } from './deps';
 import type { Env } from './env';
-import { AiUnavailableError, type AiProvider, type AiTurnRequest, type AiTurnResponse } from './ai/provider';
+import {
+  AiUnavailableError,
+  type AiProvider,
+  type AiTurnRequest,
+  type AiTurnResponse,
+} from './ai/provider';
 import { FakePayPal } from './testing/fake-paypal';
 import { selectBorderSnapshot, HistoricalBordersProvider } from './providers/borders';
 import { ProviderHealth } from './providers/health';
@@ -16,7 +21,13 @@ function setup(opts: { env?: Partial<Env>; ai?: AiProvider; paypal?: FakePayPal 
   const paypal = opts.paypal;
   const env: Env = {
     GDELT_ENABLED: 'false',
-    ...(paypal ? { PAYPAL_CLIENT_ID: 'test-client-id', PAYPAL_CLIENT_SECRET: 'test-secret', PAYPAL_WEBHOOK_ID: 'WH-TEST' } : {}),
+    ...(paypal
+      ? {
+          PAYPAL_CLIENT_ID: 'test-client-id',
+          PAYPAL_CLIENT_SECRET: 'test-secret',
+          PAYPAL_WEBHOOK_ID: 'WH-TEST',
+        }
+      : {}),
     ...opts.env,
   };
   let n = 0;
@@ -33,11 +44,18 @@ function setup(opts: { env?: Partial<Env>; ai?: AiProvider; paypal?: FakePayPal 
     return { status: r.status, body: (await r.json()) as T, headers: r.headers };
   };
   const post = (path: string, body: unknown) =>
-    json(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    json(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
   return { app, deps, req, json, post };
 }
 
-const chat = (text: string, extra: Partial<{ selectedEventId: string | null; mode: 'live' | 'historical' }> = {}) => ({
+const chat = (
+  text: string,
+  extra: Partial<{ selectedEventId: string | null; mode: 'live' | 'historical' }> = {},
+) => ({
   messages: [{ role: 'user', content: text }],
   context: {
     mode: extra.mode ?? 'live',
@@ -72,7 +90,9 @@ describe('health, config and security headers', () => {
 describe('events', () => {
   it('LIVE mode returns labelled demo events', async () => {
     const { json } = setup();
-    const { body } = await json<{ events: Array<{ id: string; isDemo: boolean; title: string }> }>('/api/events?mode=live');
+    const { body } = await json<{ events: Array<{ id: string; isDemo: boolean; title: string }> }>(
+      '/api/events?mode=live',
+    );
     expect(body.events.length).toBeGreaterThan(3);
     for (const e of body.events) if (e.isDemo) expect(e.title.startsWith('DEMO:')).toBe(true);
   });
@@ -86,13 +106,17 @@ describe('events', () => {
   });
   it('rejects dates before 1800 (Coming Soon)', async () => {
     const { json } = setup();
-    const { status, body } = await json<{ message: string }>('/api/events?mode=historical&t=1750&res=year');
+    const { status, body } = await json<{ message: string }>(
+      '/api/events?mode=historical&t=1750&res=year',
+    );
     expect(status).toBe(400);
     expect(body.message).toBe('Before 1800 — Coming Soon');
   });
   it('filters by viewport bbox', async () => {
     const { json } = setup();
-    const { body } = await json<{ events: Array<{ id: string }> }>('/api/events?mode=historical&t=1945&res=year&bbox=5,45,20,56');
+    const { body } = await json<{ events: Array<{ id: string }> }>(
+      '/api/events?mode=historical&t=1945&res=year&bbox=5,45,20,56',
+    );
     const ids = body.events.map((e) => e.id);
     expect(ids).toContain('hist-german-surrender-1945');
     expect(ids).not.toContain('hist-hiroshima-nagasaki');
@@ -104,7 +128,8 @@ describe('events', () => {
       perspectives: { byCountry: Record<string, number> };
     }>('/api/events/demo-news-taiwan-strait-drills/sources');
     expect(body.sources.length).toBeGreaterThanOrEqual(5);
-    for (const s of body.sources) if (s.rating.value !== 'UNRATED') expect(s.rating.illustrative).toBe(true);
+    for (const s of body.sources)
+      if (s.rating.value !== 'UNRATED') expect(s.rating.illustrative).toBe(true);
     expect(Object.keys(body.perspectives.byCountry).length).toBeGreaterThanOrEqual(4);
   });
   it('exposes Take Action only where it makes sense', async () => {
@@ -118,7 +143,9 @@ describe('events', () => {
   });
   it('returns THEN ↔ NOW context, newest first', async () => {
     const { json } = setup();
-    const { body } = await json<{ related: Array<{ event: { id: string } }> }>('/api/events/demo-news-scs-shoal-standoff/context');
+    const { body } = await json<{ related: Array<{ event: { id: string } }> }>(
+      '/api/events/demo-news-scs-shoal-standoff/context',
+    );
     const ids = body.related.map((r) => r.event.id);
     expect(ids[0]).toBe('hist-south-china-sea-arbitration');
     expect(ids).toContain('hist-battle-of-paracel-islands');
@@ -126,14 +153,20 @@ describe('events', () => {
   it('falls back to heuristic framing when AI is unavailable and labels allegations', async () => {
     const { post } = setup();
     const { body } = await post('/api/events/demo-news-scs-shoal-standoff/framing', {});
-    const framing = (body as { framing: { method: string; commonlyReported: Array<{ kind: string }>; caveats: string[] } }).framing;
+    const framing = (
+      body as {
+        framing: { method: string; commonlyReported: Array<{ kind: string }>; caveats: string[] };
+      }
+    ).framing;
     expect(framing.method).toBe('heuristic');
     expect(framing.commonlyReported.some((c) => c.kind === 'allegation')).toBe(true);
     expect(framing.caveats.join(' ')).toContain('DEMO');
   });
   it('degrades gracefully when Wikipedia is unreachable', async () => {
     const { json } = setup();
-    const { status, body } = await json<{ available: boolean }>('/api/history/wikipedia?title=Battle_of_Waterloo');
+    const { status, body } = await json<{ available: boolean }>(
+      '/api/history/wikipedia?title=Battle_of_Waterloo',
+    );
     expect(status).toBe(200);
     expect(body.available).toBe(false);
   });
@@ -150,15 +183,21 @@ describe('search', () => {
   for (const [q, type, title] of cases) {
     it(`"${q}" → ${type} ${title}`, async () => {
       const { json } = setup();
-      const { body } = await json<{ results: Array<{ type: string; title: string }> }>(`/api/search?q=${encodeURIComponent(q)}`);
+      const { body } = await json<{ results: Array<{ type: string; title: string }> }>(
+        `/api/search?q=${encodeURIComponent(q)}`,
+      );
       expect(body.results.some((r) => r.type === type && r.title === title)).toBe(true);
     });
   }
   it('"Berlin 1945" also finds 1945 Berlin history; "Indonesia 1965" finds 1965 events', async () => {
     const { json } = setup();
-    const berlin = await json<{ results: Array<{ eventId?: string }> }>('/api/search?q=Berlin%201945');
+    const berlin = await json<{ results: Array<{ eventId?: string }> }>(
+      '/api/search?q=Berlin%201945',
+    );
     expect(berlin.body.results.map((r) => r.eventId)).toContain('hist-battle-of-berlin');
-    const indo = await json<{ results: Array<{ eventId?: string }> }>('/api/search?q=Indonesia%201965');
+    const indo = await json<{ results: Array<{ eventId?: string }> }>(
+      '/api/search?q=Indonesia%201965',
+    );
     expect(indo.body.results.map((r) => r.eventId)).toContain('hist-30-september-movement');
   });
 });
@@ -171,18 +210,31 @@ describe('offline assistant (no AI key)', () => {
     const { body } = await post('/api/ai/chat', chat('What is happening near Taiwan?'));
     const r = body as { mode: string; actions: ClientAction[]; reply: string; notice: string };
     expect(r.mode).toBe('offline');
-    expect(tools(r.actions)).toEqual(expect.arrayContaining(['return_to_live', 'fly_to', 'open_event']));
+    expect(tools(r.actions)).toEqual(
+      expect.arrayContaining(['return_to_live', 'fly_to', 'open_event']),
+    );
     expect(r.reply).toContain('DEMO');
     expect(r.notice).toContain('AI is not configured');
   });
   it("walks Germany's territorial changes 1933–1945 with honest border notes", async () => {
     const { post } = setup();
-    const { body } = await post('/api/ai/chat', chat("Show me Germany's territorial changes between 1933 and 1945"));
+    const { body } = await post(
+      '/api/ai/chat',
+      chat("Show me Germany's territorial changes between 1933 and 1945"),
+    );
     const r = body as { actions: ClientAction[]; reply: string };
     expect(r.actions[0]).toEqual({ tool: 'set_time', args: { date: '1933', resolution: 'year' } });
     expect(r.actions).toContainEqual({ tool: 'highlight_region', args: { country: 'DEU' } });
-    const opened = r.actions.filter((a) => a.tool === 'open_event').map((a) => (a.args as { event_id: string }).event_id);
-    expect(opened).toEqual(expect.arrayContaining(['hist-saar-referendum-1935', 'hist-anschluss', 'hist-munich-agreement']));
+    const opened = r.actions
+      .filter((a) => a.tool === 'open_event')
+      .map((a) => (a.args as { event_id: string }).event_id);
+    expect(opened).toEqual(
+      expect.arrayContaining([
+        'hist-saar-referendum-1935',
+        'hist-anschluss',
+        'hist-munich-agreement',
+      ]),
+    );
     expect(r.reply).toMatch(/1930|snapshot|approximate/i);
   });
   it('"I have $20. How can I help?" opens a review screen only — never pays', async () => {
@@ -197,7 +249,12 @@ describe('offline assistant (no AI key)', () => {
   });
   it('"Why does this matter historically?" tours linked history', async () => {
     const { post } = setup();
-    const { body } = await post('/api/ai/chat', chat('Why does this matter historically?', { selectedEventId: 'demo-news-taiwan-strait-drills' }));
+    const { body } = await post(
+      '/api/ai/chat',
+      chat('Why does this matter historically?', {
+        selectedEventId: 'demo-news-taiwan-strait-drills',
+      }),
+    );
     const r = body as { actions: ClientAction[]; reply: string };
     expect(r.actions.filter((a) => a.tool === 'set_time').length).toBeGreaterThanOrEqual(3);
     expect(r.reply).toContain('Third Taiwan Strait Crisis');
@@ -224,12 +281,24 @@ class ScriptedAi implements AiProvider {
     if (!next) throw new Error('script exhausted');
     if (next instanceof Error) throw next;
     const toolUse = next.some((b) => b.type === 'tool_use');
-    return { model: 'claude-opus-5-5', content: next, stopReason: toolUse ? 'tool_use' : 'end_turn', usage: { input_tokens: 1000, output_tokens: 200 } };
+    return {
+      model: 'claude-opus-5-5',
+      content: next,
+      stopReason: toolUse ? 'tool_use' : 'end_turn',
+      usage: { input_tokens: 1000, output_tokens: 200 },
+    };
   }
 }
 const toolUse = (id: string, name: string, input: unknown) =>
-  ({ type: 'tool_use', id, name, input, caller: { type: 'direct' } }) as unknown as Anthropic.Beta.BetaContentBlock;
-const textBlock = (text: string) => ({ type: 'text', text, citations: null }) as unknown as Anthropic.Beta.BetaContentBlock;
+  ({
+    type: 'tool_use',
+    id,
+    name,
+    input,
+    caller: { type: 'direct' },
+  }) as unknown as Anthropic.Beta.BetaContentBlock;
+const textBlock = (text: string) =>
+  ({ type: 'text', text, citations: null }) as unknown as Anthropic.Beta.BetaContentBlock;
 
 describe('AI agent tool layer', () => {
   it('validates tool calls, resolves places, rejects unsafe or invalid calls', async () => {
@@ -245,17 +314,31 @@ describe('AI agent tool layer', () => {
     ]);
     const { post } = setup({ ai });
     const { body } = await post('/api/ai/chat', chat('Take me to Taiwan'));
-    const r = body as { mode: string; actions: ClientAction[]; toolTrace: Array<{ tool: string; ok: boolean }>; usage: { costUsd: number } };
+    const r = body as {
+      mode: string;
+      actions: ClientAction[];
+      toolTrace: Array<{ tool: string; ok: boolean }>;
+      usage: { costUsd: number };
+    };
     expect(r.mode).toBe('ai');
     expect(r.actions).toHaveLength(1);
     expect(r.actions[0]!.tool).toBe('fly_to');
     expect((r.actions[0]!.args as { lat: number }).lat).toBeCloseTo(23.65, 1);
     const ok = Object.fromEntries(r.toolTrace.map((t) => [t.tool, t.ok]));
-    expect(ok).toEqual({ fly_to: true, set_time: false, capture_payment: false, open_event: false, search_events: true });
+    expect(ok).toEqual({
+      fly_to: true,
+      set_time: false,
+      capture_payment: false,
+      open_event: false,
+      search_events: true,
+    });
     expect(r.usage.costUsd).toBeGreaterThan(0);
     // Tool results were sent back as one user message with is_error for failures.
     const second = ai.requests[1]!;
-    const results = second.messages[second.messages.length - 1]!.content as Array<{ type: string; is_error?: boolean }>;
+    const results = second.messages[second.messages.length - 1]!.content as Array<{
+      type: string;
+      is_error?: boolean;
+    }>;
     expect(results.filter((b) => b.type === 'tool_result')).toHaveLength(5);
     expect(results.filter((b) => b.is_error)).toHaveLength(3);
   });
@@ -272,7 +355,11 @@ describe('AI agent tool layer', () => {
 });
 
 describe('PayPal sandbox payments', () => {
-  const terms = { beneficiary: 'WorldLens Sandbox Relief Fund', purpose: 'Emergency relief — demo scenario', sandboxAcknowledged: true };
+  const terms = {
+    beneficiary: 'WorldLens Sandbox Relief Fund',
+    purpose: 'Emergency relief — demo scenario',
+    sandboxAcknowledged: true,
+  };
   const order = (amount = '20.00', extra: Record<string, unknown> = {}) => ({
     actionOptionId: 'act-quake-relief-sandbox',
     eventId: 'demo-news-sulawesi-quake-relief',
@@ -305,7 +392,8 @@ describe('PayPal sandbox payments', () => {
     pp.approve(orderId);
     const cap = await post(`/api/payments/orders/${orderId}/capture`, {});
     expect(cap.status).toBe(200);
-    const payment = (cap.body as { payment: { state: string; captureId: string; amount: string } }).payment;
+    const payment = (cap.body as { payment: { state: string; captureId: string; amount: string } })
+      .payment;
     expect(payment.state).toBe('CAPTURED');
     expect(payment.captureId).toBe(`CAP${orderId}`);
 
@@ -318,17 +406,40 @@ describe('PayPal sandbox payments', () => {
   it('records cancellation and never reports success for a cancelled order', async () => {
     const pp = new FakePayPal();
     const { post } = setup({ paypal: pp });
-    const { orderId } = (await post('/api/payments/orders', order('5'))).body as { orderId: string };
+    const { orderId } = (await post('/api/payments/orders', order('5'))).body as {
+      orderId: string;
+    };
     const cancelled = await post(`/api/payments/orders/${orderId}/cancel`, {});
     expect((cancelled.body as { payment: { state: string } }).payment.state).toBe('CANCELLED');
   });
 
   it('rejects mismatched terms, out-of-range amounts and options not offered for the event', async () => {
     const { post } = setup({ paypal: new FakePayPal() });
-    expect((await post('/api/payments/orders', order('20', { reviewedTerms: { ...terms, purpose: 'Something else' } }))).status).toBe(409);
+    expect(
+      (
+        await post(
+          '/api/payments/orders',
+          order('20', { reviewedTerms: { ...terms, purpose: 'Something else' } }),
+        )
+      ).status,
+    ).toBe(409);
     expect((await post('/api/payments/orders', order('9999'))).status).toBe(400);
-    expect((await post('/api/payments/orders', order('20', { eventId: 'demo-news-taiwan-strait-drills' }))).status).toBe(400);
-    expect((await post('/api/payments/orders', order('20', { reviewedTerms: { ...terms, sandboxAcknowledged: false } }))).status).toBe(400);
+    expect(
+      (
+        await post(
+          '/api/payments/orders',
+          order('20', { eventId: 'demo-news-taiwan-strait-drills' }),
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await post(
+          '/api/payments/orders',
+          order('20', { reviewedTerms: { ...terms, sandboxAcknowledged: false } }),
+        )
+      ).status,
+    ).toBe(400);
   });
 
   it('refuses live payments in this build', async () => {
@@ -351,8 +462,16 @@ describe('PayPal sandbox payments', () => {
   it('verifies webhooks, processes each event once, and never downgrades a capture', async () => {
     const pp = new FakePayPal();
     const { post, req, deps } = setup({ paypal: pp });
-    const { orderId, paymentId } = (await post('/api/payments/orders', order())).body as { orderId: string; paymentId: string };
-    const hook = (id: string, type: string, resource: Record<string, unknown>, sig = 'valid-signature') =>
+    const { orderId, paymentId } = (await post('/api/payments/orders', order())).body as {
+      orderId: string;
+      paymentId: string;
+    };
+    const hook = (
+      id: string,
+      type: string,
+      resource: Record<string, unknown>,
+      sig = 'valid-signature',
+    ) =>
       req('/api/paypal/webhook', {
         method: 'POST',
         headers: {
@@ -368,11 +487,22 @@ describe('PayPal sandbox payments', () => {
     const bad = await hook('WH-0', 'PAYMENT.CAPTURE.COMPLETED', { id: 'CAPX' }, 'forged');
     expect(bad.status).toBe(401);
 
-    const completed = { id: 'CAP123', status: 'COMPLETED', custom_id: paymentId, supplementary_data: { related_ids: { order_id: orderId } } };
+    const completed = {
+      id: 'CAP123',
+      status: 'COMPLETED',
+      custom_id: paymentId,
+      supplementary_data: { related_ids: { order_id: orderId } },
+    };
     const r1 = await hook('WH-1', 'PAYMENT.CAPTURE.COMPLETED', completed);
-    expect(await r1.json()).toEqual({ status: 'processed', eventType: 'PAYMENT.CAPTURE.COMPLETED' });
+    expect(await r1.json()).toEqual({
+      status: 'processed',
+      eventType: 'PAYMENT.CAPTURE.COMPLETED',
+    });
     const r2 = await hook('WH-1', 'PAYMENT.CAPTURE.COMPLETED', completed);
-    expect(await r2.json()).toEqual({ status: 'duplicate', eventType: 'PAYMENT.CAPTURE.COMPLETED' });
+    expect(await r2.json()).toEqual({
+      status: 'duplicate',
+      eventType: 'PAYMENT.CAPTURE.COMPLETED',
+    });
     // A late "approved" event must not downgrade CAPTURED.
     await hook('WH-2', 'CHECKOUT.ORDER.APPROVED', { id: orderId, status: 'APPROVED' });
     const rec = await deps.paymentStore.get(paymentId);
@@ -388,18 +518,51 @@ describe('border selection never extrapolates silently', () => {
     const near = selectBorderSnapshot(utcMs(1933));
     expect(near).toMatchObject({ available: true, snapshotYear: 1930, gapYears: 3 });
     expect(selectBorderSnapshot(utcMs(1975)).available).toBe(false);
-    expect(selectBorderSnapshot(utcMs(1975)).available === false && selectBorderSnapshot(utcMs(1975))).toMatchObject({
+    expect(
+      selectBorderSnapshot(utcMs(1975)).available === false && selectBorderSnapshot(utcMs(1975)),
+    ).toMatchObject({
       reason: expect.stringContaining('does not extrapolate'),
     });
-    expect(selectBorderSnapshot(utcMs(2020))).toMatchObject({ available: true, source: 'natural-earth' });
+    expect(selectBorderSnapshot(utcMs(2020))).toMatchObject({
+      available: true,
+      source: 'natural-earth',
+    });
   });
   it('processes and simplifies snapshot features, marking them APPROXIMATE', () => {
     const p = new HistoricalBordersProvider('https://example.invalid/', new ProviderHealth());
     const feats = p.process(
       {
         features: [
-          { properties: { NAME: 'Testland', BORDERPRECISION: 3 }, geometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0.5, 1.0001], [0, 1], [0, 0]]] } },
-          { properties: { NAME: '' }, geometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]] } },
+          {
+            properties: { NAME: 'Testland', BORDERPRECISION: 3 },
+            geometry: {
+              type: 'Polygon',
+              coordinates: [
+                [
+                  [0, 0],
+                  [1, 0],
+                  [1, 1],
+                  [0.5, 1.0001],
+                  [0, 1],
+                  [0, 0],
+                ],
+              ],
+            },
+          },
+          {
+            properties: { NAME: '' },
+            geometry: {
+              type: 'Polygon',
+              coordinates: [
+                [
+                  [0, 0],
+                  [1, 0],
+                  [1, 1],
+                  [0, 0],
+                ],
+              ],
+            },
+          },
           { properties: { NAME: 'Broken' }, geometry: null },
         ],
       },

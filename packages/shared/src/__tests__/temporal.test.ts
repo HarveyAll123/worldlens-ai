@@ -61,15 +61,30 @@ describe('temporal model', () => {
   });
 
   it('never formats more precision than the record has', () => {
-    expect(formatTemporal({ start: '1815-06-18', precision: 'day', approximate: false })).toBe('18 Jun 1815');
-    expect(formatTemporal({ start: '1815-04', precision: 'month', approximate: false })).toBe('Apr 1815');
+    expect(formatTemporal({ start: '1815-06-18', precision: 'day', approximate: false })).toBe(
+      '18 Jun 1815',
+    );
+    expect(formatTemporal({ start: '1815-04', precision: 'month', approximate: false })).toBe(
+      'Apr 1815',
+    );
     expect(formatTemporal({ start: '1880', precision: 'year', approximate: true })).toBe('c. 1880');
     expect(
-      formatTemporal({ start: '1914-07-28', end: '1918-11-11', precision: 'day', approximate: false }),
+      formatTemporal({
+        start: '1914-07-28',
+        end: '1918-11-11',
+        precision: 'day',
+        approximate: false,
+      }),
     ).toBe('28 Jul 1914 – 11 Nov 1918');
-    expect(precisionLabel({ start: '1815-04', precision: 'month', approximate: false })).toBe('unknown-day');
-    expect(precisionLabel({ start: '1880', precision: 'year', approximate: true })).toBe('approximate');
-    expect(precisionLabel({ start: '1914', end: '1918', precision: 'year', approximate: false })).toBe('range');
+    expect(precisionLabel({ start: '1815-04', precision: 'month', approximate: false })).toBe(
+      'unknown-day',
+    );
+    expect(precisionLabel({ start: '1880', precision: 'year', approximate: true })).toBe(
+      'approximate',
+    );
+    expect(
+      precisionLabel({ start: '1914', end: '1918', precision: 'year', approximate: false }),
+    ).toBe('range');
   });
 
   it('spans records over their whole precision unit', () => {
@@ -83,7 +98,13 @@ describe('temporal model', () => {
   });
 
   it('only offers resolutions the data supports', () => {
-    expect(allowedResolutions(utcMs(1815, 6, 18), NOW, 'day')).toEqual(['century', 'decade', 'year', 'month', 'day']);
+    expect(allowedResolutions(utcMs(1815, 6, 18), NOW, 'day')).toEqual([
+      'century',
+      'decade',
+      'year',
+      'month',
+      'day',
+    ]);
     expect(allowedResolutions(utcMs(1815), NOW, null)).toEqual(['century', 'decade', 'year']);
     expect(allowedResolutions(NOW - 3_600_000, NOW, 'hour')).toContain('hour');
     expect(allowedResolutions(NOW - 3_600_000, NOW, 'day')).not.toContain('hour');

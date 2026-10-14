@@ -81,14 +81,19 @@ describe('registry, relations, actions, frontlines', () => {
     }
   });
   it('take-action options are sandbox-only and tied to demo humanitarian events', () => {
-    const demoIds = new Set(buildDemoNews(NOW).events.filter((e) => e.hasTakeAction).map((e) => e.id));
+    const demoIds = new Set(
+      buildDemoNews(NOW)
+        .events.filter((e) => e.hasTakeAction)
+        .map((e) => e.id),
+    );
     for (const a of ACTION_OPTIONS) {
       expect(ActionOptionSchema.safeParse(a).success).toBe(true);
       expect(a.sandbox).toBe(true);
       expect(a.beneficiary.kind).toBe('sandbox-demo-merchant');
       for (const id of a.eventIds) expect(demoIds.has(id)).toBe(true);
       expect(a.eventIds.length > 0 || a.appliesToLiveCategories.length > 0).toBe(true);
-      for (const c of a.appliesToLiveCategories) expect(['disaster', 'humanitarian', 'health']).toContain(c);
+      for (const c of a.appliesToLiveCategories)
+        expect(['disaster', 'humanitarian', 'health']).toContain(c);
     }
   });
   it('frontlines and conflicts are valid', () => {

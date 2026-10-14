@@ -1,5 +1,10 @@
 /** Step 1–2 of ingestion: normalise provider records and remove duplicates. */
-import { SafeUrlSchema, headlineSimilarity, sanitizeText, type NewsSource } from '@worldlens/shared';
+import {
+  SafeUrlSchema,
+  headlineSimilarity,
+  sanitizeText,
+  type NewsSource,
+} from '@worldlens/shared';
 import { sourceForDomain } from '@worldlens/shared/data';
 import { fnv1a64 } from '../lib/cache';
 import { parseSeenDate, type GdeltArticle } from '../providers/gdelt';
@@ -68,7 +73,8 @@ export function normalizeGdelt(raw: GdeltArticle[]): NormalizedArticle[] {
     if (!url || !headline || publishedAtMs === null) continue;
     const domain = sanitizeText(a.domain, 160).toLowerCase() || new URL(url).hostname;
     const country = a.sourcecountry ? sanitizeText(a.sourcecountry, 80) || null : null;
-    const image = a.socialimage && SafeUrlSchema.safeParse(a.socialimage).success ? a.socialimage : null;
+    const image =
+      a.socialimage && SafeUrlSchema.safeParse(a.socialimage).success ? a.socialimage : null;
     out.push({
       id: `art-${fnv1a64(url)}`,
       url,
@@ -89,7 +95,10 @@ export function normalizeGdelt(raw: GdeltArticle[]): NormalizedArticle[] {
  * Remove exact duplicates (same canonical URL) and syndicated near-duplicates
  * (same headline text from different URLs). Keeps the earliest copy.
  */
-export function dedupeArticles(articles: NormalizedArticle[], nearDupThreshold = 0.9): NormalizedArticle[] {
+export function dedupeArticles(
+  articles: NormalizedArticle[],
+  nearDupThreshold = 0.9,
+): NormalizedArticle[] {
   const byUrl = new Map<string, NormalizedArticle>();
   for (const a of [...articles].sort((x, y) => x.publishedAtMs - y.publishedAtMs)) {
     const existing = byUrl.get(a.url);
@@ -99,7 +108,9 @@ export function dedupeArticles(articles: NormalizedArticle[], nearDupThreshold =
   const kept: NormalizedArticle[] = [];
   for (const a of byUrl.values()) {
     const dup = kept.find(
-      (k) => k.source.id === a.source.id && headlineSimilarity(k.headline, a.headline) >= nearDupThreshold,
+      (k) =>
+        k.source.id === a.source.id &&
+        headlineSimilarity(k.headline, a.headline) >= nearDupThreshold,
     );
     if (dup) dup.duplicates++;
     else kept.push(a);

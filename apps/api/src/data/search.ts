@@ -15,7 +15,13 @@ import {
   type WorldEvent,
 } from '@worldlens/shared';
 import { CONFLICTS } from '@worldlens/shared/data';
-import { COUNTRIES, PLACES, REGIONS, normalizeName, resolvePlace } from '@worldlens/shared/geo-data';
+import {
+  COUNTRIES,
+  PLACES,
+  REGIONS,
+  normalizeName,
+  resolvePlace,
+} from '@worldlens/shared/geo-data';
 
 interface IndexedEvent {
   event: WorldEvent;
@@ -32,7 +38,9 @@ export class SearchIndex {
     this.events = events.map((event) => ({
       event,
       title: new Set(tokenize(event.title)),
-      body: new Set(tokenize(`${event.summary ?? ''} ${event.tags.join(' ')} ${event.whyItMatters ?? ''}`)),
+      body: new Set(
+        tokenize(`${event.summary ?? ''} ${event.tags.join(' ')} ${event.whyItMatters ?? ''}`),
+      ),
       place: new Set(tokenize(`${event.location.name} ${event.location.countryCode ?? ''}`)),
       people: new Set(tokenize(event.participants.map((p) => p.name).join(' '))),
     }));
@@ -48,12 +56,18 @@ export class SearchIndex {
       years.length > 0
         ? {
             startMs: utcMs(Math.min(...years)),
-            endMs: utcMs(Math.max(...years) + (/\d{3}0s\b/.test(query) && years.length === 1 ? 10 : 1)),
+            endMs: utcMs(
+              Math.max(...years) + (/\d{3}0s\b/.test(query) && years.length === 1 ? 10 : 1),
+            ),
           }
         : null;
     const yearTemporal: Temporal | undefined =
       years.length > 0
-        ? { start: String(Math.min(...years)).padStart(4, '0'), precision: 'year', approximate: false }
+        ? {
+            start: String(Math.min(...years)).padStart(4, '0'),
+            precision: 'year',
+            approximate: false,
+          }
         : undefined;
     const results: SearchResult[] = [];
 
@@ -128,7 +142,8 @@ export class SearchIndex {
     for (const c of CONFLICTS) {
       const names = [c.name, ...c.aliases].map(normalizeText);
       const exact = names.some((n) => n === nText);
-      const partial = !exact && nText.length >= 4 && names.some((n) => n.includes(nText) || nText.includes(n));
+      const partial =
+        !exact && nText.length >= 4 && names.some((n) => n.includes(nText) || nText.includes(n));
       if (!exact && !partial) continue;
       results.push({
         type: 'CONFLICT',

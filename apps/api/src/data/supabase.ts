@@ -24,7 +24,12 @@ import type { BuiltEvent } from '../pipeline/build-events';
 import type { ProviderHealth } from '../providers/health';
 import type { PaymentStore } from '../payments/store';
 import { toSummary, type MemoryRepository } from './memory-repository';
-import type { EventRepository, ListEventsQuery, ListEventsResult, RelatedEvent } from './repository';
+import type {
+  EventRepository,
+  ListEventsQuery,
+  ListEventsResult,
+  RelatedEvent,
+} from './repository';
 
 export class PostgrestClient {
   constructor(
@@ -33,7 +38,12 @@ export class PostgrestClient {
     private readonly fetchImpl: FetchLike,
   ) {}
 
-  async request<T>(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', path: string, body?: unknown, prefer?: string): Promise<T> {
+  async request<T>(
+    method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+    path: string,
+    body?: unknown,
+    prefer?: string,
+  ): Promise<T> {
     const res = await fetchWithTimeout(`${this.url.replace(/\/$/, '')}/rest/v1/${path}`, {
       provider: 'supabase',
       method,
@@ -50,7 +60,13 @@ export class PostgrestClient {
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     });
     const text = await res.text();
-    if (!res.ok) throw new UpstreamError(`supabase ${method} ${path.split('?')[0]}: HTTP ${res.status}`, 'supabase', res.status, text.slice(0, 300));
+    if (!res.ok)
+      throw new UpstreamError(
+        `supabase ${method} ${path.split('?')[0]}: HTTP ${res.status}`,
+        'supabase',
+        res.status,
+        text.slice(0, 300),
+      );
     return (text ? JSON.parse(text) : null) as T;
   }
 }
@@ -122,6 +138,19 @@ export function rowToEvent(r: EventRow): WorldEvent {
   };
 }
 
+/**
+ * PostgreSQL does not accept ISO-8601 extended years ("-000500-01-01"); it uses "0501-01-01 BC"
+ * (astronomical year 0 = 1 BC). Convert so pre-common-era records can be stored later.
+ */
+export function toPgTimestamp(iso: string): string {
+  const ms = parseIso(iso);
+  const d = new Date(ms);
+  const y = d.getUTCFullYear();
+  if (y > 0) return toIso(ms);
+  const pad = (n: number, w = 2) => String(n).padStart(w, '0');
+  return `${pad(1 - y, 4)}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}+00 BC`;
+}
+
 export function eventToRow(e: WorldEvent) {
   return {
     id: e.id,
@@ -132,8 +161,8 @@ export function eventToRow(e: WorldEvent) {
     why_it_matters: e.whyItMatters ?? null,
     category: e.category,
     tags: e.tags,
-    time_start: e.time.start,
-    time_end: e.time.end ?? null,
+    time_start: toPgTimestamp(e.time.start),
+    time_end: e.time.end ? toPgTimestamp(e.time.end) : null,
     date_precision: e.time.precision,
     date_approximate: e.time.approximate,
     importance: e.importance,
@@ -196,8 +225,13 @@ export class SupabaseNewsRepository implements EventRepository {
           p_limit: q.limit,
         });
         const dbEvents: EventSummary[] = rows.map((r) => toSummary(rowToEvent(r)));
-        const merged = [...base.events, ...dbEvents.filter((e) => !base.events.some((b) => b.id === e.id))];
-        merged.sort((a, b) => b.importance - a.importance || parseIso(b.time.start) - parseIso(a.time.start));
+        const merged = [
+          ...base.events,
+          ...dbEvents.filter((e) => !base.events.some((b) => b.id === e.id)),
+        ];
+        merged.sort(
+          (a, b) => b.importance - a.importance || parseIso(b.time.start) - parseIso(a.time.start),
+        );
         return {
           ...base,
           events: merged.slice(0, q.limit),
@@ -229,7 +263,19 @@ export class SupabaseNewsRepository implements EventRepository {
     return this.guard(
       async () => {
         const rows = await this.db.request<
-          Array<{ articles: { id: string; source_id: string; headline: string; url: string; published_at: string; language: string | null; source_country: string | null; snippet: string | null; image_url: string | null } }>
+          Array<{
+            articles: {
+              id: string;
+              source_id: string;
+              headline: string;
+              url: string;
+              published_at: string;
+              language: string | null;
+              source_country: string | null;
+              snippet: string | null;
+              image_url: string | null;
+            };
+          }>
         >('GET', `event_articles?event_id=eq.${encodeURIComponent(eventId)}&select=articles(*)`);
         return rows.map(({ articles: a }) => ({
           id: a.id,
@@ -254,7 +300,17 @@ export class SupabaseNewsRepository implements EventRepository {
     if (missing.length === 0) return known;
     return this.guard(
       async () => {
-        const rows = await this.db.request<Array<{ id: string; name: string; domain: string; country: string | null; source_type: NewsSource['sourceType']; ownership: string | null; national_perspective: string | null }>>(
+        const rows = await this.db.request<
+          Array<{
+            id: string;
+            name: string;
+            domain: string;
+            country: string | null;
+            source_type: NewsSource['sourceType'];
+            ownership: string | null;
+            national_perspective: string | null;
+          }>
+        >(
           'GET',
           `news_sources?id=in.(${missing.map((m) => `"${m.replace(/"/g, '')}"`).join(',')})`,
         );
@@ -268,7 +324,15 @@ export class SupabaseNewsRepository implements EventRepository {
             sourceType: r.source_type,
             ownership: r.ownership,
             nationalPerspective: r.national_perspective,
-            rating: { value: 'UNRATED' as const, methodology: null, source: null, sourceUrl: null, confidence: null, lastReviewed: null, illustrative: false },
+            rating: {
+              value: 'UNRATED' as const,
+              methodology: null,
+              source: null,
+              sourceUrl: null,
+              confidence: null,
+              lastReviewed: null,
+              illustrative: false,
+            },
             isDemo: false,
           })),
         ];
@@ -280,7 +344,10 @@ export class SupabaseNewsRepository implements EventRepository {
   getRelated(eventId: string, nowMs: number): Promise<RelatedEvent[]> {
     return this.memory.getRelated(eventId, nowMs);
   }
-  search(query: string, opts: { limit: number; nowMs: number; includeDemo: boolean }): Promise<SearchResult[]> {
+  search(
+    query: string,
+    opts: { limit: number; nowMs: number; includeDemo: boolean },
+  ): Promise<SearchResult[]> {
     return this.memory.search(query, opts);
   }
   density(fromMs: number, toMs: number, bins: number): Promise<number[]> {
@@ -323,7 +390,12 @@ export class SupabaseNewsRepository implements EventRepository {
           })),
           'resolution=merge-duplicates,return=minimal',
         );
-        await this.db.request('POST', 'events?on_conflict=id', events.map((b) => eventToRow(b.event)), 'resolution=merge-duplicates,return=minimal');
+        await this.db.request(
+          'POST',
+          'events?on_conflict=id',
+          events.map((b) => eventToRow(b.event)),
+          'resolution=merge-duplicates,return=minimal',
+        );
         const articles = events.flatMap((b) => b.articles);
         await this.db.request(
           'POST',
@@ -345,7 +417,9 @@ export class SupabaseNewsRepository implements EventRepository {
         await this.db.request(
           'POST',
           'event_articles?on_conflict=event_id,article_id',
-          events.flatMap((b) => b.articles.map((a) => ({ event_id: b.event.id, article_id: a.id }))),
+          events.flatMap((b) =>
+            b.articles.map((a) => ({ event_id: b.event.id, article_id: a.id })),
+          ),
           'resolution=ignore-duplicates,return=minimal',
         );
       },
@@ -354,7 +428,10 @@ export class SupabaseNewsRepository implements EventRepository {
   }
 
   async recordIngestionRun(run: Record<string, unknown>): Promise<void> {
-    await this.guard(() => this.db.request('POST', 'ingestion_runs', run, 'return=minimal'), () => undefined);
+    await this.guard(
+      () => this.db.request('POST', 'ingestion_runs', run, 'return=minimal'),
+      () => undefined,
+    );
   }
 
   liveNewsStatus(): { count: number; lastIngestedAt: string | null } {
@@ -423,18 +500,33 @@ export class SupabasePaymentStore implements PaymentStore {
     await this.db.request('POST', 'payment_actions', toRow(record), 'return=minimal');
   }
   async get(id: string): Promise<PaymentRecord | null> {
-    const rows = await this.db.request<PaymentRow[]>('GET', `payment_actions?id=eq.${encodeURIComponent(id)}&limit=1`);
+    const rows = await this.db.request<PaymentRow[]>(
+      'GET',
+      `payment_actions?id=eq.${encodeURIComponent(id)}&limit=1`,
+    );
     return rows[0] ? toRecord(rows[0]) : null;
   }
   async getByOrderId(orderId: string): Promise<PaymentRecord | null> {
-    const rows = await this.db.request<PaymentRow[]>('GET', `payment_actions?paypal_order_id=eq.${encodeURIComponent(orderId)}&limit=1`);
+    const rows = await this.db.request<PaymentRow[]>(
+      'GET',
+      `payment_actions?paypal_order_id=eq.${encodeURIComponent(orderId)}&limit=1`,
+    );
     return rows[0] ? toRecord(rows[0]) : null;
   }
   async update(id: string, patch: Partial<PaymentRecord>): Promise<PaymentRecord | null> {
-    const rows = await this.db.request<PaymentRow[]>('PATCH', `payment_actions?id=eq.${encodeURIComponent(id)}`, toRow(patch), 'return=representation');
+    const rows = await this.db.request<PaymentRow[]>(
+      'PATCH',
+      `payment_actions?id=eq.${encodeURIComponent(id)}`,
+      toRow(patch),
+      'return=representation',
+    );
     return rows[0] ? toRecord(rows[0]) : null;
   }
-  async markWebhookProcessed(eventId: string, eventType: string, payload: string): Promise<boolean> {
+  async markWebhookProcessed(
+    eventId: string,
+    eventType: string,
+    payload: string,
+  ): Promise<boolean> {
     // ignore-duplicates + return=representation → empty array when the id already existed.
     const rows = await this.db.request<unknown[]>(
       'POST',
@@ -445,6 +537,13 @@ export class SupabasePaymentStore implements PaymentStore {
     return Array.isArray(rows) && rows.length > 0;
   }
   async log(paymentId: string, kind: string, detail: Record<string, unknown>): Promise<void> {
-    await this.db.request('POST', 'payment_transactions', { payment_id: paymentId, kind, detail }, 'return=minimal').catch(() => undefined);
+    await this.db
+      .request(
+        'POST',
+        'payment_transactions',
+        { payment_id: paymentId, kind, detail },
+        'return=minimal',
+      )
+      .catch(() => undefined);
   }
 }

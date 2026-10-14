@@ -48,7 +48,10 @@ export interface EventRepository {
   getArticles(eventId: string, nowMs: number): Promise<Article[]>;
   getSources(ids: string[]): Promise<NewsSource[]>;
   getRelated(eventId: string, nowMs: number): Promise<RelatedEvent[]>;
-  search(query: string, opts: { limit: number; nowMs: number; includeDemo: boolean }): Promise<SearchResult[]>;
+  search(
+    query: string,
+    opts: { limit: number; nowMs: number; includeDemo: boolean },
+  ): Promise<SearchResult[]>;
   density(fromMs: number, toMs: number, bins: number): Promise<number[]>;
   actionOptions(event: WorldEvent): ActionOption[];
   actionOption(id: string): ActionOption | null;

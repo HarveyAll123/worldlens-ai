@@ -46,29 +46,120 @@ export const PLACES = placesJson as PlaceEntry[];
  * camera targets (precision: region), not boundaries.
  */
 export const REGIONS: RegionEntry[] = [
-  { name: 'South China Sea', aliases: ['scs'], lat: 12.5, lon: 113.5, altitudeM: 3_200_000, kind: 'sea' },
-  { name: 'Taiwan Strait', aliases: ['formosa strait'], lat: 24.3, lon: 119.6, altitudeM: 900_000, kind: 'strait' },
+  {
+    name: 'South China Sea',
+    aliases: ['scs'],
+    lat: 12.5,
+    lon: 113.5,
+    altitudeM: 3_200_000,
+    kind: 'sea',
+  },
+  {
+    name: 'Taiwan Strait',
+    aliases: ['formosa strait'],
+    lat: 24.3,
+    lon: 119.6,
+    altitudeM: 900_000,
+    kind: 'strait',
+  },
   { name: 'East China Sea', aliases: [], lat: 29.5, lon: 125.5, altitudeM: 2_000_000, kind: 'sea' },
   { name: 'Black Sea', aliases: [], lat: 43.2, lon: 34.0, altitudeM: 1_800_000, kind: 'sea' },
   { name: 'Red Sea', aliases: [], lat: 20.0, lon: 38.5, altitudeM: 2_400_000, kind: 'sea' },
-  { name: 'Mediterranean Sea', aliases: ['mediterranean'], lat: 35.5, lon: 18.0, altitudeM: 4_000_000, kind: 'sea' },
+  {
+    name: 'Mediterranean Sea',
+    aliases: ['mediterranean'],
+    lat: 35.5,
+    lon: 18.0,
+    altitudeM: 4_000_000,
+    kind: 'sea',
+  },
   { name: 'Baltic Sea', aliases: [], lat: 58.0, lon: 20.0, altitudeM: 2_000_000, kind: 'sea' },
-  { name: 'Persian Gulf', aliases: ['arabian gulf', 'gulf'], lat: 26.8, lon: 51.5, altitudeM: 1_500_000, kind: 'sea' },
-  { name: 'Strait of Hormuz', aliases: ['hormuz'], lat: 26.6, lon: 56.4, altitudeM: 600_000, kind: 'strait' },
-  { name: 'Korean Peninsula', aliases: ['korea'], lat: 37.8, lon: 127.5, altitudeM: 1_500_000, kind: 'region' },
-  { name: 'Spratly Islands', aliases: ['spratlys'], lat: 10.0, lon: 114.3, altitudeM: 1_200_000, kind: 'island-group' },
-  { name: 'Paracel Islands', aliases: ['paracels'], lat: 16.5, lon: 111.9, altitudeM: 700_000, kind: 'island-group' },
-  { name: 'Scarborough Shoal', aliases: ['huangyan island', 'bajo de masinloc'], lat: 15.15, lon: 117.76, altitudeM: 400_000, kind: 'island-group' },
-  { name: 'Crimea', aliases: ['crimean peninsula'], lat: 45.3, lon: 34.4, altitudeM: 700_000, kind: 'region' },
-  { name: 'Donbas', aliases: ['donbass'], lat: 48.0, lon: 38.0, altitudeM: 900_000, kind: 'region' },
+  {
+    name: 'Persian Gulf',
+    aliases: ['arabian gulf', 'gulf'],
+    lat: 26.8,
+    lon: 51.5,
+    altitudeM: 1_500_000,
+    kind: 'sea',
+  },
+  {
+    name: 'Strait of Hormuz',
+    aliases: ['hormuz'],
+    lat: 26.6,
+    lon: 56.4,
+    altitudeM: 600_000,
+    kind: 'strait',
+  },
+  {
+    name: 'Korean Peninsula',
+    aliases: ['korea'],
+    lat: 37.8,
+    lon: 127.5,
+    altitudeM: 1_500_000,
+    kind: 'region',
+  },
+  {
+    name: 'Spratly Islands',
+    aliases: ['spratlys'],
+    lat: 10.0,
+    lon: 114.3,
+    altitudeM: 1_200_000,
+    kind: 'island-group',
+  },
+  {
+    name: 'Paracel Islands',
+    aliases: ['paracels'],
+    lat: 16.5,
+    lon: 111.9,
+    altitudeM: 700_000,
+    kind: 'island-group',
+  },
+  {
+    name: 'Scarborough Shoal',
+    aliases: ['huangyan island', 'bajo de masinloc'],
+    lat: 15.15,
+    lon: 117.76,
+    altitudeM: 400_000,
+    kind: 'island-group',
+  },
+  {
+    name: 'Crimea',
+    aliases: ['crimean peninsula'],
+    lat: 45.3,
+    lon: 34.4,
+    altitudeM: 700_000,
+    kind: 'region',
+  },
+  {
+    name: 'Donbas',
+    aliases: ['donbass'],
+    lat: 48.0,
+    lon: 38.0,
+    altitudeM: 900_000,
+    kind: 'region',
+  },
   { name: 'Kashmir', aliases: [], lat: 34.5, lon: 75.5, altitudeM: 1_200_000, kind: 'region' },
   { name: 'Sahel', aliases: [], lat: 15.0, lon: 2.0, altitudeM: 5_000_000, kind: 'region' },
   { name: 'Middle East', aliases: [], lat: 29.0, lon: 42.0, altitudeM: 5_000_000, kind: 'region' },
   { name: 'Balkans', aliases: [], lat: 43.5, lon: 20.5, altitudeM: 1_800_000, kind: 'region' },
   { name: 'Caucasus', aliases: [], lat: 42.0, lon: 45.0, altitudeM: 1_500_000, kind: 'region' },
-  { name: 'Sulawesi', aliases: ['celebes'], lat: -1.8, lon: 120.5, altitudeM: 1_300_000, kind: 'island-group' },
+  {
+    name: 'Sulawesi',
+    aliases: ['celebes'],
+    lat: -1.8,
+    lon: 120.5,
+    altitudeM: 1_300_000,
+    kind: 'island-group',
+  },
   { name: 'Java', aliases: [], lat: -7.4, lon: 110.2, altitudeM: 1_300_000, kind: 'island-group' },
-  { name: 'Sumatra', aliases: [], lat: -0.5, lon: 101.5, altitudeM: 1_800_000, kind: 'island-group' },
+  {
+    name: 'Sumatra',
+    aliases: [],
+    lat: -0.5,
+    lon: 101.5,
+    altitudeM: 1_800_000,
+    kind: 'island-group',
+  },
   { name: 'Normandy', aliases: [], lat: 49.1, lon: -0.4, altitudeM: 500_000, kind: 'region' },
   { name: 'Rhineland', aliases: [], lat: 50.5, lon: 7.0, altitudeM: 600_000, kind: 'region' },
   { name: 'Sudetenland', aliases: [], lat: 50.4, lon: 14.5, altitudeM: 800_000, kind: 'region' },
@@ -165,8 +256,9 @@ export function findPlace(query: string): PlaceEntry | null {
 export function findRegion(query: string): RegionEntry | null {
   const n = normalizeName(query);
   return (
-    REGIONS.find((r) => normalizeName(r.name) === n || r.aliases.some((a) => normalizeName(a) === n)) ??
-    null
+    REGIONS.find(
+      (r) => normalizeName(r.name) === n || r.aliases.some((a) => normalizeName(a) === n),
+    ) ?? null
   );
 }
 
@@ -182,7 +274,14 @@ export interface ResolvedPlace {
 /** Resolve a free-text place name: regions → countries → populated places. */
 export function resolvePlace(query: string): ResolvedPlace | null {
   const region = findRegion(query);
-  if (region) return { name: region.name, lat: region.lat, lon: region.lon, altitudeM: region.altitudeM, kind: 'region' };
+  if (region)
+    return {
+      name: region.name,
+      lat: region.lat,
+      lon: region.lon,
+      altitudeM: region.altitudeM,
+      kind: 'region',
+    };
   const country = findCountry(query);
   if (country) {
     const [w, s, e, n] = country.bbox;
@@ -199,6 +298,13 @@ export function resolvePlace(query: string): ResolvedPlace | null {
   }
   const place = findPlace(query);
   if (place)
-    return { name: place.name, lat: place.lat, lon: place.lon, altitudeM: 120_000, kind: 'place', iso3: place.iso3 };
+    return {
+      name: place.name,
+      lat: place.lat,
+      lon: place.lon,
+      altitudeM: 120_000,
+      kind: 'place',
+      iso3: place.iso3,
+    };
   return null;
 }

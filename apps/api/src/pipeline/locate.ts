@@ -43,7 +43,14 @@ export function locationCandidates(e: Entities): LocationCandidate[] {
     out.push({
       key: `country:${iso3}`,
       score: 0.55,
-      location: { name: c.name, lat, lon, precision: 'country', countryCode: iso3, confidence: 0.55 },
+      location: {
+        name: c.name,
+        lat,
+        lon,
+        precision: 'country',
+        countryCode: iso3,
+        confidence: 0.55,
+      },
     });
   }
   if (out.length === 0) {
@@ -53,7 +60,13 @@ export function locationCandidates(e: Entities): LocationCandidate[] {
         out.push({
           key: `inst:${org}`,
           score: 0.4,
-          location: { name: inst.name, lat: inst.lat, lon: inst.lon, precision: 'city', confidence: 0.4 },
+          location: {
+            name: inst.name,
+            lat: inst.lat,
+            lon: inst.lon,
+            precision: 'city',
+            confidence: 0.4,
+          },
         });
     }
   }
@@ -86,6 +99,9 @@ export function resolveLocation(candidateSets: LocationCandidate[][]): EventLoca
   const best = ranked[0]!;
   const totalVotes = ranked.reduce((s, v) => s + v.total, 0);
   const share = best.total / totalVotes;
-  const confidence = Math.max(0.2, Math.min(0.95, best.c.location.confidence * (0.6 + 0.4 * share)));
+  const confidence = Math.max(
+    0.2,
+    Math.min(0.95, best.c.location.confidence * (0.6 + 0.4 * share)),
+  );
   return { ...best.c.location, confidence: Math.round(confidence * 100) / 100 };
 }

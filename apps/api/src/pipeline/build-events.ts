@@ -1,5 +1,11 @@
 /** Step 7: turn clusters into WorldLens events with attached source coverage. */
-import { toIso, type Article, type NewsSource, type Participant, type WorldEvent } from '@worldlens/shared';
+import {
+  toIso,
+  type Article,
+  type NewsSource,
+  type Participant,
+  type WorldEvent,
+} from '@worldlens/shared';
 import { countryByIso3 } from '@worldlens/shared/geo-data';
 import { fnv1a64 } from '../lib/cache';
 import { clusterConfidence, representative, type Cluster } from './cluster';
@@ -13,7 +19,9 @@ export interface BuiltEvent {
 export function buildEventFromCluster(c: Cluster, nowMs: number): BuiltEvent | null {
   if (!c.location) return null; // unlocated stories are not placed on the globe
   const rep = representative(c);
-  const earliest = c.members.reduce((a, b) => (a.article.publishedAtMs <= b.article.publishedAtMs ? a : b));
+  const earliest = c.members.reduce((a, b) =>
+    a.article.publishedAtMs <= b.article.publishedAtMs ? a : b,
+  );
   const id = `news-${fnv1a64(earliest.article.url).slice(0, 14)}`;
   const sources = new Map<string, NewsSource>();
   const articles: Article[] = c.members.map((m) => {
@@ -56,7 +64,12 @@ export function buildEventFromCluster(c: Cluster, nowMs: number): BuiltEvent | n
     title: rep.article.headline,
     category: c.category,
     tags: [],
-    time: { start: toIso(c.firstMs), ...(c.lastMs - c.firstMs > 3_600_000 ? { end: toIso(c.lastMs) } : {}), precision: 'hour', approximate: false },
+    time: {
+      start: toIso(c.firstMs),
+      ...(c.lastMs - c.firstMs > 3_600_000 ? { end: toIso(c.lastMs) } : {}),
+      precision: 'hour',
+      approximate: false,
+    },
     location: c.location,
     extraLocations: [],
     participants: participants.slice(0, 12),

@@ -57,10 +57,21 @@ export async function fetchJson<T = unknown>(url: string, opts: FetchOptions): P
     headers: { Accept: 'application/json', ...(opts.headers ?? {}) },
   });
   const text = await res.text();
-  if (!res.ok) throw new UpstreamError(`${opts.provider}: HTTP ${res.status}`, opts.provider, res.status, text.slice(0, 500));
+  if (!res.ok)
+    throw new UpstreamError(
+      `${opts.provider}: HTTP ${res.status}`,
+      opts.provider,
+      res.status,
+      text.slice(0, 500),
+    );
   try {
     return JSON.parse(text) as T;
   } catch {
-    throw new UpstreamError(`${opts.provider}: invalid JSON`, opts.provider, res.status, text.slice(0, 200));
+    throw new UpstreamError(
+      `${opts.provider}: invalid JSON`,
+      opts.provider,
+      res.status,
+      text.slice(0, 200),
+    );
   }
 }

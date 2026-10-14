@@ -42,6 +42,10 @@ export default tseslint.config(
     },
   },
   {
+    files: ['**/*.{js,mjs}'],
+    languageOptions: { globals: { ...globals.browser, ...globals.node } },
+  },
+  {
     files: ['scripts/**/*.ts', 'e2e/**/*.ts', '**/*.test.ts', '**/*.test.tsx'],
     rules: { 'no-console': 'off' },
   },

@@ -66,9 +66,8 @@ function eventBrief(e: EventSummary | WorldEvent) {
 }
 
 function wikiCitation(e: WorldEvent): CitationOut[] {
-  return e.references
-    .filter((r) => !e.isDemo)
-    .map((r) => ({ title: r.title, url: r.url, publisher: r.publisher }));
+  if (e.isDemo) return [];
+  return e.references.map((r) => ({ title: r.title, url: r.url, publisher: r.publisher }));
 }
 
 async function findActionOptions(ctx: ToolContext, budget?: number, eventId?: string) {
@@ -102,35 +101,70 @@ async function findActionOptions(ctx: ToolContext, budget?: number, eventId?: st
   return out;
 }
 
-export async function runServerTool(name: ServerToolName, rawArgs: unknown, ctx: ToolContext): Promise<ToolOutcome> {
+export async function runServerTool(
+  name: ServerToolName,
+  rawArgs: unknown,
+  ctx: ToolContext,
+): Promise<ToolOutcome> {
   const parsed = serverToolSchemas[name].safeParse(rawArgs ?? {});
   if (!parsed.success) {
-    return { ok: false, result: { error: `Invalid arguments: ${parsed.error.issues[0]?.message ?? 'invalid'}` }, citations: [] };
+    return {
+      ok: false,
+      result: { error: `Invalid arguments: ${parsed.error.issues[0]?.message ?? 'invalid'}` },
+      citations: [],
+    };
   }
   const citations: CitationOut[] = [];
   switch (name) {
     case 'search_events':
     case 'search_history': {
-      const a = parsed.data as { query: string; from?: string; to?: string; limit: number; kind?: 'news' | 'historical' | 'any' };
+      const a = parsed.data as {
+        query: string;
+        from?: string;
+        to?: string;
+        limit: number;
+        kind?: 'news' | 'historical' | 'any';
+      };
       const kind = name === 'search_history' ? 'historical' : (a.kind ?? 'any');
       const window =
         a.from || a.to
-          ? { startMs: a.from ? parseIso(a.from) : Number.NEGATIVE_INFINITY, endMs: a.to ? periodAt(parseIso(a.to), 'day').endMs : Number.POSITIVE_INFINITY }
+          ? {
+              startMs: a.from ? parseIso(a.from) : Number.NEGATIVE_INFINITY,
+              endMs: a.to ? periodAt(parseIso(a.to), 'day').endMs : Number.POSITIVE_INFINITY,
+            }
           : null;
-      const results = await ctx.repo.search(a.query, { limit: 40, nowMs: ctx.nowMs, includeDemo: true });
+      const results = await ctx.repo.search(a.query, {
+        limit: 40,
+        nowMs: ctx.nowMs,
+        includeDemo: true,
+      });
       const out = [];
       for (const r of results) {
         if (r.type === 'NEWS' || r.type === 'HISTORY') {
           if (kind === 'news' && r.type !== 'NEWS') continue;
           if (kind === 'historical' && r.type !== 'HISTORY') continue;
           if (window && r.time && !intersects(temporalSpan(r.time), window)) continue;
-          out.push({ type: r.type, id: r.eventId, title: r.title, date: r.time ? formatTemporal(r.time) : null, location: r.subtitle, demo: r.isDemo });
+          out.push({
+            type: r.type,
+            id: r.eventId,
+            title: r.title,
+            date: r.time ? formatTemporal(r.time) : null,
+            location: r.subtitle,
+            demo: r.isDemo,
+          });
         } else if (kind === 'any') {
           out.push({ type: r.type, id: r.id, title: r.title, subtitle: r.subtitle ?? null });
         }
         if (out.length >= a.limit) break;
       }
-      return { ok: true, result: { results: out, note: out.length === 0 ? 'No matching events in the WorldLens dataset.' : undefined }, citations };
+      return {
+        ok: true,
+        result: {
+          results: out,
+          note: out.length === 0 ? 'No matching events in the WorldLens dataset.' : undefined,
+        },
+        citations,
+      };
     }
     case 'get_event': {
       const e = await ctx.repo.getEvent((parsed.data as { event_id: string }).event_id, ctx.nowMs);
@@ -162,7 +196,12 @@ export async function runServerTool(name: ServerToolName, rawArgs: unknown, ctx:
       const sources = await ctx.repo.getSources(articles.map((a) => a.sourceId));
       const byId = new Map(sources.map((s) => [s.id, s]));
       for (const a of articles) {
-        if (!a.isDemo) citations.push({ title: a.headline, url: a.url, publisher: byId.get(a.sourceId)?.name ?? 'Unknown' });
+        if (!a.isDemo)
+          citations.push({
+            title: a.headline,
+            url: a.url,
+            publisher: byId.get(a.sourceId)?.name ?? 'Unknown',
+          });
       }
       return {
         ok: true,
@@ -211,7 +250,8 @@ export async function runServerTool(name: ServerToolName, rawArgs: unknown, ctx:
     case 'get_border_at_date': {
       const a = parsed.data as { date: string; entity?: string };
       const ms = parseIso(a.date);
-      if (isBeforeNavigable(ms)) return { ok: false, result: { error: TEMPORAL_CONFIG.comingSoonLabel }, citations };
+      if (isBeforeNavigable(ms))
+        return { ok: false, result: { error: TEMPORAL_CONFIG.comingSoonLabel }, citations };
       const sel = selectBorderSnapshot(ms);
       let matches: string[] | undefined;
       let fetchError: string | undefined;
@@ -220,7 +260,13 @@ export async function runServerTool(name: ServerToolName, rawArgs: unknown, ctx:
         if (sel.source === 'historical-basemaps' && sel.snapshotYear !== null) {
           try {
             const feats = await ctx.borders.snapshot(sel.snapshotYear, 'low');
-            matches = [...new Set(feats.map((f) => f.properties.name).filter((n) => normalizeText(n).includes(needle)))].slice(0, 10);
+            matches = [
+              ...new Set(
+                feats
+                  .map((f) => f.properties.name)
+                  .filter((n) => normalizeText(n).includes(needle)),
+              ),
+            ].slice(0, 10);
           } catch {
             fetchError = 'Border dataset could not be loaded right now.';
           }
@@ -229,7 +275,15 @@ export async function runServerTool(name: ServerToolName, rawArgs: unknown, ctx:
           matches = c ? [c.name] : [];
         }
       }
-      return { ok: true, result: { ...sel, ...(matches ? { matching_polities: matches } : {}), ...(fetchError ? { fetch_error: fetchError } : {}) }, citations };
+      return {
+        ok: true,
+        result: {
+          ...sel,
+          ...(matches ? { matching_polities: matches } : {}),
+          ...(fetchError ? { fetch_error: fetchError } : {}),
+        },
+        citations,
+      };
     }
     case 'get_frontline_at_date': {
       const a = parsed.data as { date: string; conflict_id?: string };
@@ -238,8 +292,25 @@ export async function runServerTool(name: ServerToolName, rawArgs: unknown, ctx:
         ok: true,
         result:
           lines.length === 0
-            ? { available: false, reason: 'No verified frontline or control-line geometry is loaded for this date. WorldLens does not invent frontlines.' }
-            : { available: true, lines: lines.map((l) => ({ id: l.id, name: l.name, valid_from: l.validFrom, valid_to: l.validTo, certainty: l.certainty, side_a: l.sideA, side_b: l.sideB, confidence: l.confidence, source: l.source })) },
+            ? {
+                available: false,
+                reason:
+                  'No verified frontline or control-line geometry is loaded for this date. WorldLens does not invent frontlines.',
+              }
+            : {
+                available: true,
+                lines: lines.map((l) => ({
+                  id: l.id,
+                  name: l.name,
+                  valid_from: l.validFrom,
+                  valid_to: l.validTo,
+                  certainty: l.certainty,
+                  side_a: l.sideA,
+                  side_b: l.sideB,
+                  confidence: l.confidence,
+                  source: l.source,
+                })),
+              },
         citations,
       };
     }
@@ -260,7 +331,12 @@ export async function runServerTool(name: ServerToolName, rawArgs: unknown, ctx:
         const needle = a.region ? normalizeText(a.region) : null;
         const country = a.region ? findCountry(a.region) : null;
         const events = list.events
-          .filter((e) => !needle || normalizeText(`${e.title} ${e.location.name}`).includes(needle) || (country && e.location.countryCode === country.iso3))
+          .filter(
+            (e) =>
+              !needle ||
+              normalizeText(`${e.title} ${e.location.name}`).includes(needle) ||
+              (country && e.location.countryCode === country.iso3),
+          )
           .slice(0, 6)
           .map(eventBrief);
         return { date: iso, year: yearOf(ms), events, borders: selectBorderSnapshot(ms) };
@@ -291,7 +367,8 @@ export async function runServerTool(name: ServerToolName, rawArgs: unknown, ctx:
       return {
         ok: true,
         result: {
-          sandbox_notice: 'All options are PayPal SANDBOX demonstrations. No real money is transferred and no real charity receives funds.',
+          sandbox_notice:
+            'All options are PayPal SANDBOX demonstrations. No real money is transferred and no real charity receives funds.',
           options: found.map(({ event, option }) => ({
             option_id: option.id,
             event_id: event.id,
@@ -301,7 +378,9 @@ export async function runServerTool(name: ServerToolName, rawArgs: unknown, ctx:
             purpose: option.purpose,
             payee: option.beneficiary.name,
             payee_disclosure: option.beneficiary.disclosure,
-            suggested_amounts_usd: option.suggestedAmounts.filter((x) => a.budget_usd === undefined || x <= a.budget_usd),
+            suggested_amounts_usd: option.suggestedAmounts.filter(
+              (x) => a.budget_usd === undefined || x <= a.budget_usd,
+            ),
             min_usd: option.minAmount,
             max_usd: option.maxAmount,
             informational_links: option.informationalLinks.map((l) => `${l.name}: ${l.url}`),
@@ -327,18 +406,31 @@ export async function runServerTool(name: ServerToolName, rawArgs: unknown, ctx:
           citations,
         };
       } catch (err) {
-        return { ok: false, result: { error: err instanceof Error ? err.message : 'Payment status unavailable' }, citations };
+        return {
+          ok: false,
+          result: { error: err instanceof Error ? err.message : 'Payment status unavailable' },
+          citations,
+        };
       }
     }
   }
 }
 
 /** Validate a client tool call and resolve it into a concrete action for the browser. */
-export async function prepareClientAction(name: string, rawArgs: unknown, ctx: ToolContext): Promise<ToolOutcome> {
-  if (!isClientTool(name)) return { ok: false, result: { error: `Unknown tool ${name}` }, citations: [] };
+export async function prepareClientAction(
+  name: string,
+  rawArgs: unknown,
+  ctx: ToolContext,
+): Promise<ToolOutcome> {
+  if (!isClientTool(name))
+    return { ok: false, result: { error: `Unknown tool ${name}` }, citations: [] };
   const parsed = clientToolSchemas[name].safeParse(rawArgs ?? {});
   if (!parsed.success) {
-    return { ok: false, result: { error: `Invalid arguments: ${parsed.error.issues[0]?.message ?? 'invalid'}` }, citations: [] };
+    return {
+      ok: false,
+      result: { error: `Invalid arguments: ${parsed.error.issues[0]?.message ?? 'invalid'}` },
+      citations: [],
+    };
   }
   const queued = (action: ClientAction, detail: Record<string, unknown> = {}): ToolOutcome => ({
     ok: true,
@@ -348,37 +440,84 @@ export async function prepareClientAction(name: string, rawArgs: unknown, ctx: T
   });
   switch (name) {
     case 'fly_to': {
-      const a = parsed.data as { place?: string; lat?: number; lon?: number; altitude_km?: number; label?: string };
+      const a = parsed.data as {
+        place?: string;
+        lat?: number;
+        lon?: number;
+        altitude_km?: number;
+        label?: string;
+      };
       if (a.lat !== undefined && a.lon !== undefined) return queued({ tool: 'fly_to', args: a });
       const r = resolvePlace(a.place!);
-      if (!r) return { ok: false, result: { error: `Unknown place "${a.place}". Try a country, city or sea name, or give coordinates.` }, citations: [] };
+      if (!r)
+        return {
+          ok: false,
+          result: {
+            error: `Unknown place "${a.place}". Try a country, city or sea name, or give coordinates.`,
+          },
+          citations: [],
+        };
       return queued(
-        { tool: 'fly_to', args: { lat: r.lat, lon: r.lon, altitude_km: a.altitude_km ?? r.altitudeM / 1000, label: a.label ?? r.name } },
+        {
+          tool: 'fly_to',
+          args: {
+            lat: r.lat,
+            lon: r.lon,
+            altitude_km: a.altitude_km ?? r.altitudeM / 1000,
+            label: a.label ?? r.name,
+          },
+        },
         { resolved: r.name },
       );
     }
     case 'set_time': {
-      const a = parsed.data as { date: string; resolution?: 'century' | 'decade' | 'year' | 'month' | 'day' | 'hour' };
+      const a = parsed.data as {
+        date: string;
+        resolution?: 'century' | 'decade' | 'year' | 'month' | 'day' | 'hour';
+      };
       const ms = parseIso(a.date);
       if (isBeforeNavigable(ms)) {
-        return { ok: false, result: { error: `${TEMPORAL_CONFIG.comingSoonLabel}. The earliest navigable year is ${TEMPORAL_CONFIG.minNavigableYear}.` }, citations: [] };
+        return {
+          ok: false,
+          result: {
+            error: `${TEMPORAL_CONFIG.comingSoonLabel}. The earliest navigable year is ${TEMPORAL_CONFIG.minNavigableYear}.`,
+          },
+          citations: [],
+        };
       }
-      if (ms > ctx.nowMs) return { ok: false, result: { error: 'Cannot navigate to the future. Use return_to_live for the present.' }, citations: [] };
+      if (ms > ctx.nowMs)
+        return {
+          ok: false,
+          result: { error: 'Cannot navigate to the future. Use return_to_live for the present.' },
+          citations: [],
+        };
       return queued({ tool: 'set_time', args: a });
     }
     case 'return_to_live':
       return queued({ tool: 'return_to_live', args: {} });
     case 'highlight_region': {
       const a = parsed.data as { country: string };
-      if (normalizeText(a.country) === 'none') return queued({ tool: 'highlight_region', args: { country: 'none' } });
+      if (normalizeText(a.country) === 'none')
+        return queued({ tool: 'highlight_region', args: { country: 'none' } });
       const c = findCountry(a.country);
-      if (!c) return { ok: false, result: { error: `Unknown modern country "${a.country}"` }, citations: [] };
+      if (!c)
+        return {
+          ok: false,
+          result: { error: `Unknown modern country "${a.country}"` },
+          citations: [],
+        };
       return queued({ tool: 'highlight_region', args: { country: c.iso3 } }, { resolved: c.name });
     }
     case 'show_events':
-      return queued({ tool: 'show_events', args: parsed.data as ClientAction['args'] } as ClientAction);
+      return queued({
+        tool: 'show_events',
+        args: parsed.data as ClientAction['args'],
+      } as ClientAction);
     case 'toggle_layer':
-      return queued({ tool: 'toggle_layer', args: parsed.data as { layer: 'news'; enabled: boolean } });
+      return queued({
+        tool: 'toggle_layer',
+        args: parsed.data as { layer: 'news'; enabled: boolean },
+      });
     case 'open_event': {
       const a = parsed.data as { event_id: string };
       const e = await ctx.repo.getEvent(a.event_id, ctx.nowMs);
@@ -390,11 +529,24 @@ export async function prepareClientAction(name: string, rawArgs: unknown, ctx: T
       const e = await ctx.repo.getEvent(a.event_id, ctx.nowMs);
       const options = e ? ctx.repo.actionOptions(e) : [];
       const opt = options.find((o) => o.id === a.action_option_id);
-      if (!e || !opt) return { ok: false, result: { error: 'That action is not available for that event.' }, citations: [] };
-      const amount = a.amount_usd !== undefined ? Math.min(opt.maxAmount, Math.max(opt.minAmount, a.amount_usd)) : undefined;
+      if (!e || !opt)
+        return {
+          ok: false,
+          result: { error: 'That action is not available for that event.' },
+          citations: [],
+        };
+      const amount =
+        a.amount_usd !== undefined
+          ? Math.min(opt.maxAmount, Math.max(opt.minAmount, a.amount_usd))
+          : undefined;
       return queued(
-        { tool: 'open_take_action', args: { ...a, ...(amount !== undefined ? { amount_usd: amount } : {}) } },
-        { note: 'Only the review screen was opened. The user must confirm and approve in PayPal; no payment has been made.' },
+        {
+          tool: 'open_take_action',
+          args: { ...a, ...(amount !== undefined ? { amount_usd: amount } : {}) },
+        },
+        {
+          note: 'Only the review screen was opened. The user must confirm and approve in PayPal; no payment has been made.',
+        },
       );
     }
   }

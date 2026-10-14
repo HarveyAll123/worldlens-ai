@@ -28,7 +28,7 @@ export const IdSchema = z
   .string()
   .min(1)
   .max(160)
-  .regex(/^[a-zA-Z0-9:_.\-]+$/, 'Invalid id');
+  .regex(/^[a-zA-Z0-9:_.-]+$/, 'Invalid id');
 
 /* ------------------------------------------------------------------ media & citations */
 
@@ -58,7 +58,13 @@ export type Citation = z.infer<typeof CitationSchema>;
 
 /* ------------------------------------------------------------------ locations */
 
-export const LocationPrecisionSchema = z.enum(['exact', 'city', 'region', 'country', 'approximate']);
+export const LocationPrecisionSchema = z.enum([
+  'exact',
+  'city',
+  'region',
+  'country',
+  'approximate',
+]);
 
 export const LocationSchema = z.object({
   name: z.string().max(200),
@@ -458,6 +464,8 @@ export const FramingSchema = z.object({
   eventId: z.string(),
   method: z.enum(['ai', 'heuristic']),
   model: z.string().optional(),
+  /** Topics/terms several outlets share (descriptive only — not a factual claim). */
+  sharedTopics: z.array(z.string()).optional(),
   commonlyReported: z.array(
     z.object({ text: z.string(), kind: StatementKindSchema, sourceIds: z.array(z.string()) }),
   ),

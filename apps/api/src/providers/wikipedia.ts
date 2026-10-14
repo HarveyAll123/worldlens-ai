@@ -61,7 +61,10 @@ export interface WikipediaSummary {
 
 /** Extract "File:Name.jpg" from an upload.wikimedia.org Commons URL; null for non-Commons. */
 export function commonsFileFromUrl(url: string): string | null {
-  const m = /^https:\/\/upload\.wikimedia\.org\/wikipedia\/commons\/(?:thumb\/)?[0-9a-f]\/[0-9a-f]{2}\/([^/]+)/.exec(url);
+  const m =
+    /^https:\/\/upload\.wikimedia\.org\/wikipedia\/commons\/(?:thumb\/)?[0-9a-f]\/[0-9a-f]{2}\/([^/]+)/.exec(
+      url,
+    );
   return m ? `File:${decodeURIComponent(m[1]!)}` : null;
 }
 
@@ -84,7 +87,13 @@ export class WikipediaProvider {
     try {
       const raw = await fetchJson(
         `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(key)}`,
-        { provider: 'wikipedia', timeoutMs: 6000, retries: 1, headers: this.headers(), fetchImpl: this.fetchImpl },
+        {
+          provider: 'wikipedia',
+          timeoutMs: 6000,
+          retries: 1,
+          headers: this.headers(),
+          fetchImpl: this.fetchImpl,
+        },
       );
       const s = SummarySchema.parse(raw);
       this.health.ok('wikipedia');
@@ -134,7 +143,9 @@ export class WikipediaProvider {
       const parsed = CommonsSchema.parse(raw);
       const info = Object.values(parsed.query?.pages ?? {})[0]?.imageinfo?.[0];
       const meta = info?.extmetadata;
-      const license = meta?.LicenseShortName?.value ? sanitizeText(String(meta.LicenseShortName.value), 120) : null;
+      const license = meta?.LicenseShortName?.value
+        ? sanitizeText(String(meta.LicenseShortName.value), 120)
+        : null;
       if (!license) return null;
       this.health.ok('wikimedia-commons');
       const artist = meta?.Artist?.value ? sanitizeText(String(meta.Artist.value), 200) : '';

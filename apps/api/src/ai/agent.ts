@@ -22,7 +22,12 @@ import {
 import type { AiBudget } from './budget';
 import { AGENT_SYSTEM_PROMPT } from './prompts';
 import type { AiProvider, ToolDefinition } from './provider';
-import { prepareClientAction, runServerTool, type CitationOut, type ToolContext } from './tools-impl';
+import {
+  prepareClientAction,
+  runServerTool,
+  type CitationOut,
+  type ToolContext,
+} from './tools-impl';
 
 export const ChatRequestSchema = z.object({
   messages: z
@@ -36,7 +41,11 @@ export const ChatRequestSchema = z.object({
     resolution: ResolutionSchema,
     selectedEventId: z.string().max(160).nullable(),
     camera: z
-      .object({ lat: z.number().min(-90).max(90), lon: z.number().min(-180).max(180), altitudeKm: z.number().min(0).max(100_000) })
+      .object({
+        lat: z.number().min(-90).max(90),
+        lon: z.number().min(-180).max(180),
+        altitudeKm: z.number().min(0).max(100_000),
+      })
       .nullable(),
     layers: z.record(LayerSchema, z.boolean()).optional(),
   }),
@@ -79,7 +88,9 @@ function stateBlock(req: ChatRequest): string {
     `mode=${c.mode.toUpperCase()}`,
     `selected_time=${c.timeIso} (resolution ${c.resolution})`,
     `selected_event=${c.selectedEventId ?? 'none'}`,
-    c.camera ? `camera=${c.camera.lat.toFixed(2)},${c.camera.lon.toFixed(2)} alt=${Math.round(c.camera.altitudeKm)}km` : 'camera=unknown',
+    c.camera
+      ? `camera=${c.camera.lat.toFixed(2)},${c.camera.lon.toFixed(2)} alt=${Math.round(c.camera.altitudeKm)}km`
+      : 'camera=unknown',
   ].join('\n');
 }
 
@@ -95,7 +106,9 @@ export async function runAgent(
   req: ChatRequest,
   deps: { provider: AiProvider; budget: AiBudget; tools: ToolContext },
 ): Promise<ChatResponse> {
-  const messages: Anthropic.Beta.BetaMessageParam[] = req.messages.slice(0, -1).map((m) => ({ role: m.role, content: m.content }));
+  const messages: Anthropic.Beta.BetaMessageParam[] = req.messages
+    .slice(0, -1)
+    .map((m) => ({ role: m.role, content: m.content }));
   const last = req.messages[req.messages.length - 1]!;
   messages.push({
     role: 'user',
@@ -156,7 +169,9 @@ export async function runAgent(
     }
 
     messages.push({ role: 'assistant', content: res.content });
-    const toolUses = res.content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === 'tool_use');
+    const toolUses = res.content.filter(
+      (b): b is Anthropic.Beta.BetaToolUseBlock => b.type === 'tool_use',
+    );
     const results: Anthropic.Beta.BetaToolResultBlockParam[] = [];
     for (const tu of toolUses) {
       const outcome = isServerTool(tu.name)
@@ -164,17 +179,30 @@ export async function runAgent(
         : await prepareClientAction(tu.name, tu.input, deps.tools);
       if (outcome.action) actions.push(outcome.action);
       citations.push(...outcome.citations);
-      trace.push({ tool: tu.name, ok: outcome.ok, kind: isServerTool(tu.name) ? 'server' : 'client', summary: summarize(outcome.result) });
+      trace.push({
+        tool: tu.name,
+        ok: outcome.ok,
+        kind: isServerTool(tu.name) ? 'server' : 'client',
+        summary: summarize(outcome.result),
+      });
       let content = JSON.stringify(outcome.result);
-      if (content.length > MAX_TOOL_RESULT_CHARS) content = `${content.slice(0, MAX_TOOL_RESULT_CHARS)}…(truncated)`;
-      results.push({ type: 'tool_result', tool_use_id: tu.id, content, ...(outcome.ok ? {} : { is_error: true }) });
+      if (content.length > MAX_TOOL_RESULT_CHARS)
+        content = `${content.slice(0, MAX_TOOL_RESULT_CHARS)}…(truncated)`;
+      results.push({
+        type: 'tool_result',
+        tool_use_id: tu.id,
+        content,
+        ...(outcome.ok ? {} : { is_error: true }),
+      });
     }
     // All results for one assistant turn go back in a single user message.
     messages.push({ role: 'user', content: results });
   }
 
   const seen = new Set<string>();
-  const uniqueCitations = citations.filter((c) => (seen.has(c.url) ? false : (seen.add(c.url), true))).slice(0, 12);
+  const uniqueCitations = citations
+    .filter((c) => (seen.has(c.url) ? false : (seen.add(c.url), true)))
+    .slice(0, 12);
   return {
     mode: 'ai',
     reply: reply || 'Done.',

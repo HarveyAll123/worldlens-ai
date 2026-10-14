@@ -9,6 +9,7 @@ import { serve } from '@hono/node-server';
 import { createApp } from './app';
 import { createDeps } from './deps';
 import type { Env } from './env';
+import { FakePayPal } from './testing/fake-paypal';
 
 function loadDevVars(): Record<string, string> {
   const file = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '.dev.vars');
@@ -22,7 +23,29 @@ function loadDevVars(): Record<string, string> {
 }
 
 const env = { ...loadDevVars(), ...process.env } as unknown as Env;
-const deps = createDeps(env);
+
+// TEST-ONLY: route PayPal REST calls to an in-process fake (used by Playwright). Never used
+// by the Worker. Orders are auto-approved because the browser-side SDK is faked too.
+const mockPayPal = process.env.WORLDLENS_TEST_PAYPAL_MOCK === '1';
+let fetchImpl: typeof fetch | undefined;
+if (mockPayPal) {
+  const fake = new FakePayPal();
+  fake.autoApprove = true;
+  Object.assign(env, {
+    PAYPAL_CLIENT_ID: 'mock-client-id',
+    PAYPAL_CLIENT_SECRET: 'mock-secret',
+    PAYPAL_ENVIRONMENT: 'sandbox',
+    PAYPAL_WEBHOOK_ID: 'WH-MOCK',
+  });
+  fetchImpl = ((input: string | Request, init?: RequestInit) => {
+    const url = typeof input === 'string' ? input : input.url;
+    return new URL(url).hostname.endsWith('paypal.com')
+      ? fake.fetch(input, init)
+      : fetch(input, init);
+  }) as typeof fetch;
+  console.warn('[worldlens-api] TEST MODE: PayPal REST is mocked (WORLDLENS_TEST_PAYPAL_MOCK=1)');
+}
+const deps = createDeps(env, fetchImpl ? { fetchImpl } : {});
 const app = createApp(deps);
 const port = Number(process.env.API_PORT ?? 8787);
 serve({ fetch: app.fetch, port, hostname: '127.0.0.1' }, (info) => {

@@ -8,3 +8,4 @@ apps/web/public/cesium
 apps/web/public/vendor
 packages/shared/src/data/geo/*.json
 .wrangler
+apps/web/public/data

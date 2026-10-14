@@ -30,7 +30,12 @@ export interface AiTurnResponse {
   model: string;
   content: Anthropic.Beta.BetaContentBlock[];
   stopReason: string | null;
-  usage: { input_tokens: number; output_tokens: number; cache_read_input_tokens?: number | null; cache_creation_input_tokens?: number | null };
+  usage: {
+    input_tokens: number;
+    output_tokens: number;
+    cache_read_input_tokens?: number | null;
+    cache_creation_input_tokens?: number | null;
+  };
 }
 
 export interface AiProvider {

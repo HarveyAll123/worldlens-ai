@@ -1,6 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { bboxContains, haversineKm, parseBBox, simplifyLine, simplifyPolygonGeometry } from '../geo';
-import { cosine, extractYears, headlineSimilarity, sanitizeText, termVector, tokenize } from '../text';
+import {
+  bboxContains,
+  haversineKm,
+  parseBBox,
+  simplifyLine,
+  simplifyPolygonGeometry,
+} from '../geo';
+import {
+  cosine,
+  extractYears,
+  headlineSimilarity,
+  sanitizeText,
+  termVector,
+  tokenize,
+} from '../text';
 import { findCountry, resolvePlace } from '../data/geo';
 
 describe('geo', () => {
@@ -16,9 +29,29 @@ describe('geo', () => {
     expect(parseBBox('1,2,3')).toBeNull();
   });
   it('simplifies lines and polygons', () => {
-    const line: [number, number][] = [[0, 0], [1, 0.001], [2, 0], [3, 0.001], [4, 0]];
-    expect(simplifyLine(line, 0.01)).toEqual([[0, 0], [4, 0]]);
-    const square = { type: 'Polygon' as const, coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]] as [number, number][]] };
+    const line: [number, number][] = [
+      [0, 0],
+      [1, 0.001],
+      [2, 0],
+      [3, 0.001],
+      [4, 0],
+    ];
+    expect(simplifyLine(line, 0.01)).toEqual([
+      [0, 0],
+      [4, 0],
+    ]);
+    const square = {
+      type: 'Polygon' as const,
+      coordinates: [
+        [
+          [0, 0],
+          [1, 0],
+          [1, 1],
+          [0, 1],
+          [0, 0],
+        ] as [number, number][],
+      ],
+    };
     expect(simplifyPolygonGeometry(square, 0.01)?.coordinates[0]).toHaveLength(5);
     expect(simplifyPolygonGeometry(square, 5)).toBeNull();
   });
@@ -38,10 +71,17 @@ describe('gazetteer', () => {
 
 describe('text', () => {
   it('tokenizes with stemming and stopword removal', () => {
-    expect(tokenize('The drills continued near Taiwan')).toEqual(['drill', 'continued', 'near', 'taiwan']);
+    expect(tokenize('The drills continued near Taiwan')).toEqual([
+      'drill',
+      'continued',
+      'near',
+      'taiwan',
+    ]);
   });
   it('scores near-duplicate headlines highly', () => {
-    expect(headlineSimilarity('Quake hits Sulawesi, dozens hurt', 'Quake hits Sulawesi; dozens hurt')).toBeGreaterThan(0.8);
+    expect(
+      headlineSimilarity('Quake hits Sulawesi, dozens hurt', 'Quake hits Sulawesi; dozens hurt'),
+    ).toBeGreaterThan(0.8);
     expect(headlineSimilarity('Quake hits Sulawesi', 'Stocks rally in Tokyo')).toBeLessThan(0.2);
   });
   it('computes cosine similarity', () => {

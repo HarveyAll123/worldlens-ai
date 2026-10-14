@@ -80,7 +80,11 @@ export function loadConfig(env: Env): Config {
     supabase: { url: blank(env.SUPABASE_URL), serviceKey: blank(env.SUPABASE_SERVICE_ROLE_KEY) },
     gdelt: {
       enabled: (blank(env.GDELT_ENABLED) ?? 'true') !== 'false',
-      queries: blank(env.GDELT_QUERIES)?.split('||').map((q) => q.trim()).filter(Boolean) ?? DEFAULT_GDELT_QUERIES,
+      queries:
+        blank(env.GDELT_QUERIES)
+          ?.split('||')
+          .map((q) => q.trim())
+          .filter(Boolean) ?? DEFAULT_GDELT_QUERIES,
     },
     basemapsBaseUrl:
       blank(env.HISTORICAL_BASEMAPS_BASE_URL) ??

@@ -13,7 +13,11 @@ import { z } from 'zod';
 import { IsoInstantSchema, ResolutionSchema } from './temporal';
 import { EventCategorySchema } from './schemas';
 
-const EventIdArg = z.string().min(1).max(160).describe('WorldLens event id, e.g. "hist-battle-of-waterloo"');
+const EventIdArg = z
+  .string()
+  .min(1)
+  .max(160)
+  .describe('WorldLens event id, e.g. "hist-battle-of-waterloo"');
 const DateArg = IsoInstantSchema.describe(
   'ISO 8601 date, e.g. "1815-06-18" or "1945" or "2026-10-14T09:00:00Z". Earliest navigable year is 1800.',
 );
@@ -26,7 +30,11 @@ export type LayerId = z.infer<typeof LayerSchema>;
 
 export const serverToolSchemas = {
   search_events: z.object({
-    query: z.string().min(1).max(200).describe('Free-text query: place, topic, conflict, person, organisation'),
+    query: z
+      .string()
+      .min(1)
+      .max(200)
+      .describe('Free-text query: place, topic, conflict, person, organisation'),
     kind: z.enum(['news', 'historical', 'any']).default('any'),
     from: DateArg.optional(),
     to: DateArg.optional(),
@@ -43,7 +51,11 @@ export const serverToolSchemas = {
   get_historical_context: z.object({ event_id: EventIdArg }),
   get_border_at_date: z.object({
     date: DateArg,
-    entity: z.string().max(120).optional().describe('Optional polity name to look for, e.g. "Germany"'),
+    entity: z
+      .string()
+      .max(120)
+      .optional()
+      .describe('Optional polity name to look for, e.g. "Germany"'),
   }),
   get_frontline_at_date: z.object({
     date: DateArg,
@@ -52,7 +64,11 @@ export const serverToolSchemas = {
   compare_dates: z.object({
     date_a: DateArg,
     date_b: DateArg,
-    region: z.string().max(120).optional().describe('Country or region name to focus the comparison'),
+    region: z
+      .string()
+      .max(120)
+      .optional()
+      .describe('Country or region name to focus the comparison'),
   }),
   compare_frontlines: z.object({
     conflict_id: z.string().max(120),
@@ -83,7 +99,10 @@ export const clientToolSchemas = {
   set_time: z.object({ date: DateArg, resolution: ResolutionSchema.optional() }),
   return_to_live: z.object({}),
   highlight_region: z.object({
-    country: z.string().max(120).describe('Modern country name or ISO 3166-1 alpha-3 code; "none" clears'),
+    country: z
+      .string()
+      .max(120)
+      .describe('Modern country name or ISO 3166-1 alpha-3 code; "none" clears'),
   }),
   show_events: z.object({
     kind: z.enum(['news', 'historical', 'all']).default('all'),
@@ -109,16 +128,17 @@ export const TOOL_DESCRIPTIONS: Record<ToolName, string> = {
     'Search historical events only (1800 onward). Use for "what happened in X year/place" questions.',
   get_event: 'Get one event with summary, participants, time precision, location and references.',
   get_event_sources:
-    'Get the articles and publishers attached to an event, with each publisher\'s country, ownership type and political-orientation rating (often UNRATED).',
+    "Get the articles and publishers attached to an event, with each publisher's country, ownership type and political-orientation rating (often UNRATED).",
   get_historical_context:
-    'Get earlier events linked to an event in the knowledge graph (THEN ↔ NOW). Relations are not necessarily causal; respect each relation\'s confidence.',
+    "Get earlier events linked to an event in the knowledge graph (THEN ↔ NOW). Relations are not necessarily causal; respect each relation's confidence.",
   get_border_at_date:
     'Look up which verified border geometry exists for a date. Returns the snapshot used, its distance from the date, certainty, and whether the named polity appears. If data is unavailable, say so — never invent borders.',
   get_frontline_at_date:
     'Look up verified frontline/control-line geometry for a date. Often unavailable; never invent frontlines.',
   compare_dates:
     'Compare two dates: events in each window and which border snapshots apply. Optionally focus on a region.',
-  compare_frontlines: 'Compare frontline records of one conflict at two dates, if verified data exists.',
+  compare_frontlines:
+    'Compare frontline records of one conflict at two dates, if verified data exists.',
   find_action_options:
     'List Take Action options (PayPal SANDBOX demo donations) relevant to humanitarian events, optionally within a budget. Does not move money.',
   get_payment_status:
@@ -159,14 +179,20 @@ export function parseClientAction(
   const { tool, args } = envelope.data;
   if (!isClientTool(tool)) return { ok: false, error: `Unknown client tool: ${tool}` };
   const parsed = clientToolSchemas[tool].safeParse(args ?? {});
-  if (!parsed.success) return { ok: false, error: `${tool}: ${parsed.error.issues[0]?.message ?? 'invalid'}` };
+  if (!parsed.success)
+    return { ok: false, error: `${tool}: ${parsed.error.issues[0]?.message ?? 'invalid'}` };
   return { ok: true, action: { tool, args: parsed.data } as ClientAction };
 }
 
 /** JSON Schema for a tool's input, for the model API. */
 export function toolInputJsonSchema(name: ToolName): Record<string, unknown> {
-  const schema = isClientTool(name) ? clientToolSchemas[name] : serverToolSchemas[name as ServerToolName];
-  const json = z.toJSONSchema(schema, { io: 'input', unrepresentable: 'any' }) as Record<string, unknown>;
+  const schema = isClientTool(name)
+    ? clientToolSchemas[name]
+    : serverToolSchemas[name as ServerToolName];
+  const json = z.toJSONSchema(schema, { io: 'input', unrepresentable: 'any' }) as Record<
+    string,
+    unknown
+  >;
   delete json.$schema;
   return json;
 }
