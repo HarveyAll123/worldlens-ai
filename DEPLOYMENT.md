@@ -1,6 +1,6 @@
 # Deployment
 
-Target: **Cloudflare Pages** (static web app) + **Cloudflare Worker** (API) + **Supabase** (database). Everything fits free/low tiers for a hackathon.
+Target: **Cloudflare Pages** (static web app) + **Cloudflare Worker** (API) + **Neon** (PostgreSQL + PostGIS database). Everything fits free/low tiers for a hackathon.
 
 ## 1. API (Worker)
 
@@ -11,8 +11,7 @@ npx wrangler secret put PAYPAL_CLIENT_ID
 npx wrangler secret put PAYPAL_CLIENT_SECRET
 npx wrangler secret put PAYPAL_WEBHOOK_ID
 npx wrangler secret put ANTHROPIC_API_KEY          # optional
-npx wrangler secret put SUPABASE_URL               # optional
-npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY  # optional
+npx wrangler secret put DATABASE_URL               # optional; pooled worldlens_app string
 npx wrangler secret put INGEST_TOKEN
 # edit [vars] in wrangler.toml: ALLOWED_ORIGINS, PUBLIC_APP_URL
 npx wrangler deploy
@@ -38,7 +37,7 @@ Alternatively serve the API under the same origin with a Worker route (`example.
 
 ## 3. Database
 
-Apply `supabase/migrations/*.sql` (see MANUAL_SETUP.md). Without Supabase the API runs from memory; payments then live in isolate memory — acceptable for a demo because capture can re-derive the record from PayPal (`custom_id`), but use Supabase for anything persistent.
+Create the `worldlens_app` role and run `pnpm db:migrate` from your machine as the owner over the direct connection string (see MANUAL_SETUP.md → Neon). Only `DATABASE_URL` goes to the Worker; never upload `MIGRATION_DATABASE_URL`. Without `DATABASE_URL` the API runs from memory; payments then live in isolate memory — acceptable for a demo because capture can re-derive the record from PayPal (`custom_id`), but use Neon for anything persistent.
 
 ## 4. After deploying
 
