@@ -1,0 +1,128 @@
+import type { Temporal } from '../temporal';
+
+export interface ConflictRecord {
+  id: string;
+  name: string;
+  aliases: string[];
+  time: Temporal;
+  lat: number;
+  lon: number;
+  altitudeM: number;
+  wikipediaTitle: string;
+  /** Countries/regions most associated with the conflict (for search). */
+  regions: string[];
+}
+
+/** Conflicts and long-running disputes used for CONFLICT search results and grouping. */
+export const CONFLICTS: ConflictRecord[] = [
+  {
+    id: 'conflict-napoleonic-wars',
+    name: 'Napoleonic Wars',
+    aliases: ['napoleon', 'napoleonic'],
+    time: { start: '1803', end: '1815', precision: 'year', approximate: false },
+    lat: 50.0,
+    lon: 10.0,
+    altitudeM: 4_500_000,
+    wikipediaTitle: 'Napoleonic_Wars',
+    regions: ['France', 'Europe', 'Russia', 'Spain'],
+  },
+  {
+    id: 'conflict-american-civil-war',
+    name: 'American Civil War',
+    aliases: ['civil war', 'us civil war'],
+    time: { start: '1861', end: '1865', precision: 'year', approximate: false },
+    lat: 37.5,
+    lon: -79.0,
+    altitudeM: 2_500_000,
+    wikipediaTitle: 'American_Civil_War',
+    regions: ['United States'],
+  },
+  {
+    id: 'conflict-world-war-i',
+    name: 'First World War',
+    aliases: ['world war i', 'ww1', 'wwi', 'great war', 'world war 1'],
+    time: { start: '1914-07-28', end: '1918-11-11', precision: 'day', approximate: false },
+    lat: 49.5,
+    lon: 10.0,
+    altitudeM: 5_000_000,
+    wikipediaTitle: 'World_War_I',
+    regions: ['Europe', 'Germany', 'France', 'Austria-Hungary', 'Russia', 'Ottoman Empire'],
+  },
+  {
+    id: 'conflict-world-war-ii',
+    name: 'Second World War',
+    aliases: ['world war ii', 'ww2', 'wwii', 'world war 2'],
+    time: { start: '1939-09-01', end: '1945-09-02', precision: 'day', approximate: false },
+    lat: 45.0,
+    lon: 30.0,
+    altitudeM: 12_000_000,
+    wikipediaTitle: 'World_War_II',
+    regions: ['Germany', 'Japan', 'Europe', 'Pacific', 'Soviet Union'],
+  },
+  {
+    id: 'conflict-korean-war',
+    name: 'Korean War',
+    aliases: ['korea war'],
+    time: { start: '1950-06-25', end: '1953-07-27', precision: 'day', approximate: false },
+    lat: 38.0,
+    lon: 127.0,
+    altitudeM: 1_500_000,
+    wikipediaTitle: 'Korean_War',
+    regions: ['North Korea', 'South Korea', 'Korea'],
+  },
+  {
+    id: 'conflict-vietnam-war',
+    name: 'Vietnam War',
+    aliases: ['second indochina war'],
+    time: { start: '1955', end: '1975', precision: 'year', approximate: false },
+    lat: 15.0,
+    lon: 107.0,
+    altitudeM: 2_500_000,
+    wikipediaTitle: 'Vietnam_War',
+    regions: ['Vietnam', 'Laos', 'Cambodia'],
+  },
+  {
+    id: 'conflict-cold-war',
+    name: 'Cold War',
+    aliases: [],
+    time: { start: '1947', end: '1991', precision: 'year', approximate: true },
+    lat: 52.0,
+    lon: 20.0,
+    altitudeM: 12_000_000,
+    wikipediaTitle: 'Cold_War',
+    regions: ['United States', 'Soviet Union', 'Germany', 'Europe'],
+  },
+  {
+    id: 'conflict-russo-ukrainian-war',
+    name: 'Russo-Ukrainian War',
+    aliases: ['ukraine war', 'war in ukraine', 'ukraine'],
+    time: { start: '2014', precision: 'year', approximate: false, label: '2014 – present' },
+    lat: 48.5,
+    lon: 34.0,
+    altitudeM: 2_200_000,
+    wikipediaTitle: 'Russo-Ukrainian_War',
+    regions: ['Ukraine', 'Russia', 'Crimea', 'Donbas'],
+  },
+  {
+    id: 'dispute-south-china-sea',
+    name: 'South China Sea disputes',
+    aliases: ['south china sea', 'spratly', 'paracel', 'nine-dash line'],
+    time: { start: '1974', precision: 'year', approximate: true, label: 'ongoing' },
+    lat: 12.5,
+    lon: 113.5,
+    altitudeM: 3_200_000,
+    wikipediaTitle: 'Territorial_disputes_in_the_South_China_Sea',
+    regions: ['China', 'Philippines', 'Vietnam', 'Malaysia', 'Brunei', 'Taiwan'],
+  },
+  {
+    id: 'dispute-cross-strait',
+    name: 'Cross-Strait relations (Taiwan Strait)',
+    aliases: ['taiwan strait', 'cross-strait', 'taiwan'],
+    time: { start: '1949', precision: 'year', approximate: false, label: '1949 – present' },
+    lat: 24.3,
+    lon: 119.6,
+    altitudeM: 1_200_000,
+    wikipediaTitle: 'Cross-Strait_relations',
+    regions: ['Taiwan', 'China'],
+  },
+];

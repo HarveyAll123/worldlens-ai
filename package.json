@@ -1,0 +1,43 @@
+{
+  "name": "worldlens-ai",
+  "private": true,
+  "version": "0.1.0",
+  "description": "WorldLens — a temporal world-intelligence globe: live events, history, changing borders, AI-assisted exploration and PayPal-powered action.",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c blue,green \"pnpm --filter @worldlens/api dev\" \"pnpm --filter @worldlens/web dev\"",
+    "dev:node": "concurrently -k -n api,web -c blue,green \"pnpm --filter @worldlens/api dev:node\" \"pnpm --filter @worldlens/web dev\"",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:db": "bash scripts/test-migrations.sh",
+    "test:e2e": "playwright test",
+    "data:build": "tsx scripts/build-geodata.ts",
+    "data:fetch-basemaps": "tsx scripts/fetch-historical-basemaps.ts",
+    "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.64.0",
+    "@types/node": "24.19.2",
+    "concurrently": "10.0.6",
+    "eslint": "10.12.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.13.0",
+    "jiti": "2.7.0",
+    "prettier": "3.9.10",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.2",
+    "vitest": "5.0.4"
+  }
+}

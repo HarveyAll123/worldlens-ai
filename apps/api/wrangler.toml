@@ -1,0 +1,28 @@
+# Cloudflare Worker for the WorldLens API.
+# Secrets are NOT stored here. Set them with `wrangler secret put NAME` (see MANUAL_SETUP.md)
+# or, for local development, in apps/api/.dev.vars (git-ignored).
+name = "worldlens-api"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+PAYPAL_ENVIRONMENT = "sandbox"
+AI_MODEL_STRONG = "claude-opus-5-5"
+AI_MODEL_FAST = "claude-haiku-5-5"
+AI_DAILY_BUDGET_USD = "5"
+AI_REQUESTS_PER_MINUTE = "8"
+GDELT_ENABLED = "true"
+ALLOWED_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
+PUBLIC_APP_URL = "http://localhost:5173"
+
+# News ingestion every 30 minutes (writes to Supabase when configured).
+[triggers]
+crons = ["*/30 * * * *"]
+
+# Optional R2 bucket for cached, simplified border geometry. Create it first:
+#   wrangler r2 bucket create worldlens-geo
+# then uncomment:
+# [[r2_buckets]]
+# binding = "GEO_CACHE"
+# bucket_name = "worldlens-geo"

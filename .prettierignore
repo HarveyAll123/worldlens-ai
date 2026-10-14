@@ -1,0 +1,10 @@
+node_modules
+dist
+coverage
+playwright-report
+test-results
+pnpm-lock.yaml
+apps/web/public/cesium
+apps/web/public/vendor
+packages/shared/src/data/geo/*.json
+.wrangler
