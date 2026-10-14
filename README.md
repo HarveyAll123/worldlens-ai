@@ -31,25 +31,26 @@ Open http://127.0.0.1:5173. With no keys you get: bundled Natural Earth II image
 
 Add keys (see [MANUAL_SETUP.md](MANUAL_SETUP.md)):
 
-| Feature                     | Where                 | Variables                                                       |
-| --------------------------- | --------------------- | --------------------------------------------------------------- |
-| Satellite imagery + terrain | `apps/web/.env.local` | `VITE_MAPTILER_API_KEY`                                         |
-| PayPal sandbox payments     | `apps/api/.dev.vars`  | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID` |
-| AI assistant (Claude)       | `apps/api/.dev.vars`  | `ANTHROPIC_API_KEY`                                             |
-| Persistence (PostGIS)       | `apps/api/.dev.vars`  | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`                     |
+| Feature                      | Where                 | Variables                                                                  |
+| ---------------------------- | --------------------- | -------------------------------------------------------------------------- |
+| Satellite imagery + terrain  | `apps/web/.env.local` | `VITE_MAPTILER_API_KEY`                                                    |
+| PayPal sandbox payments      | `apps/api/.dev.vars`  | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID`            |
+| AI assistant (Claude)        | `apps/api/.dev.vars`  | `ANTHROPIC_API_KEY`                                                        |
+| Persistence (Neon + PostGIS) | `apps/api/.dev.vars`  | `DATABASE_URL`; schema via `pnpm db:migrate` with `MIGRATION_DATABASE_URL` |
 
 Optional offline border data for development: `pnpm data:fetch-basemaps` then set `HISTORICAL_BASEMAPS_BASE_URL=http://127.0.0.1:5173/vendor/historical-basemaps/`.
 
 ## Scripts
 
-| Command                           | What it does                                                                |
-| --------------------------------- | --------------------------------------------------------------------------- |
-| `pnpm test`                       | Vitest unit/integration tests (shared, api, web)                            |
-| `pnpm test:e2e`                   | Playwright end-to-end (starts the API with PayPal **test doubles** + web)   |
-| `pnpm test:db`                    | Applies Supabase migrations to a throwaway local PostGIS and runs smoke SQL |
-| `pnpm typecheck`                  | Strict TypeScript in every package                                          |
-| `pnpm lint` / `pnpm format:check` | ESLint / Prettier                                                           |
-| `pnpm data:build`                 | Rebuilds the Natural Earth gazetteer and outlines                           |
+| Command                           | What it does                                                                                                                                         |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm test`                       | Vitest unit/integration tests (shared, api, web)                                                                                                     |
+| `pnpm test:e2e`                   | Playwright end-to-end (starts the API with PayPal **test doubles** + web)                                                                            |
+| `pnpm db:migrate`                 | Applies `db/migrations` and `db/grants.sql` to the database in `MIGRATION_DATABASE_URL`, else `DATABASE_URL` (use the owner role, direct connection) |
+| `pnpm test:db`                    | Applies migrations to a throwaway local PostGIS, runs smoke SQL, then the repository integration tests as the restricted `worldlens_app` role        |
+| `pnpm typecheck`                  | Strict TypeScript in every package                                                                                                                   |
+| `pnpm lint` / `pnpm format:check` | ESLint / Prettier                                                                                                                                    |
+| `pnpm data:build`                 | Rebuilds the Natural Earth gazetteer and outlines                                                                                                    |
 
 ## Repository layout
 
@@ -57,9 +58,9 @@ Optional offline border data for development: `pnpm data:fetch-basemaps` then se
 apps/web        React + Vite + CesiumJS + Tailwind + Zustand + TanStack Query
 apps/api        Cloudflare Worker (Hono + Zod); Node server for dev/e2e
 packages/shared Temporal model, Zod schemas, AI tool registry, curated data, gazetteer
-supabase/       PostgreSQL + PostGIS migrations and smoke tests
+db/             PostgreSQL + PostGIS (Neon) migrations, grants and smoke tests
 e2e/            Playwright specs (app flows, responsive, performance)
-scripts/        Geodata build, basemap fetch, migration test
+scripts/        Geodata build, basemap fetch, migration runner and test
 ```
 
 ## Documentation
