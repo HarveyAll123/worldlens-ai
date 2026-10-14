@@ -18,15 +18,19 @@ WorldLens is a small TypeScript monorepo: a static web app, one Cloudflare Worke
    ┌──────────────── Cloudflare Worker (Hono + Zod) ────────────────┐   MapTiler (imagery/terrain)
    │ routes: events, search, geo, history, ai, payments, webhook    │   or bundled Natural Earth II
    │ EventRepository: Memory (curated + DEMO + live cache)          │
-   │                  └─ SupabaseNewsRepository (PostgREST)          │
+   │                  └─ PostgresNewsRepository (if DATABASE_URL)   │
    │ Providers: GDELT · Wikipedia/Commons · historical-basemaps     │
    │ Pipeline: normalise→dedupe→entities→locate→cluster→events      │
    │ AI: agent loop (Anthropic Messages API) + offline assistant    │
    │ Payments: PayPal REST (Orders v2, webhook verify) + state store│
+   │           └─ PostgresPaymentStore (if DATABASE_URL) or memory  │
+   │ SqlClient: Neon HTTP driver (@neondatabase/serverless)         │
    │ cron (*/30): news ingestion                                    │
    └───────────────┬───────────────────────────┬────────────────────┘
+                   │ HTTPS, parameterised SQL  │
                    ▼                           ▼
-      Supabase PostgreSQL + PostGIS      R2 (optional cache of simplified borders)
+      Neon PostgreSQL + PostGIS          R2 (optional cache of simplified borders)
+      (optional; role worldlens_app)
 ```
 
 ## Packages
@@ -36,7 +40,7 @@ WorldLens is a small TypeScript monorepo: a static web app, one Cloudflare Worke
   - `schemas.ts`: Zod schemas for events, articles, sources/ratings (rating provenance enforced), geometry, frontlines, action options, payments, search, framing.
   - `tools.ts`: the AI tool registry (server data tools + client globe tools), JSON-Schema export, and `parseClientAction` for validation.
   - `data/`: curated historical events, conflicts, relations, publisher registry, DEMO scenarios, sandbox action options, frontline records, Natural Earth gazetteer.
-- **`apps/api`** — Hono app (`src/app.ts`) with a dependency container (`src/deps.ts`); `src/index.ts` is the Worker entry (fetch + scheduled), `src/node-server.ts` runs the same app on Node for development and e2e.
+- **`apps/api`** — Hono app (`src/app.ts`) with a dependency container (`src/deps.ts`); `src/index.ts` is the Worker entry (fetch + scheduled), `src/node-server.ts` runs the same app on Node for development and e2e. `src/data/` holds the repositories and the `SqlClient` drivers (see [Persistence](#persistence)).
 - **`apps/web`** — Vite + React 19; Cesium is created once by `GlobeController` and driven via store subscriptions.
 
 ## Key flows
@@ -47,7 +51,7 @@ WorldLens is a small TypeScript monorepo: a static web app, one Cloudflare Worke
 
 ### News ingestion
 
-`refreshLiveNews` (cron every 30 min, or lazily on LIVE requests via `waitUntil`) queries GDELT DOC 2.0, then runs the deterministic pipeline (`apps/api/src/pipeline`). Clustering combines TF-IDF cosine, headline shingles, weighted entity overlap, geographic and temporal distance and category affinity, with hard blocks (distinct places >150 km apart, >72 h apart, incompatible categories). Optional cheap-tier AI summaries are added for the most-covered clusters. Results go to memory and, if configured, Supabase.
+`refreshLiveNews` (cron every 30 min, or lazily on LIVE requests via `waitUntil`) queries GDELT DOC 2.0, then runs the deterministic pipeline (`apps/api/src/pipeline`). Clustering combines TF-IDF cosine, headline shingles, weighted entity overlap, geographic and temporal distance and category affinity, with hard blocks (distinct places >150 km apart, >72 h apart, incompatible categories). Optional cheap-tier AI summaries are added for the most-covered clusters. Results go to memory and, if `DATABASE_URL` is set, to Neon in one transaction, followed by an `ingestion_runs` record.
 
 ### AI assistant
 
@@ -62,6 +66,26 @@ WorldLens is a small TypeScript monorepo: a static web app, one Cloudflare Worke
 
 The AI has no code path to steps 3–4.
 
+## Persistence
+
+Optional. Without `DATABASE_URL` the API keeps ingested live news and payments in isolate memory. Curated history and DEMO scenarios ship with the code and are served from memory either way; the database stores ingested live news, ingestion runs and payment state.
+
+```
+caller                       SqlClient implementation      transport   database
+Worker                    ─▶ neonHttpClient (Neon driver)  ─ HTTPS ──▶ Neon PostgreSQL + PostGIS
+pnpm dev:node, Neon URL   ─▶ neonHttpClient (Neon driver)  ─ HTTPS ──▶ Neon PostgreSQL + PostGIS
+pnpm dev:node, localhost  ─▶ nodePostgresClient (pg)       ─ TCP ────▶ local PostgreSQL + PostGIS
+pnpm test:db              ─▶ nodePostgresClient (pg)       ─ TCP ────▶ throwaway local PostgreSQL + PostGIS
+```
+
+- `createDeps` builds one `SqlClient` (`src/data/sql.ts`: `query(text, params)` and `transaction(queries)`, all or nothing) and passes it to `PostgresNewsRepository`, which wraps the memory repository and adds stored live news, and `PostgresPaymentStore` (`src/data/postgres.ts`).
+- In the Worker the client is the Neon serverless driver in HTTP mode: `neon(url)` with `sql.query` and `sql.transaction`, one HTTPS fetch per query or per non-interactive transaction, so there is no connection to keep alive. Timeout 8 s per query, 16 s per transaction (`AbortSignal.timeout`). WebSocket `Pool`/`Client` and Hyperdrive are not used. `DATABASE_URL` is Neon's pooled connection string for the role `worldlens_app`.
+- The Node dev server uses node-postgres (`src/data/sql-node.ts`) only when `DATABASE_URL` points at `localhost`, `127.0.0.1` or `::1` (`isLocalDatabaseUrl`); any other URL uses the Neon HTTP driver. `sql-node.ts` is imported by the dev server and tests only, never bundled into the Worker. Playwright e2e sets `DATABASE_URL=''`, so it never touches a database.
+- All SQL is parameterised; only fixed column lists and names from constants are interpolated. Event reads call the query functions `events_in_window` and `event_by_id`. An ingestion writes `news_sources`, `events`, `articles` and `event_articles` as four upserts in one transaction, each passing its rows as one JSON parameter expanded with `jsonb_to_recordset`. Webhook idempotency: `insert into paypal_webhook_events … on conflict (event_id) do nothing returning event_id`.
+- Repository calls report to the provider-health key `database`. `GET /api/health` lists it under `providers`, next to `repository` (`neon+memory`, `postgres+memory` with node-postgres, or `memory`).
+
+Schema, migrations (`db/`) and access control: [DATA_MODEL.md](DATA_MODEL.md).
+
 ## Failure isolation
 
 | Failure             | Behaviour                                                                    |
@@ -72,9 +96,9 @@ The AI has no code path to steps 3–4.
 | historical-basemaps | “border dataset unreachable” (no fake borders)                               |
 | MapTiler            | bundled Natural Earth II imagery, ellipsoid terrain, notice                  |
 | PayPal              | explicit error; never a success state                                        |
-| Supabase            | reads fall back to memory; provider marked degraded                          |
+| Database (Neon)     | reads fall back to memory, payments fail; `database` marked `degraded/down`  |
 | Cesium/WebGL        | React error boundary keeps panels, list and timeline usable                  |
 
 ## Security
 
-Secrets stay in the Worker (wrangler secrets / `.dev.vars`). CORS allow-list, security headers (CSP `default-src 'none'` on API responses, `X-Frame-Options: DENY`, `nosniff`, HSTS on https), token-bucket rate limits (reads, AI, payments), body-size limits, Zod validation of all inputs and provider responses, https-only URL validation, HTML/control-character stripping of provider metadata, no rendering of publisher HTML, `rel="noopener noreferrer"` on external links, Supabase RLS + explicit grants.
+Secrets stay in the Worker (wrangler secrets / `.dev.vars`). CORS allow-list, security headers (CSP `default-src 'none'` on API responses, `X-Frame-Options: DENY`, `nosniff`, HSTS on https), token-bucket rate limits (reads, AI, payments), body-size limits, Zod validation of all inputs and provider responses, https-only URL validation, HTML/control-character stripping of provider metadata, no rendering of publisher HTML, `rel="noopener noreferrer"` on external links. Browsers never connect to the database; only the Worker does, with parameterised SQL, as the least-privilege role `worldlens_app` (explicit GRANTs in `db/grants.sql`, no RLS — see [DATA_MODEL.md](DATA_MODEL.md#access-control)).

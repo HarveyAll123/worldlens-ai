@@ -1,6 +1,6 @@
 # Data model
 
-Runtime shapes are defined once in `packages/shared/src/schemas.ts` (Zod). The PostgreSQL schema lives in `supabase/migrations/` and is smoke-tested by `pnpm test:db` against a local PostGIS.
+Runtime shapes are defined once in `packages/shared/src/schemas.ts` (Zod). The PostgreSQL + PostGIS schema lives in `db/migrations/` (hosted on Neon, see [Migrations](#migrations)) and is smoke-tested by `pnpm test:db` against a local PostGIS. The database is optional: it stores ingested live news, ingestion runs and payment state, while curated history and DEMO scenarios ship with the code and are served from memory.
 
 ## Time
 
@@ -26,6 +26,8 @@ An **event** is the globe marker. News events aggregate many articles; historica
 `events`: id, kind (`news|historical`), is_demo, title, summary, why_it_matters, category, tags, time_start/time_end/date_precision/date_approximate, importance (1–5, LOD), confidence (clustering × location), conflict_id, counts, wikipedia_title, location (name, precision, confidence, country_code, `geography(Point)`), participants (jsonb), image (jsonb), provenance (jsonb), generated `period tstzrange`. GiST on `geom` and `period`.
 
 Related tables: `event_locations`, `event_geometries`, `event_relations`, `articles`, `event_articles`, `media_assets`, `citations`.
+
+Ingestion writes `news_sources`, `events` and `articles` as upserts by id (`on conflict (id) do update`) and `event_articles` with `on conflict do nothing`, so re-ingesting a story updates its rows. The four statements run in one transaction, each passing its rows as one JSON parameter expanded with `jsonb_to_recordset`.
 
 ### Knowledge graph (`event_relations`)
 
@@ -57,12 +59,36 @@ Runtime source today: historical-basemaps snapshots fetched from a pinned commit
 
 ## Payments
 
-`payment_actions` (id `wl_…`, option, event, amount, currency, state, environment, PayPal order id (unique), capture id, PayPal status, last error) — the **server-side truth**. States: `REVIEW → CREATED → APPROVED → CAPTURED|PENDING|DECLINED|FAILED|CANCELLED → REFUNDED`, enforced by `canTransition()` so late/duplicate events cannot downgrade a capture. `payment_transactions` is the audit log. `paypal_webhook_events` (primary key = PayPal event id) gives webhook idempotency.
+`payment_actions` (id `wl_…`, option, event, amount, currency, state, environment, PayPal order id (unique), capture id, PayPal status, last error) — the **server-side truth**. States: `REVIEW → CREATED → APPROVED → CAPTURED|PENDING|DECLINED|FAILED|CANCELLED → REFUNDED`, enforced by `canTransition()` so late/duplicate events cannot downgrade a capture. `payment_transactions` is the audit log. `paypal_webhook_events` (primary key = PayPal event id) gives webhook idempotency (`insert … on conflict (event_id) do nothing returning event_id`: a returned row means first delivery).
 
 ## Operations
 
-`provider_health`, `ingestion_runs`.
+`provider_health`, `ingestion_runs` (one row per ingestion: provider, start/finish, stage counts, errors), `schema_migrations` (created by the migration runner).
 
-## Row-level security
+## Migrations
 
-RLS is enabled on every table. Public content tables have a read-only `select` policy and `SELECT` grants for `anon`/`authenticated`; payments, AI logs and operations tables have no policies and all privileges revoked from those roles. The Worker uses the service-role key.
+| File                                           | Contents                                                                                               |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `db/migrations/20261014000001_core_schema.sql` | `create extension if not exists postgis`, tables, CHECK constraints, GiST indexes                      |
+| `db/migrations/20261014000002_functions.sql`   | query functions `events_in_window`, `event_by_id`, `geometries_at`, `frontlines_at`, `prune_live_news` |
+| `db/grants.sql`                                | least-privilege grants for `worldlens_app` (see below)                                                 |
+| `db/tests/smoke.sql`                           | SQL smoke checks, run by `pnpm test:db`                                                                |
+
+`pnpm db:migrate` (`scripts/db-migrate.ts`) records applied files in `schema_migrations`, applies each new migration in its own transaction, then re-applies `db/grants.sql` on every run (so the role can be created after the first migration). It reads `MIGRATION_DATABASE_URL`, else `DATABASE_URL`, from the environment, then from `apps/api/.dev.vars`. Use the owner role (e.g. `neondb_owner`) over Neon's direct connection string (host without `-pooler`): the first migration enables PostGIS, which needs the owner. The runner warns on a `-pooler` host and prints only host and database name, never the connection string.
+
+`pnpm test:db` creates a throwaway cluster from the locally installed PostgreSQL + PostGIS (PostgreSQL 16 + PostGIS 3 in the build environment) and the role `worldlens_app`, runs the real runner twice (the second run must apply nothing), runs `db/tests/smoke.sql`, then runs the repository integration tests (`apps/api/src/data/postgres.integration.test.ts`) connected as `worldlens_app`.
+
+## Access control
+
+Browsers never connect to the database; only the API Worker does, with `DATABASE_URL` (Neon pooled connection string) as the role `worldlens_app`. There is no RLS: Supabase's `anon`/`authenticated`/`service_role` roles do not exist on Neon, so the policies were replaced by explicit GRANTs in `db/grants.sql`:
+
+| Objects                                                                            | `worldlens_app`                |
+| ---------------------------------------------------------------------------------- | ------------------------------ |
+| content tables (sources, events, articles, geography, conflicts, media, citations) | select, insert, update, delete |
+| `payment_actions`                                                                  | select, insert, update         |
+| `payment_transactions`, `paypal_webhook_events`, `ingestion_runs`                  | select, insert                 |
+| `ai_outputs`, `provider_health`                                                    | select, insert, update, delete |
+| sequences                                                                          | usage                          |
+| the query functions above, including `prune_live_news`                             | execute                        |
+
+Create the role with SQL while connected as the owner — `create role worldlens_app with login password '<password>';` — not in the Neon console: roles created through the Neon Console, CLI or API inherit `neon_superuser` (e.g. `CREATEROLE`, `pg_write_all_data`), whereas SQL-created roles get only what is granted. Until the role exists, `db/grants.sql` skips with a notice. The smoke test asserts that `worldlens_app` cannot delete payments, rewrite webhook receipts, delete payment transactions, or create or drop tables.
