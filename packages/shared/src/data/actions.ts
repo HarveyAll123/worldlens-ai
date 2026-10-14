@@ -20,6 +20,7 @@ export const ACTION_OPTIONS: ActionOption[] = [
   {
     id: 'act-quake-relief-sandbox',
     eventIds: ['demo-news-sulawesi-quake-relief'],
+    appliesToLiveCategories: [],
     title: 'Emergency relief (sandbox demo)',
     description:
       'Simulates a contribution toward emergency shelter and clean water in the demo earthquake scenario.',
@@ -38,6 +39,7 @@ export const ACTION_OPTIONS: ActionOption[] = [
   {
     id: 'act-flood-relief-sandbox',
     eventIds: ['demo-news-sylhet-flood-relief'],
+    appliesToLiveCategories: [],
     title: 'Flood relief kits (sandbox demo)',
     description: 'Simulates a contribution toward food, water and hygiene kits in the demo flood scenario.',
     purpose: 'Flood relief — demo scenario',
@@ -55,6 +57,7 @@ export const ACTION_OPTIONS: ActionOption[] = [
   {
     id: 'act-wildfire-recovery-sandbox',
     eventIds: ['demo-news-attica-wildfire-recovery'],
+    appliesToLiveCategories: [],
     title: 'Wildfire recovery (sandbox demo)',
     description: 'Simulates a contribution toward temporary housing and reforestation in the demo wildfire scenario.',
     purpose: 'Wildfire recovery — demo scenario',
@@ -65,6 +68,25 @@ export const ACTION_OPTIONS: ActionOption[] = [
     maxAmount: 500,
     informationalLinks: [
       { name: 'ReliefWeb (UN OCHA)', url: 'https://reliefweb.int/', note: 'Humanitarian situation reports.' },
+    ],
+    sandbox: true,
+  },
+  {
+    id: 'act-live-disaster-sandbox',
+    eventIds: [],
+    appliesToLiveCategories: ['disaster', 'humanitarian'],
+    title: 'Sandbox demo contribution (not a real donation)',
+    description:
+      'Demonstrates the Take Action flow on a live disaster story. This PayPal SANDBOX payment does NOT reach anyone affected by the event. To give for real, use the organisations linked below directly.',
+    purpose: 'Sandbox demonstration — live disaster story',
+    beneficiary: BENEFICIARY,
+    currency: 'USD',
+    suggestedAmounts: [5, 10, 20],
+    minAmount: 1,
+    maxAmount: 100,
+    informationalLinks: [
+      { name: 'ReliefWeb (UN OCHA)', url: 'https://reliefweb.int/', note: 'Find appeals and situation reports. ' + INFO_ONLY },
+      { name: 'IFRC (International Federation of Red Cross and Red Crescent Societies)', url: 'https://www.ifrc.org/', note: INFO_ONLY },
     ],
     sandbox: true,
   },

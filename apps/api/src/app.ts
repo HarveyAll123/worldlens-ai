@@ -1,0 +1,358 @@
+/**
+ * WorldLens API (Hono). Runs on Cloudflare Workers (src/index.ts) and on Node for local
+ * development and end-to-end tests (src/node-server.ts).
+ */
+import { Hono, type Context } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
+import { cors } from 'hono/cors';
+import { z, ZodError } from 'zod';
+import {
+  CreatePaymentRequestSchema,
+  EventKindSchema,
+  ResolutionSchema,
+  TEMPORAL_CONFIG,
+  clampToNavigable,
+  isBeforeNavigable,
+  parseBBox,
+  parseIso,
+  toIso,
+} from '@worldlens/shared';
+import { runAgent, ChatRequestSchema, type ChatResponse } from './ai/agent';
+import { aiFraming, heuristicFraming } from './ai/framing';
+import { runOfflineAssistant } from './ai/offline';
+import { AiUnavailableError } from './ai/provider';
+import type { ToolContext } from './ai/tools-impl';
+import type { AppDeps } from './deps';
+import { clientKey, RateLimiter } from './lib/ratelimit';
+import { PaymentError } from './payments/service';
+import { selectBorderSnapshot, type BorderDetail } from './providers/borders';
+import { runIngestion } from './pipeline/ingest';
+
+type Defer = (p: Promise<unknown>) => void;
+type AppEnv = { Variables: { defer: Defer } };
+
+const LIVE_REFRESH_MS = 15 * 60_000;
+
+/** Refresh live news in the background (never blocks a request). */
+export function refreshLiveNews(deps: AppDeps, force = false): Promise<void> {
+  if (!deps.news) return Promise.resolve();
+  const status = deps.repo.liveNewsStatus();
+  const stale = !status.lastIngestedAt || deps.now() - Date.parse(status.lastIngestedAt) > LIVE_REFRESH_MS;
+  if (!force && !stale) return Promise.resolve();
+  return deps.ingestFlight.run('live', async () => {
+    const { events, run } = await runIngestion({
+      provider: deps.news!,
+      queries: deps.config.gdelt.queries,
+      health: deps.health,
+      nowMs: deps.now(),
+      delayMs: 5500,
+    });
+    await deps.repo.replaceLiveNews(events, deps.now());
+    const rec = deps.repo as unknown as { recordIngestionRun?: (r: unknown) => Promise<void> };
+    await rec.recordIngestionRun?.(run);
+  });
+}
+
+export function createApp(deps: AppDeps, defaults: { defer?: Defer } = {}) {
+  const app = new Hono<AppEnv>();
+  const aiLimiter = RateLimiter.perMinute(deps.config.ai.requestsPerMinute, deps.now);
+  const payLimiter = RateLimiter.perMinute(10, deps.now);
+  const readLimiter = RateLimiter.perMinute(600, deps.now);
+
+  app.use('*', async (c, next) => {
+    c.set('defer', defaults.defer ?? ((p) => void p.catch((err: unknown) => console.error('[deferred]', err))));
+    await next();
+    c.header('X-Content-Type-Options', 'nosniff');
+    c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+    c.header('X-Frame-Options', 'DENY');
+    c.header('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
+    c.header('Cross-Origin-Resource-Policy', 'same-site');
+    if (new URL(c.req.url).protocol === 'https:') c.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  });
+
+  app.use(
+    '/api/*',
+    cors({
+      origin: (origin) => (deps.config.allowedOrigins.includes(origin) ? origin : null),
+      allowMethods: ['GET', 'POST', 'OPTIONS'],
+      allowHeaders: ['Content-Type'],
+      maxAge: 600,
+    }),
+  );
+
+  app.use('/api/*', async (c, next) => {
+    if (c.req.path === '/api/paypal/webhook') return next();
+    const r = readLimiter.take(clientKey(c.req.raw.headers));
+    if (!r.ok) return c.json({ error: 'RATE_LIMITED', message: 'Too many requests.' }, 429, { 'Retry-After': String(r.retryAfterS) });
+    return next();
+  });
+
+  app.onError((err, c) => {
+    if (err instanceof PaymentError) return c.json({ error: err.code, message: err.message }, err.status);
+    if (err instanceof ZodError) return c.json({ error: 'INVALID_REQUEST', message: err.issues[0]?.message ?? 'Invalid request' }, 400);
+    console.error('[api] unhandled', err);
+    return c.json({ error: 'INTERNAL', message: 'Something went wrong.' }, 500);
+  });
+
+  const now = () => deps.now();
+
+  /* ------------------------------------------------------------- health & config */
+
+  app.get('/api/health', (c) => {
+    c.header('Cache-Control', 'no-store');
+    return c.json({
+      ok: true,
+      time: toIso(now()),
+      repository: deps.repo.name,
+      liveNews: deps.repo.liveNewsStatus(),
+      providers: deps.health.all(),
+      ai: { available: deps.ai.available, models: deps.ai.available ? { fast: deps.ai.modelFor('fast'), strong: deps.ai.modelFor('strong') } : null, budget: deps.budget.status() },
+      payments: deps.payments.publicConfig(),
+    });
+  });
+
+  app.get('/api/config', (c) => {
+    c.header('Cache-Control', 'no-store');
+    return c.json({
+      temporal: { minNavigableYear: TEMPORAL_CONFIG.minNavigableYear, comingSoonLabel: TEMPORAL_CONFIG.comingSoonLabel },
+      ai: { available: deps.ai.available && !deps.budget.status().exhausted },
+      paypal: deps.payments.publicConfig(),
+      news: { liveProvider: deps.news ? 'gdelt' : null },
+    });
+  });
+
+  /* ------------------------------------------------------------- events */
+
+  const ListQuery = z.object({
+    mode: z.enum(['live', 'historical']).default('live'),
+    t: z.string().optional(),
+    res: ResolutionSchema.default('year'),
+    bbox: z.string().optional(),
+    kinds: z.string().optional(),
+    demo: z.enum(['0', '1']).default('1'),
+    limit: z.coerce.number().int().min(1).max(500).default(200),
+  });
+
+  app.get('/api/events', async (c) => {
+    const q = ListQuery.parse(c.req.query());
+    const nowMs = now();
+    let timeMs = nowMs;
+    if (q.mode === 'historical' && q.t) {
+      timeMs = parseIso(q.t);
+      if (isBeforeNavigable(timeMs)) return c.json({ error: 'BEFORE_RANGE', message: TEMPORAL_CONFIG.comingSoonLabel }, 400);
+      timeMs = clampToNavigable(timeMs, nowMs);
+    }
+    const kinds = (q.kinds ?? (q.mode === 'live' ? 'news' : 'historical,news')).split(',').map((k) => EventKindSchema.parse(k.trim()));
+    if (q.mode === 'live') c.get('defer')(refreshLiveNews(deps));
+    const result = await deps.repo.listEvents({
+      mode: q.mode,
+      timeMs,
+      resolution: q.res,
+      nowMs,
+      bbox: parseBBox(q.bbox),
+      kinds,
+      includeDemo: q.demo === '1',
+      limit: q.limit,
+    });
+    c.header('Cache-Control', q.mode === 'live' ? 'no-store' : 'public, max-age=300');
+    return c.json({
+      ...result,
+      window: { start: toIso(result.window.startMs), end: toIso(result.window.endMs) },
+      live: q.mode === 'live' ? { ...deps.repo.liveNewsStatus(), provider: deps.news ? 'gdelt' : null, state: deps.health.get('gdelt').state } : undefined,
+    });
+  });
+
+  app.get('/api/events/density', async (c) => {
+    const q = z
+      .object({ from: z.string(), to: z.string(), bins: z.coerce.number().int().min(1).max(400).default(120) })
+      .parse(c.req.query());
+    const counts = await deps.repo.density(parseIso(q.from), parseIso(q.to), q.bins);
+    c.header('Cache-Control', 'public, max-age=3600');
+    return c.json({ counts });
+  });
+
+  app.get('/api/events/:id', async (c) => {
+    const e = await deps.repo.getEvent(c.req.param('id'), now());
+    if (!e) return c.json({ error: 'NOT_FOUND', message: 'Event not found' }, 404);
+    const actions = deps.repo.actionOptions(e);
+    return c.json({ event: e, actions });
+  });
+
+  app.get('/api/events/:id/sources', async (c) => {
+    const id = c.req.param('id');
+    const e = await deps.repo.getEvent(id, now());
+    if (!e) return c.json({ error: 'NOT_FOUND', message: 'Event not found' }, 404);
+    const articles = await deps.repo.getArticles(id, now());
+    const sources = await deps.repo.getSources(articles.map((a) => a.sourceId));
+    const perspectives = {
+      byRating: count(sources.map((s) => s.rating.value)),
+      byCountry: count(sources.map((s) => s.nationalPerspective ?? 'Unknown')),
+      byType: count(sources.map((s) => s.sourceType)),
+    };
+    return c.json({ eventId: id, isDemo: e.isDemo, articles, sources, perspectives });
+  });
+
+  app.get('/api/events/:id/context', async (c) => {
+    const related = await deps.repo.getRelated(c.req.param('id'), now());
+    return c.json({ related });
+  });
+
+  app.post('/api/events/:id/framing', async (c) => {
+    const id = c.req.param('id');
+    const e = await deps.repo.getEvent(id, now());
+    if (!e) return c.json({ error: 'NOT_FOUND', message: 'Event not found' }, 404);
+    const articles = await deps.repo.getArticles(id, now());
+    const sources = await deps.repo.getSources(articles.map((a) => a.sourceId));
+    if (articles.length < 2) {
+      return c.json({ framing: null, message: 'At least two articles are needed to compare framing.' });
+    }
+    const useAi = deps.ai.available && deps.budget.canSpend() && aiLimiter.take(`framing:${clientKey(c.req.raw.headers)}`).ok;
+    if (useAi) {
+      try {
+        return c.json({ framing: await aiFraming(id, articles, sources, e.isDemo, { provider: deps.ai, budget: deps.budget }) });
+      } catch (err) {
+        deps.health.fail('anthropic', err);
+      }
+    }
+    return c.json({ framing: heuristicFraming(id, articles, sources, e.isDemo) });
+  });
+
+  /* ------------------------------------------------------------- history & geo */
+
+  app.get('/api/history/wikipedia', async (c) => {
+    const title = z.string().min(1).max(300).parse(c.req.query('title'));
+    try {
+      const summary = await deps.wikipedia.summary(title);
+      c.header('Cache-Control', 'public, max-age=86400');
+      return c.json({ summary, available: true });
+    } catch {
+      return c.json({ summary: null, available: false, message: 'Wikipedia is unavailable right now; showing WorldLens’s own summary.' });
+    }
+  });
+
+  app.get('/api/geo/borders', async (c) => {
+    const q = z.object({ t: z.string(), detail: z.enum(['low', 'medium', 'high']).default('low') }).parse(c.req.query());
+    const ms = parseIso(q.t);
+    if (isBeforeNavigable(ms)) return c.json({ selection: { available: false, reason: TEMPORAL_CONFIG.comingSoonLabel } });
+    const selection = selectBorderSnapshot(ms);
+    if (!selection.available || selection.source === 'natural-earth') {
+      c.header('Cache-Control', 'public, max-age=3600');
+      return c.json({ selection, features: null });
+    }
+    try {
+      const features = await deps.borders.snapshot(selection.snapshotYear!, q.detail as BorderDetail);
+      c.header('Cache-Control', 'public, max-age=86400');
+      return c.json({ selection, features });
+    } catch {
+      return c.json({
+        selection: { available: false, requestedYear: selection.requestedYear, reason: 'Historical border dataset is unreachable right now.' },
+        features: null,
+      });
+    }
+  });
+
+  app.get('/api/geo/frontlines', async (c) => {
+    const q = z.object({ t: z.string(), conflict: z.string().max(120).optional() }).parse(c.req.query());
+    const lines = await deps.repo.frontlinesAt(parseIso(q.t), q.conflict);
+    return c.json({
+      frontlines: lines,
+      note: lines.length ? undefined : 'No verified frontline geometry for this date.',
+    });
+  });
+
+  app.get('/api/search', async (c) => {
+    const q = z.object({ q: z.string().min(1).max(200), demo: z.enum(['0', '1']).default('1') }).parse(c.req.query());
+    const results = await deps.repo.search(q.q, { limit: 12, nowMs: now(), includeDemo: q.demo === '1' });
+    return c.json({ results });
+  });
+
+  /* ------------------------------------------------------------- AI */
+
+  const toolContext = (): ToolContext => ({ repo: deps.repo, borders: deps.borders, payments: deps.payments, nowMs: now() });
+
+  app.post('/api/ai/chat', bodyLimit({ maxSize: 64 * 1024 }), async (c) => {
+    c.header('Cache-Control', 'no-store');
+    const req = ChatRequestSchema.parse(await c.req.json());
+    const key = clientKey(c.req.raw.headers);
+    let fallbackReason: string | null = null;
+    if (!deps.ai.available) fallbackReason = 'AI is not configured on this server.';
+    else if (!deps.budget.canSpend()) fallbackReason = 'Daily AI budget reached.';
+    else if (!aiLimiter.take(key).ok) fallbackReason = 'AI rate limit reached; try again in a minute.';
+    if (!fallbackReason) {
+      try {
+        const res: ChatResponse = await runAgent(req, { provider: deps.ai, budget: deps.budget, tools: toolContext() });
+        deps.health.ok('anthropic');
+        return c.json(res);
+      } catch (err) {
+        deps.health.fail('anthropic', err);
+        fallbackReason = err instanceof AiUnavailableError ? err.message : 'AI request failed.';
+        if (!(err instanceof AiUnavailableError)) console.error('[ai] agent error', err);
+      }
+    }
+    const offline = await runOfflineAssistant(req, toolContext());
+    return c.json({ ...offline, notice: `${fallbackReason} ${offline.notice ?? ''}`.trim() });
+  });
+
+  app.get('/api/ai/usage', (c) => {
+    c.header('Cache-Control', 'no-store');
+    return c.json({ budget: deps.budget.status(), recent: deps.budget.recent.slice(-20) });
+  });
+
+  /* ------------------------------------------------------------- payments */
+
+  const payGuard = (c: Context<AppEnv>) => {
+    const r = payLimiter.take(clientKey(c.req.raw.headers));
+    if (!r.ok) throw new PaymentError('RATE_LIMITED', 'Too many payment requests. Please wait a minute.', 409);
+    c.header('Cache-Control', 'no-store');
+  };
+
+  app.post('/api/payments/orders', bodyLimit({ maxSize: 8 * 1024 }), async (c) => {
+    payGuard(c);
+    const req = CreatePaymentRequestSchema.parse(await c.req.json());
+    const { paymentId, orderId, record } = await deps.payments.create(req);
+    return c.json({ paymentId, orderId, state: record.state, environment: record.environment });
+  });
+
+  app.post('/api/payments/orders/:orderId/capture', async (c) => {
+    payGuard(c);
+    const record = await deps.payments.capture(c.req.param('orderId'));
+    return c.json({ payment: record, verified: true, verifiedBy: 'PayPal Orders API capture response' });
+  });
+
+  app.post('/api/payments/orders/:orderId/cancel', async (c) => {
+    payGuard(c);
+    const record = await deps.payments.cancel(c.req.param('orderId'));
+    return c.json({ payment: record });
+  });
+
+  app.get('/api/payments/:id', async (c) => {
+    payGuard(c);
+    const record = await deps.payments.refresh(c.req.param('id'));
+    return c.json({ payment: record, verified: true, verifiedBy: 'PayPal Orders API (GET order)' });
+  });
+
+  app.post('/api/paypal/webhook', bodyLimit({ maxSize: 256 * 1024 }), async (c) => {
+    const raw = await c.req.text();
+    const result = await deps.payments.webhook(c.req.raw.headers, raw);
+    return c.json(result);
+  });
+
+  /* ------------------------------------------------------------- ingestion */
+
+  app.post('/api/ingest/run', async (c) => {
+    const token = deps.config.ingestToken;
+    const auth = c.req.header('Authorization');
+    if (!token || auth !== `Bearer ${token}`) return c.json({ error: 'UNAUTHORIZED' }, 401);
+    await refreshLiveNews(deps, true);
+    return c.json({ ok: true, live: deps.repo.liveNewsStatus(), gdelt: deps.health.get('gdelt') });
+  });
+
+  app.notFound((c) => c.json({ error: 'NOT_FOUND', message: 'No such endpoint' }, 404));
+  return app;
+}
+
+function count(values: string[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const v of values) out[v] = (out[v] ?? 0) + 1;
+  return out;
+}

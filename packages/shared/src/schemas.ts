@@ -354,7 +354,13 @@ export type Frontline = z.infer<typeof FrontlineSchema>;
 
 export const ActionOptionSchema = z.object({
   id: IdSchema,
-  eventIds: z.array(IdSchema).min(1),
+  /** Demo events this option is attached to. */
+  eventIds: z.array(IdSchema),
+  /**
+   * Live (non-demo) event categories for which this sandbox option may be offered.
+   * Such offers are still SANDBOX demos and are labelled as not reaching any real cause.
+   */
+  appliesToLiveCategories: z.array(EventCategorySchema).default([]),
   title: z.string().max(160),
   description: z.string().max(600),
   purpose: z.string().max(200),
