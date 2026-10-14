@@ -59,10 +59,14 @@ export interface WikipediaSummary {
   source: 'wikipedia';
 }
 
-/** Extract "File:Name.jpg" from an upload.wikimedia.org Commons URL; null for non-Commons. */
+/**
+ * Extract "File:Name.jpg" from a Commons media URL; null for non-Commons. The REST summary API
+ * now returns thumbnails on thumb.wikimedia.org (with utm_* query parameters) instead of
+ * upload.wikimedia.org, so both hosts are accepted.
+ */
 export function commonsFileFromUrl(url: string): string | null {
   const m =
-    /^https:\/\/upload\.wikimedia\.org\/wikipedia\/commons\/(?:thumb\/)?[0-9a-f]\/[0-9a-f]{2}\/([^/]+)/.exec(
+    /^https:\/\/(?:upload|thumb)\.wikimedia\.org\/wikipedia\/commons\/(?:thumb\/)?[0-9a-f]\/[0-9a-f]{2}\/([^/?#]+)/.exec(
       url,
     );
   return m ? `File:${decodeURIComponent(m[1]!)}` : null;
