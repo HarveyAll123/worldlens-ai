@@ -9,3 +9,4 @@ apps/web/public/vendor
 packages/shared/src/data/geo/*.json
 .wrangler
 apps/web/public/data
+.claude/skills
