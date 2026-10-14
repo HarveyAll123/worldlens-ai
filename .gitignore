@@ -14,3 +14,4 @@ blob-report
 apps/web/public/cesium
 apps/web/public/vendor
 perf-results
+.neon
