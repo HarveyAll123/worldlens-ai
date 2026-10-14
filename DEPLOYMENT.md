@@ -32,6 +32,8 @@ npx wrangler pages deploy dist --project-name worldlens
 
 Or connect the GitHub repo in the Pages dashboard: build command `pnpm --filter @worldlens/web build`, output `apps/web/dist`, environment variables `VITE_API_BASE_URL`, `VITE_MAPTILER_API_KEY`.
 
+> **Licence check before deploying `dist/`:** if you ran `pnpm data:fetch-basemaps`, Vite copies the git-ignored `public/vendor/historical-basemaps/` (GPL-3.0) into `dist/`. Either delete `apps/web/public/vendor` before building (the production API fetches the pinned files itself), or keep it and ship it under GPL-3.0 with its licence notice — see CONTENT_LICENSING.md.
+
 Alternatively serve the API under the same origin with a Worker route (`example.com/api/*`) and leave `VITE_API_BASE_URL` empty.
 
 ## 3. Database

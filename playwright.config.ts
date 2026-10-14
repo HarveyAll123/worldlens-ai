@@ -5,12 +5,17 @@ import { existsSync } from 'node:fs';
 const executablePath =
   process.env.PW_CHROMIUM_PATH ??
   (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const webglArgs = [
-  '--use-gl=angle',
-  '--use-angle=swiftshader',
-  '--enable-unsafe-swiftshader',
-  '--ignore-gpu-blocklist',
-];
+// Software WebGL (SwiftShader) by default so the suite runs in GPU-less CI containers.
+// PW_GPU=1 uses the machine's real GPU instead (for performance measurements).
+const webglArgs =
+  process.env.PW_GPU === '1'
+    ? ['--ignore-gpu-blocklist', '--enable-gpu']
+    : [
+        '--use-gl=angle',
+        '--use-angle=swiftshader',
+        '--enable-unsafe-swiftshader',
+        '--ignore-gpu-blocklist',
+      ];
 
 export default defineConfig({
   testDir: 'e2e',
