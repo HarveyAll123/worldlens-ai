@@ -1,6 +1,6 @@
 # Data model
 
-Runtime shapes are defined once in `packages/shared/src/schemas.ts` (Zod). The PostgreSQL schema lives in `supabase/migrations/` and is smoke-tested by `pnpm test:db` against a local PostGIS.
+Runtime shapes are defined once in `packages/shared/src/schemas.ts` (Zod). The PostgreSQL schema lives in `db/migrations/`, applied in order by `pnpm db:migrate` (`scripts/db-migrate.ts`), which then re-applies the role grants in `db/grants.sql` (setup: [MANUAL_SETUP.md → Neon](MANUAL_SETUP.md#neon)). `pnpm test:db` runs the migrations, grants, smoke checks and repository tests against a throwaway local PostGIS.
 
 ## Time
 
@@ -63,6 +63,6 @@ Runtime source today: historical-basemaps snapshots fetched from a pinned commit
 
 `provider_health`, `ingestion_runs`.
 
-## Row-level security
+## Access control
 
-RLS is enabled on every table. Public content tables have a read-only `select` policy and `SELECT` grants for `anon`/`authenticated`; payments, AI logs and operations tables have no policies and all privileges revoked from those roles. The Worker uses the service-role key.
+Browsers never connect to the database; only the API does, as the least-privilege `worldlens_app` role (`db/grants.sql`). It can read and write the content tables (ingestion upserts and pruning), select/insert/update `payment_actions`, only select/insert `payment_transactions`, `paypal_webhook_events` and `ingestion_runs` (payment history and webhook receipts are never deleted or rewritten), use `ai_outputs` and `provider_health`, and execute the query functions; `prune_live_news` is revoked from `public`. There is no row-level security. Migrations run as the database owner.

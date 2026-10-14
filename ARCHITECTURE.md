@@ -18,7 +18,7 @@ WorldLens is a small TypeScript monorepo: a static web app, one Cloudflare Worke
    ┌──────────────── Cloudflare Worker (Hono + Zod) ────────────────┐   MapTiler (imagery/terrain)
    │ routes: events, search, geo, history, ai, payments, webhook    │   or bundled Natural Earth II
    │ EventRepository: Memory (curated + DEMO + live cache)          │
-   │                  └─ SupabaseNewsRepository (PostgREST)          │
+   │                  └─ PostgresNewsRepository (Neon HTTP / pg)    │
    │ Providers: GDELT · Wikipedia/Commons · historical-basemaps     │
    │ Pipeline: normalise→dedupe→entities→locate→cluster→events      │
    │ AI: agent loop (Anthropic Messages API) + offline assistant    │
@@ -26,7 +26,7 @@ WorldLens is a small TypeScript monorepo: a static web app, one Cloudflare Worke
    │ cron (*/30): news ingestion                                    │
    └───────────────┬───────────────────────────┬────────────────────┘
                    ▼                           ▼
-      Supabase PostgreSQL + PostGIS      R2 (optional cache of simplified borders)
+        Neon PostgreSQL + PostGIS        R2 (optional cache of simplified borders)
 ```
 
 ## Packages
@@ -36,7 +36,7 @@ WorldLens is a small TypeScript monorepo: a static web app, one Cloudflare Worke
   - `schemas.ts`: Zod schemas for events, articles, sources/ratings (rating provenance enforced), geometry, frontlines, action options, payments, search, framing.
   - `tools.ts`: the AI tool registry (server data tools + client globe tools), JSON-Schema export, and `parseClientAction` for validation.
   - `data/`: curated historical events, conflicts, relations, publisher registry, DEMO scenarios, sandbox action options, frontline records, Natural Earth gazetteer.
-- **`apps/api`** — Hono app (`src/app.ts`) with a dependency container (`src/deps.ts`); `src/index.ts` is the Worker entry (fetch + scheduled), `src/node-server.ts` runs the same app on Node for development and e2e.
+- **`apps/api`** — Hono app (`src/app.ts`) with a dependency container (`src/deps.ts`); `src/index.ts` is the Worker entry (fetch + scheduled), `src/node-server.ts` runs the same app on Node for development and e2e. Persistence is `src/data/postgres.ts` (`PostgresNewsRepository`, `PostgresPaymentStore`) behind the `SqlClient` in `src/data/sql.ts`: the Neon serverless HTTP driver in the Worker, node-postgres (`sql-node.ts`) when the Node server's `DATABASE_URL` points at localhost. Without `DATABASE_URL`, live news and payments stay in memory (setup: [MANUAL_SETUP.md → Neon](MANUAL_SETUP.md#neon)).
 - **`apps/web`** — Vite + React 19; Cesium is created once by `GlobeController` and driven via store subscriptions.
 
 ## Key flows
@@ -47,7 +47,7 @@ WorldLens is a small TypeScript monorepo: a static web app, one Cloudflare Worke
 
 ### News ingestion
 
-`refreshLiveNews` (cron every 30 min, or lazily on LIVE requests via `waitUntil`) queries GDELT DOC 2.0, then runs the deterministic pipeline (`apps/api/src/pipeline`). Clustering combines TF-IDF cosine, headline shingles, weighted entity overlap, geographic and temporal distance and category affinity, with hard blocks (distinct places >150 km apart, >72 h apart, incompatible categories). Optional cheap-tier AI summaries are added for the most-covered clusters. Results go to memory and, if configured, Supabase.
+`refreshLiveNews` (cron every 30 min, or lazily on LIVE requests via `waitUntil`) queries GDELT DOC 2.0, then runs the deterministic pipeline (`apps/api/src/pipeline`). Clustering combines TF-IDF cosine, headline shingles, weighted entity overlap, geographic and temporal distance and category affinity, with hard blocks (distinct places >150 km apart, >72 h apart, incompatible categories). Optional cheap-tier AI summaries are added for the most-covered clusters. Results go to memory and, if `DATABASE_URL` is set, to Neon in one transaction.
 
 ### AI assistant
 
@@ -72,9 +72,9 @@ The AI has no code path to steps 3–4.
 | historical-basemaps | “border dataset unreachable” (no fake borders)                               |
 | MapTiler            | bundled Natural Earth II imagery, ellipsoid terrain, notice                  |
 | PayPal              | explicit error; never a success state                                        |
-| Supabase            | reads fall back to memory; provider marked degraded                          |
+| Neon (`database`)   | reads fall back to memory; provider status `degraded/down`                   |
 | Cesium/WebGL        | React error boundary keeps panels, list and timeline usable                  |
 
 ## Security
 
-Secrets stay in the Worker (wrangler secrets / `.dev.vars`). CORS allow-list, security headers (CSP `default-src 'none'` on API responses, `X-Frame-Options: DENY`, `nosniff`, HSTS on https), token-bucket rate limits (reads, AI, payments), body-size limits, Zod validation of all inputs and provider responses, https-only URL validation, HTML/control-character stripping of provider metadata, no rendering of publisher HTML, `rel="noopener noreferrer"` on external links, Supabase RLS + explicit grants.
+Secrets stay in the Worker (wrangler secrets / `.dev.vars`). CORS allow-list, security headers (CSP `default-src 'none'` on API responses, `X-Frame-Options: DENY`, `nosniff`, HSTS on https), token-bucket rate limits (reads, AI, payments), body-size limits, Zod validation of all inputs and provider responses, https-only URL validation, HTML/control-character stripping of provider metadata, no rendering of publisher HTML, `rel="noopener noreferrer"` on external links, parameterised SQL only, and a least-privilege `worldlens_app` database role with explicit grants (`db/grants.sql`; browsers never connect to the database).
