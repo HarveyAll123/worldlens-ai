@@ -13,6 +13,7 @@ import {
 import { FakePayPal } from './testing/fake-paypal';
 import { selectBorderSnapshot, HistoricalBordersProvider } from './providers/borders';
 import { ProviderHealth } from './providers/health';
+import { commonsFileFromUrl } from './providers/wikipedia';
 
 const NOW = utcMs(2026, 10, 14, 11, 25, 42);
 const offlineFetch = async () => new Response('offline', { status: 503 });
@@ -571,5 +572,33 @@ describe('border selection never extrapolates silently', () => {
     expect(feats).toHaveLength(1);
     expect(feats[0]!.properties.certainty).toBe('APPROXIMATE');
     expect(feats[0]!.properties.datasetPrecision).toBe(3);
+  });
+});
+
+describe('Wikimedia Commons image URLs', () => {
+  it('recognises Commons files on both upload and thumb hosts', () => {
+    expect(
+      commonsFileFromUrl(
+        'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/FullMoon2010.jpg/330px-FullMoon2010.jpg',
+      ),
+    ).toBe('File:FullMoon2010.jpg');
+    expect(
+      commonsFileFromUrl(
+        'https://thumb.wikimedia.org/wikipedia/commons/thumb/4/41/A_Man_on_the_Moon%2C_AS11-40-5903_%28cropped%29.jpg/330px-A_Man_on_the_Moon.jpg?utm_source=en.wikipedia.org',
+      ),
+    ).toBe('File:A_Man_on_the_Moon,_AS11-40-5903_(cropped).jpg');
+    expect(
+      commonsFileFromUrl(
+        'https://upload.wikimedia.org/wikipedia/commons/b/b8/Treaty.jpg?utm_source=en.wikipedia.org',
+      ),
+    ).toBe('File:Treaty.jpg');
+  });
+  it('rejects non-Commons (possibly non-free) images', () => {
+    expect(
+      commonsFileFromUrl(
+        'https://thumb.wikimedia.org/wikipedia/en/thumb/b/ba/Eiffel_Tower_logo.svg/330px-Eiffel_Tower_logo.svg.png',
+      ),
+    ).toBeNull();
+    expect(commonsFileFromUrl('https://example.com/wikipedia/commons/a/ab/X.jpg')).toBeNull();
   });
 });
