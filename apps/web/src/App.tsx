@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AssistantPanel } from './components/AssistantPanel';
+import { CountryPanel } from './components/CountryPanel';
 import { EventDetail } from './components/EventDetail';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { EventList } from './components/EventList';
@@ -16,6 +17,9 @@ import { useAppStore } from './state/store';
 function PanelBody() {
   const selected = useAppStore((s) => s.selectedEventId);
   const selectEvent = useAppStore((s) => s.selectEvent);
+  const country = useAppStore((s) => s.selectedCountry);
+  const selectCountry = useAppStore((s) => s.selectCountry);
+  if (country) return <CountryPanel country={country} onBack={() => selectCountry(null)} />;
   return selected ? <EventDetail id={selected} onBack={() => selectEvent(null)} /> : <EventList />;
 }
 
@@ -25,14 +29,17 @@ function MobileSheet() {
   const setSheet = useAppStore((s) => s.setSheet);
   const setExpanded = useAppStore((s) => s.setSheetExpanded);
   const selected = useAppStore((s) => s.selectedEventId);
+  const country = useAppStore((s) => s.selectedCountry);
   const label =
     sheet === 'assistant'
       ? 'Ask WorldLens'
       : sheet === 'search'
         ? 'Search'
-        : selected
-          ? 'Event details'
-          : 'Events';
+        : country
+          ? 'Country'
+          : selected
+            ? 'Event details'
+            : 'Events';
   return (
     <section
       className={`glass pointer-events-auto absolute inset-x-0 bottom-[108px] z-20 flex flex-col rounded-t-2xl transition-[height] duration-300 ${expanded ? 'h-[62dvh]' : 'h-[64px]'}`}

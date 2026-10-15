@@ -1,7 +1,9 @@
 /** TanStack Query hooks. Only what the camera/time/layers need is requested. */
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, queryOptions, useQueries, useQuery } from '@tanstack/react-query';
 import { floorTo, toIso, type Resolution } from '@worldlens/shared';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { BorderLineLike } from '../globe/GeometryLayers';
+import { parseOhmIndex } from '../globe/ohm';
 import { api } from '../lib/api';
 import { useAppStore } from '../state/store';
 
@@ -42,6 +44,7 @@ export function useVisibleEvents(limit: number) {
       key.bbox,
       kinds.join(','),
       layers.demo,
+      layers.battles,
       limit,
     ],
     queryFn: ({ signal }) =>
@@ -61,6 +64,7 @@ export function useVisibleEvents(limit: number) {
               bbox: key.bbox,
               kinds: kinds.join(','),
               demo: layers.demo,
+              battles: layers.battles,
               limit,
             },
             signal,
@@ -135,7 +139,102 @@ export function useFrontlines(enabled: boolean) {
   });
 }
 
-/** Natural Earth outlines (public domain), loaded lazily for highlights and modern borders. */
+export type BorderLineScale = '110m' | '50m' | '10m';
+
+async function fetchJson<T>(url: string): Promise<T> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${url} unavailable`);
+  return (await res.json()) as T;
+}
+
+/** OpenHistoricalMap dated borders: polity index (names, dates, ways) — loaded once. */
+export const ohmIndexQuery = queryOptions({
+  queryKey: ['ohm-index'],
+  queryFn: async () => parseOhmIndex(await fetchJson('/data/ohm/polities.json')),
+  staleTime: Number.POSITIVE_INFINITY,
+  retry: 1,
+});
+
+/** Simplified (~2 km) geometry of every OHM way and where it lies (inland / coast / sea). */
+export const ohmCoarseQuery = queryOptions({
+  queryKey: ['ohm-ways-coarse'],
+  queryFn: () => fetchJson<{ ways: number[][]; classes: string }>('/data/ohm/ways-coarse.json'),
+  staleTime: Number.POSITIVE_INFINITY,
+  retry: 1,
+});
+
+export interface FlagsEntry {
+  label: string | null;
+  related?: string[];
+  wiki: string | null;
+  description: string | null;
+  capitals: string[];
+  flags: Array<[string, string | null, string | null, boolean]>;
+}
+
+/** Flags (with the dates each was in use) and facts per Wikidata id (scripts/build-flags.ts). */
+export const ohmFlagsQuery = queryOptions({
+  queryKey: ['ohm-flags'],
+  queryFn: async () =>
+    (await fetchJson<{ items: Record<string, FlagsEntry> }>('/data/ohm/flags.json')).items,
+  staleTime: Number.POSITIVE_INFINITY,
+  retry: 1,
+});
+
+export function useOhmIndex(enabled: boolean) {
+  return useQuery({ ...ohmIndexQuery, enabled });
+}
+
+export function useOhmCoarseWays(enabled: boolean) {
+  return useQuery({ ...ohmCoarseQuery, enabled });
+}
+
+export function useOhmFlags(enabled: boolean) {
+  return useQuery({ ...ohmFlagsQuery, enabled });
+}
+
+/** Detailed (~100 m) OHM way geometry for the tiles in view; merged into one map. */
+export function useOhmDetail(tiles: string[]): Map<number, number[]> {
+  const results = useQueries({
+    queries: tiles.map((tile) => ({
+      queryKey: ['ohm-ways', tile],
+      queryFn: async () => {
+        const res = await fetch(`/data/ohm/ways-${tile}.json`);
+        if (!res.ok) throw new Error('detail tile unavailable');
+        return ((await res.json()) as { ways: Record<string, number[]> }).ways;
+      },
+      staleTime: Number.POSITIVE_INFINITY,
+      retry: 1,
+    })),
+  });
+  // Rebuild the merged map only when a tile finishes loading or the tile set changes.
+  const key = `${tiles.join(',')}|${results.map((r) => r.dataUpdatedAt).join(',')}`;
+  return useMemo(() => {
+    const out = new Map<number, number[]>();
+    for (const r of results)
+      if (r.data) for (const [k, v] of Object.entries(r.data)) out.set(Number(k), v);
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+}
+
+/** Natural Earth land boundary lines (public domain) for modern borders, by map scale. */
+export function useBorderLines(scale: BorderLineScale, enabled: boolean) {
+  return useQuery({
+    queryKey: ['border-lines', scale],
+    queryFn: async () => {
+      const res = await fetch(`/data/borders-${scale}.json`);
+      if (!res.ok) throw new Error('border lines unavailable');
+      return (await res.json()) as { features: BorderLineLike[] };
+    },
+    enabled,
+    staleTime: Number.POSITIVE_INFINITY,
+    // Keep drawing the previous scale while a finer one loads.
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** Natural Earth outlines (public domain), loaded lazily for highlights and modern labels. */
 export function useCountryOutlines(enabled: boolean) {
   return useQuery({
     queryKey: ['countries-110m'],

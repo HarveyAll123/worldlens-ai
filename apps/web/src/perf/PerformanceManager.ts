@@ -44,6 +44,11 @@ export interface PerformanceManagerOptions {
   cooldownMs?: number;
   maxIntervalMs?: number;
   allowHigh?: boolean;
+  /**
+   * Highest useful resolution scale: the display's pixel ratio (capped at 2). Scale 1 renders
+   * at CSS pixels, which a high-DPI screen then stretches — blurry text, lines and imagery.
+   */
+  maxResolution?: number;
   now?: () => number;
 }
 
@@ -67,6 +72,7 @@ export class PerformanceManager {
   private readonly cooldownMs: number;
   private readonly maxIntervalMs: number;
   private readonly allowHigh: boolean;
+  private readonly maxResolution: number;
   private readonly now: () => number;
 
   constructor(
@@ -79,15 +85,22 @@ export class PerformanceManager {
     this.cooldownMs = opts.cooldownMs ?? 3000;
     this.maxIntervalMs = opts.maxIntervalMs ?? 250;
     this.allowHigh = opts.allowHigh ?? true;
+    this.maxResolution = opts.maxResolution ?? 1;
     this.now = opts.now ?? (() => performance.now());
     this.preference = preference;
     const tier = preference === 'AUTO' ? initial : preference;
-    this.q = { tier, resolutionScale: TIER_SETTINGS[tier].resolutionMax, targetFps: 60 };
+    // Start sharp (the display's own resolution); LOW starts mid-range for weak devices.
+    this.q = { tier, resolutionScale: this.maxRes(tier), targetFps: 60 };
     if (tier === 'LOW')
       this.q.resolutionScale = round1(
         (TIER_SETTINGS.LOW.resolutionMin + TIER_SETTINGS.LOW.resolutionMax) / 2,
       );
-    if (tier === 'HIGH') this.q.resolutionScale = TIER_SETTINGS.HIGH.resolutionMin;
+  }
+
+  /** A tier's top resolution on this display (no point exceeding its pixel ratio). */
+  private maxRes(tier: QualityTier): number {
+    const s = TIER_SETTINGS[tier];
+    return Math.max(s.resolutionMin, Math.min(s.resolutionMax, this.maxResolution));
   }
 
   get quality(): QualityState {
@@ -104,16 +117,11 @@ export class PerformanceManager {
   }
 
   /** Manual tier or AUTO. Manual tiers pin the tier at its default resolution. */
-  setPreference(p: QualityPreference, maxResolution = 2): void {
+  setPreference(p: QualityPreference): void {
     this.preference = p;
     this.badStreak = this.goodStreak = 0;
-    if (p !== 'AUTO') {
-      const s = TIER_SETTINGS[p];
-      this.apply(
-        { tier: p, resolutionScale: Math.min(maxResolution, s.resolutionMax), targetFps: 60 },
-        `manual ${p}`,
-      );
-    }
+    if (p !== 'AUTO')
+      this.apply({ tier: p, resolutionScale: this.maxRes(p), targetFps: 60 }, `manual ${p}`);
   }
 
   /** Call once per rendered frame. */
@@ -179,7 +187,7 @@ export class PerformanceManager {
     if (i > 0) {
       const lower = TIERS[i - 1]!;
       return this.apply(
-        { ...this.q, tier: lower, resolutionScale: TIER_SETTINGS[lower].resolutionMax },
+        { ...this.q, tier: lower, resolutionScale: this.maxRes(lower) },
         `${reason}: drop to ${lower}`,
       );
     }
@@ -192,7 +200,6 @@ export class PerformanceManager {
   }
 
   private improve(p75: number): void {
-    const s = TIER_SETTINGS[this.q.tier];
     const reason = `p75 ${p75.toFixed(1)} ms with headroom`;
     if (this.q.targetFps === 30) {
       // Only return to a 60 FPS target if we could plausibly hold it.
@@ -200,7 +207,7 @@ export class PerformanceManager {
         return this.apply({ ...this.q, targetFps: 60 }, `${reason}: retarget 60 FPS`);
       return;
     }
-    if (this.q.resolutionScale + 0.1 <= s.resolutionMax + 1e-6) {
+    if (this.q.resolutionScale + 0.1 <= this.maxRes(this.q.tier) + 1e-6) {
       return this.apply(
         { ...this.q, resolutionScale: round1(this.q.resolutionScale + 0.1) },
         `${reason}: raise resolution`,
@@ -210,7 +217,15 @@ export class PerformanceManager {
     const next = TIERS[i + 1];
     if (next && (next !== 'HIGH' || this.allowHigh)) {
       return this.apply(
-        { ...this.q, tier: next, resolutionScale: TIER_SETTINGS[next].resolutionMin },
+        {
+          ...this.q,
+          tier: next,
+          // A better tier never renders less sharply than the current one.
+          resolutionScale: Math.min(
+            this.maxRes(next),
+            Math.max(TIER_SETTINGS[next].resolutionMin, this.q.resolutionScale),
+          ),
+        },
         `${reason}: raise to ${next}`,
       );
     }

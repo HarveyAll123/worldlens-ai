@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   ACTION_OPTIONS,
+  BATTLE_EVENTS,
   CONFLICTS,
   FRONTLINES,
   HISTORICAL_EVENTS,
   NEWS_SOURCES,
   RELATIONS,
   buildDemoNews,
+  isBattleLayerEvent,
   sourceForDomain,
 } from '../data';
 import {
@@ -39,6 +41,36 @@ describe('curated historical dataset', () => {
       expect(e.references[0]?.url).toMatch(/^https:\/\/en\.wikipedia\.org\/wiki\//);
     }
     expect(HISTORICAL_EVENTS.length).toBeGreaterThan(60);
+  });
+});
+
+describe('Wikidata battle layer', () => {
+  it('every record satisfies the event schema', () => {
+    expect(BATTLE_EVENTS.length).toBeGreaterThan(4000);
+    for (const e of BATTLE_EVENTS) {
+      const r = EventSchema.safeParse(e);
+      if (!r.success) throw new Error(`${e.id}: ${r.error.message}`);
+    }
+  });
+  it('is dated, cited to Wikidata, ranked below curated history and never duplicates it', () => {
+    const curatedIds = new Set(HISTORICAL_EVENTS.map((e) => e.id));
+    const curatedArticles = new Set(HISTORICAL_EVENTS.map((e) => e.wikipediaTitle));
+    const conflictIds = new Set(CONFLICTS.map((c) => c.id));
+    const ids = new Set<string>();
+    for (const e of BATTLE_EVENTS) {
+      expect(e.id).toMatch(/^wd-Q\d+$/);
+      expect(ids.has(e.id) || curatedIds.has(e.id)).toBe(false);
+      ids.add(e.id);
+      expect(isBattleLayerEvent(e)).toBe(true);
+      expect(e.provenance.provider).toBe('wikidata');
+      expect(e.references[0]?.url).toBe(`https://www.wikidata.org/wiki/${e.id.slice(3)}`);
+      expect(e.importance).toBeLessThanOrEqual(4);
+      expect(parseIso(e.time.start)).toBeGreaterThanOrEqual(minNavigableMs());
+      if (e.time.end) expect(parseIso(e.time.end)).toBeGreaterThanOrEqual(parseIso(e.time.start));
+      if (e.wikipediaTitle) expect(curatedArticles.has(e.wikipediaTitle)).toBe(false);
+      if (e.conflictId) expect(conflictIds.has(e.conflictId)).toBe(true);
+    }
+    for (const e of HISTORICAL_EVENTS) expect(isBattleLayerEvent(e)).toBe(false);
   });
 });
 
@@ -99,5 +131,25 @@ describe('registry, relations, actions, frontlines', () => {
   it('frontlines and conflicts are valid', () => {
     for (const f of FRONTLINES) expect(FrontlineSchema.safeParse(f).success).toBe(true);
     expect(new Set(CONFLICTS.map((c) => c.id)).size).toBe(CONFLICTS.length);
+    const conflictIds = new Set(CONFLICTS.map((c) => c.id));
+    for (const f of FRONTLINES) expect(conflictIds.has(f.conflictId)).toBe(true);
+  });
+  it('loads the Natural Earth ceasefire lines where they belong', () => {
+    const bbox = (id: string) => {
+      const f = FRONTLINES.find((x) => x.id === id);
+      if (!f) throw new Error(`missing ${id}`);
+      const pts =
+        f.geometry.type === 'LineString' ? f.geometry.coordinates : f.geometry.coordinates.flat();
+      const lons = pts.map((p) => p[0]!);
+      const lats = pts.map((p) => p[1]!);
+      return [Math.min(...lons), Math.min(...lats), Math.max(...lons), Math.max(...lats)];
+    };
+    const inside = (b: number[], w: number, s: number, e: number, n: number) =>
+      b[0]! >= w && b[1]! >= s && b[2]! <= e && b[3]! <= n;
+    expect(inside(bbox('line-korea-mdl-1953'), 126, 37.5, 129, 39)).toBe(true);
+    expect(inside(bbox('line-kashmir-loc-1972'), 73, 32, 78, 36)).toBe(true);
+    expect(inside(bbox('line-golan-1974'), 35.5, 32.5, 36.1, 33.5)).toBe(true);
+    expect(inside(bbox('line-cyprus-1974'), 32.5, 34.9, 34.2, 35.3)).toBe(true);
+    expect(inside(bbox('line-western-sahara-berm'), -17.2, 21, -8.5, 28)).toBe(true);
   });
 });

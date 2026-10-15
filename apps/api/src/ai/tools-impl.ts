@@ -137,6 +137,7 @@ export async function runServerTool(
         limit: 40,
         nowMs: ctx.nowMs,
         includeDemo: true,
+        ...(window ? { window } : {}),
       });
       const out = [];
       for (const r of results) {

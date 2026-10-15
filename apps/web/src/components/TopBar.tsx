@@ -1,12 +1,17 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
+  floorTo,
   formatAt,
   formatLiveClock,
   parseIso,
   resolutionFor,
+  toIso,
   type SearchResult,
 } from '@worldlens/shared';
+import { searchPolities, type PolityMatch } from '../globe/ohm';
+import { useOhmFlags, useOhmIndex } from '../hooks/useData';
 import { api } from '../lib/api';
+import { showCountry } from '../lib/countries';
 import { useAppStore } from '../state/store';
 import { LayerMenu } from './LayerMenu';
 import { Badge } from './ui';
@@ -147,8 +152,29 @@ export function SearchBox({
     };
   }, [q]);
 
-  const choose = (r: SearchResult) => {
-    applySearchResult(r);
+  // Historical countries (OpenHistoricalMap) are matched in the browser and listed first.
+  const searching = q.trim().length >= 2;
+  const ohmIndex = useOhmIndex(searching);
+  const flags = useOhmFlags(searching);
+  const mode = useAppStore((s) => s.mode);
+  const timeMs = useAppStore((s) => s.timeMs);
+  const day = toIso(floorTo(mode === 'live' ? Date.now() : timeMs, 'day')).slice(0, 10);
+  const countries = useMemo(
+    () => (searching && ohmIndex.data ? searchPolities(ohmIndex.data.polities, q, day, 5) : []),
+    [searching, ohmIndex.data, q, day],
+  );
+  type Item = { kind: 'country'; m: PolityMatch } | { kind: 'result'; r: SearchResult };
+  const items: Item[] = [
+    ...countries.map((m): Item => ({ kind: 'country', m })),
+    ...results.map((r): Item => ({ kind: 'result', r })),
+  ];
+  useEffect(() => {
+    if (countries.length && !open && document.activeElement === inputRef.current) setOpen(true);
+  }, [countries.length, open]);
+
+  const choose = (item: Item) => {
+    if (item.kind === 'country') showCountry(item.m);
+    else applySearchResult(item.r);
     setOpen(false);
     setQ('');
     inputRef.current?.blur();
@@ -166,25 +192,25 @@ export function SearchBox({
         autoFocus={autoFocus}
         type="search"
         role="combobox"
-        aria-expanded={open && results.length > 0}
+        aria-expanded={open && items.length > 0}
         aria-controls={listId}
         aria-autocomplete="list"
         aria-activedescendant={active >= 0 ? `${listId}-opt-${active}` : undefined}
         placeholder="Search “Berlin 1945”, “Waterloo”, “South China Sea”…"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        onFocus={() => results.length && setOpen(true)}
+        onFocus={() => items.length && setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         onKeyDown={(e) => {
           if (e.key === 'ArrowDown') {
             e.preventDefault();
-            setActive((a) => Math.min(results.length - 1, a + 1));
+            setActive((a) => Math.min(items.length - 1, a + 1));
           } else if (e.key === 'ArrowUp') {
             e.preventDefault();
             setActive((a) => Math.max(0, a - 1));
-          } else if (e.key === 'Enter' && active >= 0 && results[active]) {
+          } else if (e.key === 'Enter' && items[Math.max(0, active)]) {
             e.preventDefault();
-            choose(results[active]!);
+            choose(items[Math.max(0, active)]!);
           } else if (e.key === 'Escape') {
             setOpen(false);
           }
@@ -193,40 +219,63 @@ export function SearchBox({
         data-testid="search-input"
       />
       {error && <p className="mt-1 text-xs text-amber-300">{error}</p>}
-      {open && results.length > 0 && (
+      {open && items.length > 0 && (
         <ul
           id={listId}
           role="listbox"
           className="glass scroll-thin absolute left-0 right-0 top-full z-40 mt-1 max-h-80 overflow-auto rounded-lg p-1 shadow-2xl"
         >
-          {results.map((r, i) => (
-            <li
-              key={`${r.type}-${r.id}`}
-              id={`${listId}-opt-${i}`}
-              role="option"
-              aria-selected={i === active}
-              onMouseDown={(e) => {
+          {items.map((item, i) => {
+            const common = {
+              id: `${listId}-opt-${i}`,
+              role: 'option' as const,
+              'aria-selected': i === active,
+              onMouseDown: (e: React.MouseEvent) => {
                 e.preventDefault();
-                choose(r);
-              }}
-              onMouseEnter={() => setActive(i)}
-              className={`flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 text-[13px] ${i === active ? 'bg-white/10' : ''}`}
-              data-testid="search-result"
-            >
-              <span
-                className={`mt-0.5 shrink-0 rounded border px-1 text-[10px] font-bold tracking-wider ${TYPE_STYLE[r.type]}`}
-              >
-                {r.type}
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate text-slate-100">{r.title}</span>
-                {r.subtitle && (
-                  <span className="block truncate text-[11px] text-slate-400">{r.subtitle}</span>
-                )}
-              </span>
-              {r.isDemo && <Badge tone="demo">DEMO</Badge>}
-            </li>
-          ))}
+                choose(item);
+              },
+              onMouseEnter: () => setActive(i),
+              className: `flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 text-[13px] ${i === active ? 'bg-white/10' : ''}`,
+              'data-testid': 'search-result',
+            };
+            if (item.kind === 'country') {
+              const { m } = item;
+              const desc = m.polity.wikidata ? flags.data?.[m.polity.wikidata]?.description : null;
+              const years = `${m.start.slice(0, 4)}–${m.end ? m.end.slice(0, 4) : 'today'}`;
+              return (
+                <li key={`country-${m.polity.wikidata ?? m.polity.name}`} {...common}>
+                  <span className="mt-0.5 shrink-0 rounded border border-amber-200/40 px-1 text-[10px] font-bold tracking-wider text-amber-200">
+                    COUNTRY
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-slate-100">{m.polity.name}</span>
+                    <span className="block truncate text-[11px] text-slate-400">
+                      {years}
+                      {m.activeNow ? ' · on the selected date' : ' · jumps to its time'}
+                      {desc ? ` · ${desc}` : ''}
+                    </span>
+                  </span>
+                </li>
+              );
+            }
+            const r = item.r;
+            return (
+              <li key={`${r.type}-${r.id}`} {...common}>
+                <span
+                  className={`mt-0.5 shrink-0 rounded border px-1 text-[10px] font-bold tracking-wider ${TYPE_STYLE[r.type]}`}
+                >
+                  {r.type}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-slate-100">{r.title}</span>
+                  {r.subtitle && (
+                    <span className="block truncate text-[11px] text-slate-400">{r.subtitle}</span>
+                  )}
+                </span>
+                {r.isDemo && <Badge tone="demo">DEMO</Badge>}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

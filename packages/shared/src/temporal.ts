@@ -251,22 +251,17 @@ export function finestOf(values: Granularity[]): Granularity | null {
 
 /**
  * Resolutions the navigator may offer around `ms`. Never finer than the data can support:
- *  - `finestDataPrecision` is the finest precision among records near the selected time
- *    (null when nothing is loaded — then we allow down to "day" for modern dates only).
- *  - Hour resolution is offered only when data near the time is actually hour-precise.
+ *  - Century to day are always offered: dated borders (OpenHistoricalMap) change on exact
+ *    days throughout 1800 → now, so a day is meaningful even where no event is day-precise.
+ *  - Hour is offered only when records near the time are hour-precise (`finestDataPrecision`).
  */
 export function allowedResolutions(
-  ms: number,
-  nowMs: number,
+  _ms: number,
+  _nowMs: number,
   finestDataPrecision: Granularity | null,
 ): Resolution[] {
-  const out: Resolution[] = ['century', 'decade', 'year'];
-  const cap: Granularity =
-    finestDataPrecision ??
-    (nowMs - ms < 366 * MS.day ? 'day' : yearOf(ms) >= 1900 ? 'month' : 'year');
-  for (const r of ['month', 'day', 'hour'] as const) {
-    if (isFinerOrEqual(cap, r)) out.push(r);
-  }
+  const out: Resolution[] = ['century', 'decade', 'year', 'month', 'day'];
+  if (finestDataPrecision && isFinerOrEqual(finestDataPrecision, 'hour')) out.push('hour');
   return out;
 }
 

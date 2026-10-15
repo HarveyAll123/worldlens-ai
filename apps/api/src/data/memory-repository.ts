@@ -23,11 +23,13 @@ import {
 import {
   ACTION_OPTIONS,
   ACTIONABLE_CATEGORIES,
+  BATTLE_EVENTS,
   FRONTLINES,
   HISTORICAL_EVENTS,
   NEWS_SOURCES,
   RELATIONS,
   buildDemoNews,
+  isBattleLayerEvent,
   type DemoNews,
 } from '@worldlens/shared/data';
 import type { BuiltEvent } from '../pipeline/build-events';
@@ -38,7 +40,7 @@ import {
   type ListEventsResult,
   type RelatedEvent,
 } from './repository';
-import { SearchIndex } from './search';
+import { SearchIndex, type TimeWindow } from './search';
 
 const HOUR = 3_600_000;
 
@@ -81,6 +83,7 @@ export class MemoryRepository implements EventRepository {
   private allEvents(nowMs: number): WorldEvent[] {
     return [
       ...HISTORICAL_EVENTS,
+      ...BATTLE_EVENTS,
       ...this.demoData(nowMs).events,
       ...[...this.live.values()].map((b) => b.event),
     ];
@@ -105,6 +108,7 @@ export class MemoryRepository implements EventRepository {
     for (const e of this.allEvents(q.nowMs)) {
       if (!q.kinds.includes(e.kind)) continue;
       if (e.isDemo && !q.includeDemo) continue;
+      if (q.includeBattles === false && isBattleLayerEvent(e)) continue;
       if (e.importance < minImportance) continue;
       if (!intersects(temporalSpan(e.time), window)) continue;
       if (q.bbox && !bboxContains(q.bbox, e.location.lat, e.location.lon)) continue;
@@ -166,7 +170,7 @@ export class MemoryRepository implements EventRepository {
 
   async search(
     query: string,
-    opts: { limit: number; nowMs: number; includeDemo: boolean },
+    opts: { limit: number; nowMs: number; includeDemo: boolean; window?: TimeWindow },
   ): Promise<SearchResult[]> {
     this.ensureIndex(opts.nowMs);
     return this.index.search(query, opts);
@@ -180,6 +184,14 @@ export class MemoryRepository implements EventRepository {
       const t = parseIso(e.time.start);
       if (t < fromMs || t >= toMs) continue;
       counts[Math.min(bins - 1, Math.floor((t - fromMs) / width))]! += e.importance >= 4 ? 2 : 1;
+    }
+    // Only the better-known Wikidata battles, so thousands of minor ones do not swamp the
+    // curated timeline.
+    for (const e of BATTLE_EVENTS) {
+      if (e.importance < 3) continue;
+      const t = parseIso(e.time.start);
+      if (t < fromMs || t >= toMs) continue;
+      counts[Math.min(bins - 1, Math.floor((t - fromMs) / width))]! += 1;
     }
     return counts;
   }

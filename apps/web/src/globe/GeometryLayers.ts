@@ -4,6 +4,9 @@
  *
  * Certainty styling:  CERTAIN solid · APPROXIMATE dashed · DISPUTED amber dashed ·
  * RECONSTRUCTED faint dotted.
+ *
+ * With 3D terrain on, lines are draped on the ground (GroundPolylinePrimitive); lines at sea
+ * level would otherwise drift away from mountain borders as the camera tilts or zooms in.
  */
 import * as Cesium from 'cesium';
 import type { Frontline } from '@worldlens/shared';
@@ -16,6 +19,117 @@ type PolyGeom =
 export interface BorderFeatureLike {
   properties: { name: string; certainty: Certainty };
   geometry: PolyGeom;
+}
+/** Boundary lines without polygons (Natural Earth land boundaries: no coastlines). */
+export interface BorderLineLike {
+  properties: { certainty: Certainty };
+  geometry:
+    | { type: 'LineString'; coordinates: number[][] }
+    | { type: 'MultiLineString'; coordinates: number[][][] };
+}
+
+export interface BorderLabel {
+  name: string;
+  lon: number;
+  lat: number;
+  /** Size proxy (degrees²); larger entities are labelled first. */
+  area: number;
+}
+
+interface Stroke {
+  positions: Cesium.Cartesian3[];
+  width: number;
+  /** Strokes with the same key share one material (one ground primitive). */
+  key: string;
+  material: () => Cesium.Material;
+}
+
+function strokePositions(points: number[][]): Cesium.Cartesian3[] | null {
+  const flat: number[] = [];
+  let prev: number[] | undefined;
+  for (const pt of points) {
+    if (prev && prev[0] === pt[0] && prev[1] === pt[1]) continue;
+    flat.push(pt[0]!, pt[1]!);
+    prev = pt;
+  }
+  return flat.length >= 4 ? Cesium.Cartesian3.fromDegreesArray(flat) : null;
+}
+
+/**
+ * Polylines either on the ellipsoid (cheap) or draped on terrain. Draped lines are built
+ * asynchronously, so the previous lines stay on screen until the new ones are ready — moving
+ * through dates then swaps borders instead of blinking them out for a few seconds.
+ */
+class LineSet {
+  private collection = new Cesium.PolylineCollection();
+  private ground: Cesium.GroundPolylinePrimitive[] = [];
+  private outgoing: Cesium.GroundPolylinePrimitive[] = [];
+  private removeSwap: (() => void) | null = null;
+
+  constructor(private readonly scene: Cesium.Scene) {
+    scene.primitives.add(this.collection);
+  }
+
+  set(strokes: Stroke[], clampToGround: boolean): void {
+    const draped = clampToGround && Cesium.GroundPolylinePrimitive.isSupported(this.scene);
+    // Keep the current draped lines until their replacement is ready.
+    this.dropOutgoing();
+    this.outgoing = draped ? this.ground : [];
+    if (!draped) for (const p of this.ground) this.scene.groundPrimitives.remove(p);
+    this.ground = [];
+    this.collection.removeAll();
+    if (draped) {
+      const groups = new Map<string, Stroke[]>();
+      for (const s of strokes) groups.set(s.key, [...(groups.get(s.key) ?? []), s]);
+      for (const group of groups.values()) {
+        const primitive = new Cesium.GroundPolylinePrimitive({
+          geometryInstances: group.map(
+            (s) =>
+              new Cesium.GeometryInstance({
+                geometry: new Cesium.GroundPolylineGeometry({
+                  positions: s.positions,
+                  width: s.width,
+                }),
+              }),
+          ),
+          appearance: new Cesium.PolylineMaterialAppearance({ material: group[0]!.material() }),
+          asynchronous: true,
+        });
+        this.scene.groundPrimitives.add(primitive);
+        this.ground.push(primitive);
+      }
+      if (this.outgoing.length) {
+        const pending = this.ground;
+        this.removeSwap = this.scene.postRender.addEventListener(() => {
+          if (pending.every((p) => p.ready)) this.dropOutgoing();
+          else this.scene.requestRender();
+        });
+      }
+    } else {
+      for (const s of strokes)
+        this.collection.add({ positions: s.positions, width: s.width, material: s.material() });
+    }
+    this.scene.requestRender();
+  }
+
+  private dropOutgoing(): void {
+    this.removeSwap?.();
+    this.removeSwap = null;
+    for (const p of this.outgoing) this.scene.groundPrimitives.remove(p);
+    this.outgoing = [];
+  }
+
+  clear(): void {
+    this.dropOutgoing();
+    this.collection.removeAll();
+    for (const p of this.ground) this.scene.groundPrimitives.remove(p);
+    this.ground = [];
+  }
+
+  destroy(): void {
+    this.clear();
+    this.scene.primitives.remove(this.collection);
+  }
 }
 
 function ringPositions(ring: Ring): Cesium.Cartesian3[] {
@@ -60,18 +174,18 @@ function borderMaterial(c: Certainty): Cesium.Material {
 }
 
 export class BordersLayer {
-  private lines = new Cesium.PolylineCollection();
+  private lines: LineSet;
   private labels = new Cesium.LabelCollection();
   private fill: Cesium.Primitive | null = null;
   stats = { polygons: 0, labels: 0 };
 
   constructor(private readonly scene: Cesium.Scene) {
-    scene.primitives.add(this.lines);
+    this.lines = new LineSet(scene);
     scene.primitives.add(this.labels);
   }
 
   clear(): void {
-    this.lines.removeAll();
+    this.lines.clear();
     this.labels.removeAll();
     if (this.fill) {
       this.scene.primitives.remove(this.fill);
@@ -81,8 +195,46 @@ export class BordersLayer {
     this.scene.requestRender();
   }
 
-  setFeatures(features: BorderFeatureLike[], opts: { fills: boolean; labelBudget: number }): void {
-    this.clear();
+  /**
+   * `features` give fills, labels and (with `outlines`) the drawn border; `lines` are drawn as
+   * well — modern borders pass Natural Earth land boundaries here and switch outlines off, so
+   * coarse polygon coastlines are not drawn over the imagery.
+   */
+  setFeatures(
+    features: BorderFeatureLike[],
+    opts: {
+      fills: boolean;
+      labelBudget: number;
+      outlines: boolean;
+      lines?: BorderLineLike[];
+      /** Explicit name labels (used instead of labels derived from the polygons). */
+      labels?: BorderLabel[];
+      clampToGround: boolean;
+    },
+  ): void {
+    // Lines are not cleared here: LineSet.set keeps the current lines on screen until their
+    // replacements are ready, so redraws (new date, camera move) never blank the borders.
+    this.labels.removeAll();
+    if (this.fill) {
+      this.scene.primitives.remove(this.fill);
+      this.fill = null;
+    }
+    const strokes: Stroke[] = [];
+    const stroke = (points: number[][], certainty: Certainty) => {
+      const positions = strokePositions(points);
+      if (positions)
+        strokes.push({
+          positions,
+          width: certainty === 'DISPUTED' ? 2 : 1.4,
+          key: certainty,
+          material: () => borderMaterial(certainty),
+        });
+    };
+    for (const l of opts.lines ?? []) {
+      const parts =
+        l.geometry.type === 'LineString' ? [l.geometry.coordinates] : l.geometry.coordinates;
+      for (const part of parts) stroke(part, l.properties.certainty);
+    }
     const instances: Cesium.GeometryInstance[] = [];
     const labelCandidates: Array<{ name: string; area: number; lon: number; lat: number }> = [];
     let count = 0;
@@ -91,11 +243,7 @@ export class BordersLayer {
         const outer = poly[0];
         if (!outer || outer.length < 4) continue;
         count++;
-        this.lines.add({
-          positions: ringPositions(outer),
-          width: f.properties.certainty === 'DISPUTED' ? 2 : 1.4,
-          material: borderMaterial(f.properties.certainty),
-        });
+        if (opts.outlines) stroke(outer, f.properties.certainty);
         const area = ringArea(outer);
         if (opts.fills && area > 0.05) {
           try {
@@ -135,6 +283,7 @@ export class BordersLayer {
         });
       }
     }
+    this.lines.set(strokes, opts.clampToGround);
     if (instances.length) {
       this.fill = new Cesium.Primitive({
         geometryInstances: instances,
@@ -147,9 +296,17 @@ export class BordersLayer {
       });
       this.scene.primitives.add(this.fill);
     }
+    this.setLabels(opts.labels ?? labelCandidates, opts.labelBudget);
+    this.stats = { polygons: count, labels: this.labels.length };
+    this.scene.requestRender();
+  }
+
+  /** Replace only the name labels (cheap; lines and fills are untouched). */
+  setLabels(candidates: BorderLabel[], budget: number): void {
+    this.labels.removeAll();
     const seen = new Set<string>();
-    for (const c of labelCandidates.sort((a, b) => b.area - a.area)) {
-      if (this.labels.length >= opts.labelBudget) break;
+    for (const c of [...candidates].sort((a, b) => b.area - a.area)) {
+      if (this.labels.length >= budget) break;
       if (seen.has(c.name) || c.area < 4) continue;
       seen.add(c.name);
       this.labels.add({
@@ -164,13 +321,13 @@ export class BordersLayer {
         translucencyByDistance: new Cesium.NearFarScalar(2.0e6, 1.0, 1.4e7, 0.0),
       });
     }
-    this.stats = { polygons: count, labels: this.labels.length };
+    this.stats = { ...this.stats, labels: this.labels.length };
     this.scene.requestRender();
   }
 
   destroy(): void {
     this.clear();
-    this.scene.primitives.remove(this.lines);
+    this.lines.destroy();
     this.scene.primitives.remove(this.labels);
   }
 }
@@ -198,34 +355,57 @@ export class HighlightLayer {
   }
 }
 
-export class FrontlineLayer {
+/** Glowing outline for a selected country: flat coordinate arrays [lon, lat, lon, lat, …]. */
+export class OutlineLayer {
   private lines = new Cesium.PolylineCollection();
+  constructor(private readonly scene: Cesium.Scene) {
+    scene.primitives.add(this.lines);
+  }
+  set(parts: number[][] | null): void {
+    this.lines.removeAll();
+    for (const flat of parts ?? []) {
+      if (flat.length < 4) continue;
+      this.lines.add({
+        positions: Cesium.Cartesian3.fromDegreesArray(flat),
+        width: 5,
+        material: Cesium.Material.fromType('PolylineGlow', {
+          color: COLORS.highlight,
+          glowPower: 0.3,
+          taperPower: 1,
+        }),
+      });
+    }
+    this.scene.requestRender();
+  }
+}
+
+export class FrontlineLayer {
+  private lines: LineSet;
   private labels = new Cesium.LabelCollection();
   stats = { lines: 0 };
   constructor(private readonly scene: Cesium.Scene) {
-    scene.primitives.add(this.lines);
+    this.lines = new LineSet(scene);
     scene.primitives.add(this.labels);
   }
-  set(lines: Frontline[]): void {
-    this.lines.removeAll();
+  set(lines: Frontline[], clampToGround: boolean): void {
     this.labels.removeAll();
+    const strokes: Stroke[] = [];
     for (const f of lines) {
       const parts =
         f.geometry.type === 'LineString' ? [f.geometry.coordinates] : f.geometry.coordinates;
+      const solid = f.certainty === 'CERTAIN';
       const material = () =>
-        f.certainty === 'CERTAIN'
+        solid
           ? Cesium.Material.fromType('Color', { color: COLORS.frontline })
           : Cesium.Material.fromType('PolylineDash', { color: COLORS.frontline, dashLength: 12 });
       for (const part of parts) {
-        const flat: number[] = [];
-        for (const [lon, lat] of part) flat.push(lon!, lat!);
-        this.lines.add({
-          positions: Cesium.Cartesian3.fromDegreesArray(flat),
-          width: 3,
-          material: material(),
-        });
+        const positions = strokePositions(part);
+        if (positions)
+          strokes.push({ positions, width: 3, key: solid ? 'solid' : 'dash', material });
       }
-      const first = parts[0]?.[Math.floor((parts[0]?.length ?? 1) / 2)];
+      // Label the longest part, at its middle vertex.
+      const longest = [...parts].sort((a, b) => b.length - a.length)[0];
+      const first = longest?.[Math.floor(longest.length / 2)];
       if (first)
         this.labels.add({
           position: Cesium.Cartesian3.fromDegrees(first[0]!, first[1]!),
@@ -236,8 +416,11 @@ export class FrontlineLayer {
           backgroundColor: COLORS.frontline.withAlpha(0.8),
           pixelOffset: new Cesium.Cartesian2(0, -14),
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          // Names only once zoomed in: from orbit, neighbouring lines' labels pile up.
+          translucencyByDistance: new Cesium.NearFarScalar(3.0e6, 1.0, 7.0e6, 0.0),
         });
     }
+    this.lines.set(strokes, clampToGround);
     this.stats = { lines: lines.length };
     this.scene.requestRender();
   }

@@ -15,7 +15,6 @@ export interface TierSettings {
   groundAtmosphere: boolean;
   lighting: boolean;
   fog: boolean;
-  fxaa: boolean;
   msaaSamples: number;
   /** Event markers and labels the globe may draw at once. */
   maxEvents: number;
@@ -24,7 +23,6 @@ export interface TierSettings {
   clusterCellPx: number;
   /** Polygon fills for borders (outlines are always shown). */
   borderFills: boolean;
-  borderDetail: 'low' | 'medium' | 'high';
   borderLabels: number;
   /** Decorative animations (marker pulse, idle rotation). */
   animations: boolean;
@@ -45,13 +43,11 @@ export const TIER_SETTINGS: Record<QualityTier, TierSettings> = {
     groundAtmosphere: false,
     lighting: false,
     fog: true,
-    fxaa: false,
     msaaSamples: 1,
     maxEvents: 120,
     maxLabels: 12,
     clusterCellPx: 84,
     borderFills: false,
-    borderDetail: 'low',
     borderLabels: 0,
     animations: false,
     hoverPicking: false,
@@ -59,7 +55,8 @@ export const TIER_SETTINGS: Record<QualityTier, TierSettings> = {
   },
   MEDIUM: {
     resolutionMin: 0.8,
-    resolutionMax: 1.0,
+    // Up to 2× on high-DPI screens (capped at the display's pixel ratio): crisp text and lines.
+    resolutionMax: 2.0,
     maximumScreenSpaceError: 2.5,
     tileCacheSize: 200,
     terrain: true,
@@ -67,13 +64,11 @@ export const TIER_SETTINGS: Record<QualityTier, TierSettings> = {
     groundAtmosphere: true,
     lighting: true,
     fog: true,
-    fxaa: true,
-    msaaSamples: 1,
+    msaaSamples: 4,
     maxEvents: 400,
     maxLabels: 40,
     clusterCellPx: 60,
     borderFills: true,
-    borderDetail: 'medium',
     borderLabels: 25,
     animations: true,
     hoverPicking: true,
@@ -89,13 +84,11 @@ export const TIER_SETTINGS: Record<QualityTier, TierSettings> = {
     groundAtmosphere: true,
     lighting: true,
     fog: true,
-    fxaa: false,
     msaaSamples: 4,
     maxEvents: 800,
     maxLabels: 80,
     clusterCellPx: 46,
     borderFills: true,
-    borderDetail: 'high',
     borderLabels: 60,
     animations: true,
     hoverPicking: true,

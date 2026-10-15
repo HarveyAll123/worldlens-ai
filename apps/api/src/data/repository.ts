@@ -13,6 +13,7 @@ import type {
   WorldEvent,
 } from '@worldlens/shared';
 import type { BuiltEvent } from '../pipeline/build-events';
+import type { TimeWindow } from './search';
 
 export interface ListEventsQuery {
   mode: 'live' | 'historical';
@@ -22,6 +23,8 @@ export interface ListEventsQuery {
   bbox: BBox | null;
   kinds: EventKind[];
   includeDemo: boolean;
+  /** Wikidata battle layer (historical kind). Default: included. */
+  includeBattles?: boolean;
   limit: number;
 }
 
@@ -50,7 +53,7 @@ export interface EventRepository {
   getRelated(eventId: string, nowMs: number): Promise<RelatedEvent[]>;
   search(
     query: string,
-    opts: { limit: number; nowMs: number; includeDemo: boolean },
+    opts: { limit: number; nowMs: number; includeDemo: boolean; window?: TimeWindow },
   ): Promise<SearchResult[]>;
   density(fromMs: number, toMs: number, bins: number): Promise<number[]>;
   actionOptions(event: WorldEvent): ActionOption[];

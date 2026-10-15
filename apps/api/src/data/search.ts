@@ -14,7 +14,7 @@ import {
   type Temporal,
   type WorldEvent,
 } from '@worldlens/shared';
-import { CONFLICTS } from '@worldlens/shared/data';
+import { CONFLICTS, isBattleLayerEvent } from '@worldlens/shared/data';
 import {
   COUNTRIES,
   PLACES,
@@ -22,6 +22,11 @@ import {
   normalizeName,
   resolvePlace,
 } from '@worldlens/shared/geo-data';
+
+export interface TimeWindow {
+  startMs: number;
+  endMs: number;
+}
 
 interface IndexedEvent {
   event: WorldEvent;
@@ -46,7 +51,14 @@ export class SearchIndex {
     }));
   }
 
-  search(raw: string, opts: { limit: number; includeDemo: boolean }): SearchResult[] {
+  /**
+   * `window` restricts event results to a time span before the result list is cut to `limit`
+   * (filtering afterwards would let thousands of out-of-range battles crowd out the range).
+   */
+  search(
+    raw: string,
+    opts: { limit: number; includeDemo: boolean; window?: TimeWindow },
+  ): SearchResult[] {
     const query = raw.trim().slice(0, 200);
     if (!query) return [];
     const years = extractYears(query);
@@ -162,6 +174,7 @@ export class SearchIndex {
     // Events.
     for (const ie of this.events) {
       if (!opts.includeDemo && ie.event.isDemo) continue;
+      if (opts.window && !intersects(temporalSpan(ie.event.time), opts.window)) continue;
       let score = 0;
       for (const t of qTokens) {
         if (ie.title.has(t)) score += 6;
@@ -177,6 +190,9 @@ export class SearchIndex {
       if (score === 0) continue;
       if (qTokens.length > 1 && qTokens.every((t) => ie.title.has(t))) score += 10;
       score += ie.event.importance;
+      // At equal relevance, curated (editorially reviewed) events rank above the bulk-imported
+      // Wikidata battle layer.
+      if (isBattleLayerEvent(ie.event)) score -= 3;
       results.push({
         type: ie.event.kind === 'news' ? 'NEWS' : 'HISTORY',
         id: ie.event.id,

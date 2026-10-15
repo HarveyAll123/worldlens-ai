@@ -6,9 +6,22 @@ import { useAppStore } from '../state/store';
 const LAYERS: Array<{ id: LayerId; label: string; hint: string }> = [
   { id: 'news', label: 'Current events', hint: 'Live news clusters' },
   { id: 'history', label: 'Historical events', hint: 'Curated, Wikipedia-referenced' },
+  {
+    id: 'battles',
+    label: 'Battles since 1800',
+    hint: 'About 5,100 battles and sieges from Wikidata (CC0); shown with historical events',
+  },
   { id: 'demo', label: 'Demo scenarios', hint: 'Synthetic, always labelled DEMO' },
-  { id: 'borders', label: 'Borders', hint: 'Dated geometry with certainty styling' },
-  { id: 'frontlines', label: 'Frontlines / control lines', hint: 'Only verified records' },
+  {
+    id: 'borders',
+    label: 'Borders',
+    hint: 'Change on the exact day (OpenHistoricalMap); today’s from Natural Earth',
+  },
+  {
+    id: 'frontlines',
+    label: 'Frontlines / ceasefire lines',
+    hint: 'Dated ceasefire and control lines (Natural Earth); no live war frontlines',
+  },
   { id: 'labels', label: 'Labels', hint: 'Event names on the globe' },
 ];
 

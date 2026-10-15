@@ -2,7 +2,9 @@
  * Temporal navigator: 1800 → LIVE, with "Before 1800 — Coming Soon" immediately to the left.
  * Resolution (century … hour) is limited to what the data near the selected time supports.
  * Keyboard: ←/→ one unit · Shift+←/→ ten units · PageUp/PageDown one coarser unit ·
- * Home = 1800 · End = LIVE · +/− zoom resolution.
+ * Home = 1800 · End = LIVE · +/− zoom resolution · Space = play/pause.
+ * Pointer: drag the track (the window stays still while dragging) · wheel/swipe steps through
+ * time · pinch or Ctrl/⌘+wheel zooms · click the date to type one (1941, 1941-06, 1941-06-22).
  */
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -28,6 +30,8 @@ import {
   type Resolution,
 } from '@worldlens/shared';
 import { api } from '../lib/api';
+import { parseDateInput } from '../lib/dateInput';
+import { edgePush, edgeShift } from '../lib/timelineDrag';
 import { useVisibleEvents } from '../hooks/useData';
 import { TIER_SETTINGS } from '../perf/tiers';
 import { useAppStore } from '../state/store';
@@ -73,6 +77,11 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
   const events = useVisibleEvents(TIER_SETTINGS[tier].maxEvents);
   const trackRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
+  /** Time under the pointer while dragging (the store is updated at a steady pace). */
+  const [previewMs, setPreviewMs] = useState<number | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState(1);
+  const [editing, setEditing] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
   useEffect(() => {
     const t = setInterval(() => setNowMs(Date.now()), 30_000);
@@ -86,7 +95,19 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
     setViewRes(mode === 'live' && resolution === 'day' ? 'century' : resolution);
   }, [resolution, mode]);
 
-  const span = useMemo(() => trackSpan(timeMs, viewRes, nowMs), [timeMs, viewRes, nowMs]);
+  // The visible window stays put while the selected time moves inside it; it only re-centres
+  // when the time leaves the window (or the zoom changes) — and never during a drag, where a
+  // moving window made the track slide under the pointer. Dragging into either edge scrolls
+  // the window at a controlled speed instead (edgeScroll).
+  const [anchorMs, setAnchorMs] = useState(timeMs);
+  const span = useMemo(() => trackSpan(anchorMs, viewRes, nowMs), [anchorMs, viewRes, nowMs]);
+  useEffect(() => {
+    if (dragging || viewRes === 'century') return;
+    // Only when the time has left the window (stepping/playing past its end) — releasing a
+    // drag near an edge leaves the window where it is.
+    if (timeMs < span.startMs || timeMs > span.endMs) setAnchorMs(timeMs);
+  }, [timeMs, span, dragging, viewRes]);
+  useEffect(() => setAnchorMs(timeMs), [viewRes]); // eslint-disable-line react-hooks/exhaustive-deps
   const min = minNavigableMs();
   const allowed = allowedResolutions(timeMs, nowMs, events.data?.finestPrecision ?? null);
 
@@ -166,6 +187,10 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
         e.preventDefault();
         returnToLive();
         break;
+      case ' ':
+        e.preventDefault();
+        setPlaying((p) => !p);
+        break;
       case '+':
       case '=': {
         const f = finer(resolution);
@@ -180,31 +205,160 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
     }
   };
 
-  // Pointer precision depends on zoom: a pixel at century zoom is months wide, so pick years.
-  const POINTER_RES: Record<Resolution, Resolution> = {
-    century: 'year',
-    decade: 'year',
-    year: 'month',
-    month: 'day',
-    day: 'day',
-    hour: 'hour',
+  // Dragging moves in units of the selected resolution and never changes it: committing at a
+  // finer unit used to zoom the track in mid-drag, which made dragging run away.
+  const dragUnit: Resolution = resolution === 'century' ? 'year' : resolution;
+  const lastCommit = useRef(0);
+  const previewRef = useRef<number | null>(null);
+  const draggingRef = useRef(false);
+  const pointerX = useRef<number | null>(null);
+  const dragPointer = useRef<number | null>(null);
+  const anchorRef = useRef(anchorMs);
+  anchorRef.current = anchorMs;
+  const edgeFrame = useRef<number | null>(null);
+  const lastEdgeTick = useRef(0);
+
+  const preview = (ms: number) => {
+    previewRef.current = ms;
+    setPreviewMs(ms);
+    // The thumb follows the pointer every frame; the globe and data follow ~6 times a second.
+    if (performance.now() - lastCommit.current > 160) {
+      lastCommit.current = performance.now();
+      commit(ms);
+    }
   };
-  const pointerRes = POINTER_RES[viewRes];
+
+  /**
+   * Edge scrolling: holding the pointer at (or past) either end of the track while dragging
+   * slides the window through time — faster the further past the edge, capped at about 0.7
+   * windows per second — so the whole range is reachable without the window running away.
+   */
+  const edgeScroll = () => {
+    edgeFrame.current = null;
+    const el = trackRef.current;
+    const x = pointerX.current;
+    if (!el || x === null || !draggingRef.current || viewRes === 'century') return;
+    const r = el.getBoundingClientRect();
+    const push = edgePush(x, r.left, r.right);
+    if (push === 0) return;
+    const now = performance.now();
+    const dt = Math.min(0.05, (now - lastEdgeTick.current) / 1000);
+    lastEdgeTick.current = now;
+    const current = trackSpan(anchorRef.current, viewRes, nowMs);
+    const width = current.endMs - current.startMs;
+    const shift = edgeShift(push, width, dt);
+    // Keep the anchor where the window can still move (trackSpan clamps the window itself).
+    const anchor = Math.min(
+      nowMs - width / 2,
+      Math.max(min + width / 2, anchorRef.current + shift),
+    );
+    anchorRef.current = anchor;
+    setAnchorMs(anchor);
+    const next = trackSpan(anchor, viewRes, nowMs);
+    const f = Math.min(1, Math.max(0, (x - r.left) / r.width));
+    preview(next.startMs + f * (next.endMs - next.startMs));
+    edgeFrame.current = requestAnimationFrame(edgeScroll);
+  };
+  const startEdgeScroll = () => {
+    if (edgeFrame.current !== null) return;
+    lastEdgeTick.current = performance.now();
+    edgeFrame.current = requestAnimationFrame(edgeScroll);
+  };
+  useEffect(
+    () => () => {
+      if (edgeFrame.current !== null) cancelAnimationFrame(edgeFrame.current);
+    },
+    [],
+  );
+
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    try {
+      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    } catch {
+      /* not an active pointer (synthetic events): dragging still works inside the track */
+    }
+    setPlaying(false);
     setDragging(true);
-    commit(msAt(e.clientX), pointerRes);
+    draggingRef.current = true;
+    dragPointer.current = e.pointerId;
+    pointerX.current = e.clientX;
+    const ms = msAt(e.clientX);
+    previewRef.current = ms;
+    setPreviewMs(ms);
+    lastCommit.current = performance.now();
+    commit(ms);
+    startEdgeScroll();
   };
   const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (dragging) commit(msAt(e.clientX), pointerRes);
+    if (!dragging || e.pointerId !== dragPointer.current) return;
+    // Button already up (released outside the window without a pointerup): finish the drag.
+    if (e.pointerType === 'mouse' && e.buttons === 0) return endDrag();
+    pointerX.current = e.clientX;
+    preview(msAt(e.clientX));
+    startEdgeScroll();
   };
+  const endDrag = () => {
+    if (!dragging) return;
+    setDragging(false);
+    draggingRef.current = false;
+    pointerX.current = null;
+    if (edgeFrame.current !== null) cancelAnimationFrame(edgeFrame.current);
+    edgeFrame.current = null;
+    if (previewRef.current !== null) commit(previewRef.current);
+    previewRef.current = null;
+    setPreviewMs(null);
+  };
+  // Wheel / two-finger swipe steps through time; pinch (Ctrl+wheel) or ⌘+wheel zooms.
+  const wheelAcc = useRef(0);
   const onWheel = (e: React.WheelEvent) => {
-    if (Math.abs(e.deltaY) < 4) return;
-    const next = e.deltaY < 0 ? finer(viewRes) : coarser(viewRes);
-    if (next && (e.deltaY > 0 || allowed.includes(next))) {
-      setViewRes(next);
-      if (e.deltaY < 0 && mode === 'historical') setResolution(next);
+    if (e.ctrlKey || e.metaKey) {
+      if (Math.abs(e.deltaY) < 2) return;
+      const next = e.deltaY < 0 ? finer(viewRes) : coarser(viewRes);
+      if (next && (e.deltaY > 0 || allowed.includes(next))) {
+        setViewRes(next);
+        if (e.deltaY < 0 && mode === 'historical') setResolution(next);
+      }
+      return;
     }
+    wheelAcc.current += Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    const steps = Math.trunc(wheelAcc.current / 60);
+    if (!steps) return;
+    wheelAcc.current -= steps * 60;
+    setPlaying(false);
+    step(steps);
+  };
+
+  // Play: advance one unit at a time; stops at LIVE or when the user takes over.
+  const timeRef = useRef(timeMs);
+  timeRef.current = timeMs;
+  const commitRef = useRef(commit);
+  commitRef.current = commit;
+  const liveRef = useRef(returnToLive);
+  liveRef.current = returnToLive;
+  useEffect(() => {
+    if (!playing) return;
+    const unit: Resolution = resolution === 'century' ? 'decade' : resolution;
+    const timer = setInterval(() => {
+      const next = addUnits(timeRef.current, unit, 1);
+      if (next >= Date.now() - 60_000) {
+        setPlaying(false);
+        liveRef.current();
+        return;
+      }
+      commitRef.current(next);
+    }, 900 / speed);
+    return () => clearInterval(timer);
+  }, [playing, speed, resolution]);
+
+  const [draft, setDraft] = useState('');
+  const jumpTo = (text: string) => {
+    const parsed = parseDateInput(text);
+    setEditing(false);
+    if (!parsed) return;
+    setPlaying(false);
+    setResolution(parsed.resolution);
+    setViewRes(parsed.resolution);
+    commit(parsed.ms, parsed.resolution);
   };
 
   const ticks = useMemo(() => {
@@ -224,7 +378,8 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
   const counts = density.data?.counts ?? [];
   const maxCount = Math.max(1, ...counts);
   const showComingSoon = TEMPORAL_CONFIG.comingSoonLabel && span.startMs <= min + 1;
-  const thumbLeft = `${Math.min(100, Math.max(0, fraction(timeMs) * 100))}%`;
+  const shownMs = previewMs ?? timeMs;
+  const thumbLeft = `${Math.min(100, Math.max(0, fraction(shownMs) * 100))}%`;
   const valueText =
     mode === 'live' ? `Live, ${formatAt(nowMs, 'minute')}` : formatAt(timeMs, resolution);
 
@@ -263,27 +418,101 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
             );
           })}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5" role="group" aria-label="Step and play">
+          <button
+            type="button"
+            onClick={() => step(-10)}
+            className="rounded-md px-2 py-1 text-[15px] leading-none text-slate-200 hover:bg-white/10"
+            aria-label={`Back ten ${resolution === 'century' ? 'decades' : `${resolution}s`}`}
+            title="Back 10 (Shift+←)"
+          >
+            «
+          </button>
           <button
             type="button"
             onClick={() => step(-1)}
-            className="rounded-md px-2 py-1 text-slate-200 hover:bg-white/10"
+            className="rounded-md px-2.5 py-1 text-[15px] leading-none text-slate-200 hover:bg-white/10"
             aria-label={`Back one ${resolution}`}
+            title="Back 1 (←)"
           >
             ‹
           </button>
           <button
             type="button"
+            onClick={() => {
+              if (mode === 'live' && !playing) commit(min, 'year');
+              setPlaying((p) => !p);
+            }}
+            aria-pressed={playing}
+            aria-label={playing ? 'Pause' : 'Play through time'}
+            title={playing ? 'Pause (Space)' : 'Play through time (Space)'}
+            className={`rounded-md px-2.5 py-1 text-[13px] leading-none ${playing ? 'bg-white/15 text-white' : 'text-slate-200 hover:bg-white/10'}`}
+          >
+            {playing ? '❚❚' : '▶'}
+          </button>
+          <button
+            type="button"
             onClick={() => step(1)}
-            className="rounded-md px-2 py-1 text-slate-200 hover:bg-white/10"
+            className="rounded-md px-2.5 py-1 text-[15px] leading-none text-slate-200 hover:bg-white/10"
             aria-label={`Forward one ${resolution}`}
+            title="Forward 1 (→)"
           >
             ›
           </button>
+          <button
+            type="button"
+            onClick={() => step(10)}
+            className="rounded-md px-2 py-1 text-[15px] leading-none text-slate-200 hover:bg-white/10"
+            aria-label={`Forward ten ${resolution === 'century' ? 'decades' : `${resolution}s`}`}
+            title="Forward 10 (Shift+→)"
+          >
+            »
+          </button>
+          {playing && (
+            <button
+              type="button"
+              onClick={() => setSpeed((v) => (v >= 8 ? 1 : v * 2))}
+              className="rounded-md px-1.5 py-1 font-mono text-[11px] text-slate-300 hover:bg-white/10"
+              aria-label={`Playback speed ${speed}×`}
+              title="Playback speed"
+            >
+              {speed}×
+            </button>
+          )}
         </div>
-        <span className="ml-auto font-mono text-[12px] tabular-nums text-slate-300" aria-hidden>
-          {mode === 'live' ? 'LIVE' : formatAt(timeMs, resolution)}
-        </span>
+        {editing ? (
+          <form
+            className="ml-auto"
+            onSubmit={(e) => {
+              e.preventDefault();
+              jumpTo(draft);
+            }}
+          >
+            <input
+              autoFocus
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={() => setEditing(false)}
+              onKeyDown={(e) => e.key === 'Escape' && setEditing(false)}
+              placeholder="1941-06-22"
+              aria-label="Go to date (year, year-month or year-month-day)"
+              className="w-32 rounded-md border border-white/15 bg-black/30 px-2 py-0.5 font-mono text-[12px] text-white outline-none focus:border-white/40"
+            />
+          </form>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setDraft(mode === 'live' ? '' : toIso(timeMs).slice(0, 10));
+              setEditing(true);
+            }}
+            className="ml-auto rounded-md px-1.5 py-0.5 font-mono text-[12px] tabular-nums text-slate-200 hover:bg-white/10"
+            title="Type a date to jump to it"
+            aria-label="Go to a date"
+          >
+            {mode === 'live' ? 'LIVE' : formatAt(shownMs, dragging ? dragUnit : resolution)}
+          </button>
+        )}
         {mode === 'historical' && (
           <button
             type="button"
@@ -319,8 +548,8 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
             onKeyDown={onKeyDown}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
-            onPointerUp={() => setDragging(false)}
-            onPointerCancel={() => setDragging(false)}
+            onPointerUp={(e) => e.pointerId === dragPointer.current && endDrag()}
+            onPointerCancel={(e) => e.pointerId === dragPointer.current && endDrag()}
             onWheel={onWheel}
             className="relative h-11 cursor-pointer touch-none select-none rounded-md bg-white/[0.04]"
             data-testid="timeline-track"

@@ -105,7 +105,14 @@ describe('temporal model', () => {
       'month',
       'day',
     ]);
-    expect(allowedResolutions(utcMs(1815), NOW, null)).toEqual(['century', 'decade', 'year']);
+    // Borders are dated to the day, so day resolution exists even without day-precise events.
+    expect(allowedResolutions(utcMs(1815), NOW, null)).toEqual([
+      'century',
+      'decade',
+      'year',
+      'month',
+      'day',
+    ]);
     expect(allowedResolutions(NOW - 3_600_000, NOW, 'hour')).toContain('hour');
     expect(allowedResolutions(NOW - 3_600_000, NOW, 'day')).not.toContain('hour');
   });

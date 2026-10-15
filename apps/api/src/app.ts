@@ -181,6 +181,7 @@ export function createApp(deps: AppDeps, defaults: { defer?: Defer } = {}) {
     bbox: z.string().optional(),
     kinds: z.string().optional(),
     demo: z.enum(['0', '1']).default('1'),
+    battles: z.enum(['0', '1']).default('1'),
     limit: z.coerce.number().int().min(1).max(500).default(200),
   });
 
@@ -206,6 +207,7 @@ export function createApp(deps: AppDeps, defaults: { defer?: Defer } = {}) {
       bbox: parseBBox(q.bbox),
       kinds,
       includeDemo: q.demo === '1',
+      includeBattles: q.battles === '1',
       limit: q.limit,
     });
     c.header('Cache-Control', q.mode === 'live' ? 'no-store' : 'public, max-age=300');

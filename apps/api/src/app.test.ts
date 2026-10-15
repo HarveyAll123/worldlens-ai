@@ -117,6 +117,30 @@ describe('events', () => {
     expect(body.events.map((e) => e.id)).toContain('hist-battle-of-waterloo');
     expect(body.finestPrecision).toBe('day');
   });
+  it('includes Wikidata battles unless the battle layer is off', async () => {
+    const { json } = setup();
+    const url = '/api/events?mode=historical&t=1916-07-01&res=day';
+    const on = await json<{ events: Array<{ id: string }> }>(url);
+    expect(on.body.events.map((e) => e.id)).toContain('wd-Q132568'); // Battle of the Somme
+    const off = await json<{ events: Array<{ id: string }> }>(`${url}&battles=0`);
+    expect(off.body.events.some((e) => e.id.startsWith('wd-'))).toBe(false);
+  });
+  it('returns the ceasefire lines valid on a date', async () => {
+    const { json } = setup();
+    const ids = async (t: string) =>
+      (
+        await json<{ frontlines: Array<{ id: string }> }>(`/api/geo/frontlines?t=${t}`)
+      ).body.frontlines.map((f) => f.id);
+    expect(await ids('1949-01-01')).toEqual(['line-korea-38th-parallel-1945']);
+    expect(await ids('1960-01-01')).toEqual(['line-korea-mdl-1953']);
+    expect((await ids('2026-10-15')).sort()).toEqual([
+      'line-cyprus-1974',
+      'line-golan-1974',
+      'line-kashmir-loc-1972',
+      'line-korea-mdl-1953',
+      'line-western-sahara-berm',
+    ]);
+  });
   it('rejects dates before 1800 (Coming Soon)', async () => {
     const { json } = setup();
     const { status, body } = await json<{ message: string }>(

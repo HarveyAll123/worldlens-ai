@@ -43,11 +43,23 @@ export interface FlyRequest {
   seq: number;
 }
 
+/** A dated country (OpenHistoricalMap polity) the user clicked or searched. */
+export interface CountrySelection {
+  name: string;
+  start: string;
+  end: string | null;
+  wikidata: string | null;
+  label: [number, number];
+  bbox: [number, number, number, number];
+  ways: number[];
+}
+
 interface AppState {
   mode: Mode;
   timeMs: number;
   resolution: Resolution;
   selectedEventId: string | null;
+  selectedCountry: CountrySelection | null;
   sheet: SheetView;
   sheetExpanded: boolean;
   assistantOpen: boolean;
@@ -69,6 +81,7 @@ interface AppState {
   setResolution: (r: Resolution) => void;
   returnToLive: () => void;
   selectEvent: (id: string | null) => void;
+  selectCountry: (c: CountrySelection | null) => void;
   setSheet: (v: SheetView, expanded?: boolean) => void;
   setSheetExpanded: (v: boolean) => void;
   setAssistantOpen: (v: boolean) => void;
@@ -102,12 +115,14 @@ export const useAppStore = create<AppState>()(
     timeMs: Date.now(),
     resolution: 'day',
     selectedEventId: null,
+    selectedCountry: null,
     sheet: 'events',
     sheetExpanded: false,
     assistantOpen: false,
     layers: {
       news: true,
       history: true,
+      battles: true,
       demo: true,
       borders: false,
       frontlines: true,
@@ -142,7 +157,14 @@ export const useAppStore = create<AppState>()(
     selectEvent: (id) =>
       set((s) => ({
         selectedEventId: id,
-        sheet: id ? 'detail' : s.sheet === 'detail' ? 'events' : s.sheet,
+        selectedCountry: id ? null : s.selectedCountry,
+        sheet: id ? 'detail' : s.sheet === 'detail' && !s.selectedCountry ? 'events' : s.sheet,
+      })),
+    selectCountry: (c) =>
+      set((s) => ({
+        selectedCountry: c,
+        selectedEventId: c ? null : s.selectedEventId,
+        sheet: c ? 'detail' : s.sheet === 'detail' && !s.selectedEventId ? 'events' : s.sheet,
       })),
     setSheet: (sheet, expanded) =>
       set((s) => ({ sheet, sheetExpanded: expanded ?? s.sheetExpanded })),

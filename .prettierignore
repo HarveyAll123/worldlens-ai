@@ -7,6 +7,7 @@ pnpm-lock.yaml
 apps/web/public/cesium
 apps/web/public/vendor
 packages/shared/src/data/geo/*.json
+packages/shared/src/data/battles.json
 .wrangler
 apps/web/public/data
 .claude/skills

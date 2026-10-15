@@ -5,3 +5,4 @@ export { NEWS_SOURCES, sourceForDomain } from './sources';
 export { buildDemoNews, type DemoNews } from './demo-news';
 export { ACTION_OPTIONS, ACTIONABLE_CATEGORIES } from './actions';
 export { FRONTLINES } from './frontlines';
+export { BATTLE_EVENTS, BATTLES_GENERATED, isBattleLayerEvent } from './battles';

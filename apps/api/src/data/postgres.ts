@@ -36,6 +36,7 @@ import type {
   ListEventsResult,
   RelatedEvent,
 } from './repository';
+import type { TimeWindow } from './search';
 import { sqlState, type SqlClient } from './sql';
 
 /** Drivers return timestamptz as Date (pg-types); keep a string form for the shared schemas. */
@@ -408,7 +409,7 @@ export class PostgresNewsRepository implements EventRepository {
   }
   search(
     query: string,
-    opts: { limit: number; nowMs: number; includeDemo: boolean },
+    opts: { limit: number; nowMs: number; includeDemo: boolean; window?: TimeWindow },
   ): Promise<SearchResult[]> {
     return this.memory.search(query, opts);
   }

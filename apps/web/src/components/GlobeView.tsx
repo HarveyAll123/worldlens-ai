@@ -1,14 +1,50 @@
-import { useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { floorTo, toIso } from '@worldlens/shared';
 import { TIER_SETTINGS } from '../perf/tiers';
 import type { QualityState } from '../perf/PerformanceManager';
 import type { GlobeController } from '../globe/GlobeController';
 import type { BorderFeatureLike } from '../globe/GeometryLayers';
-import { useBorders, useCountryOutlines, useFrontlines, useVisibleEvents } from '../hooks/useData';
+import {
+  activeOn,
+  borderLines as ohmLines,
+  landBorders,
+  polityLabels,
+  tilesInView,
+} from '../globe/ohm';
+import {
+  useBorderLines,
+  useBorders,
+  useCountryOutlines,
+  useFrontlines,
+  useOhmCoarseWays,
+  useOhmDetail,
+  useOhmIndex,
+  useVisibleEvents,
+  type BorderLineScale,
+} from '../hooks/useData';
 import { useReducedMotion } from '../hooks/useMedia';
+import { identifyCountry } from '../lib/countries';
 import { useAppStore } from '../state/store';
 
-/** Natural Earth entities whose sovereignty/recognition is disputed (shown with DISPUTED styling). */
-const DISPUTED_ISO3 = new Set(['TWN', 'KOS', 'SOL', 'CYN', 'ESH', 'PSE', 'SAH']);
+/**
+ * Border detail follows the camera: world-scale data looks wrong up close, fine data is
+ * wasted (and slow) from orbit. Historical snapshots: API detail levels; modern borders:
+ * Natural Earth 1:110m / 1:50m / 1:10m land boundaries.
+ */
+/** Below this altitude, dated borders use ~100 m geometry for the area in view. */
+const OHM_DETAIL_BELOW_KM = 900;
+
+function historicalDetail(altitudeKm: number): 'low' | 'medium' | 'high' {
+  if (altitudeKm < 1_500) return 'high';
+  if (altitudeKm < 6_000) return 'medium';
+  return 'low';
+}
+function modernScale(altitudeKm: number): BorderLineScale {
+  if (altitudeKm < 2_000) return '10m';
+  if (altitudeKm < 8_000) return '50m';
+  return '110m';
+}
 
 let controllerRef: GlobeController | null = null;
 export const getGlobe = () => controllerRef;
@@ -30,6 +66,7 @@ export function GlobeView({
   onNotice: (n: string | null) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
   const creditsRef = useRef<HTMLDivElement>(null);
   const [globe, setGlobe] = useState<GlobeController | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +105,7 @@ export function GlobeView({
                 s.flyTo({ lat: p.lat, lon: p.lon, altitudeKm: alt });
               }
             },
+            onGlobeClick: (lon, lat) => void identifyCountry(queryClient, lon, lat),
             onCamera: (c) => useAppStore.getState().setCamera(c),
             onBaseMapNotice: onNotice,
             onQuality: (q) => {
@@ -158,35 +196,97 @@ export function GlobeView({
     if (globe && events.data) safely('events', () => globe.setEvents(events.data.events));
   }, [globe, events.data]);
 
-  // Borders: historical snapshots from the API; modern boundaries from Natural Earth.
-  const borders = useBorders(layers.borders, settings.borderDetail);
-  const needOutlines =
-    !!highlightIso3 ||
-    (layers.borders &&
-      borders.data?.selection.available === true &&
-      borders.data.selection.source === 'natural-earth');
-  const outlines = useCountryOutlines(needOutlines);
+  // Borders. LIVE: today's boundaries from Natural Earth. Historical: OpenHistoricalMap's dated
+  // borders (they change on the exact day a state, colony or occupation regime begins or ends),
+  // falling back to the API's world-scale snapshots if those files cannot be loaded.
+  const altitudeKm = useAppStore((s) => s.camera.altitudeKm);
+  const viewBox = useAppStore((s) => s.camera.bbox);
+  const historicalBorders = layers.borders && mode === 'historical';
+  const selectedCountry = useAppStore((s) => s.selectedCountry);
+  const ohmIndex = useOhmIndex(historicalBorders);
+  const ohmCoarse = useOhmCoarseWays(historicalBorders || !!selectedCountry);
+  const ohm = historicalBorders && !ohmIndex.isError && !ohmCoarse.isError;
+  const day = toIso(floorTo(timeMs, 'day')).slice(0, 10);
+  const detailTiles = useMemo(
+    () =>
+      ohm && ohmIndex.data && altitudeKm < OHM_DETAIL_BELOW_KM
+        ? tilesInView(viewBox, ohmIndex.data)
+        : [],
+    [ohm, ohmIndex.data, altitudeKm, viewBox],
+  );
+  const ohmDetail = useOhmDetail(detailTiles);
+  const ohmActive = useMemo(
+    () => (ohmIndex.data ? activeOn(ohmIndex.data.polities, day) : null),
+    [ohmIndex.data, day],
+  );
+  // Borders only change when the set of polities does — not on every day scrubbed through.
+  const activeKey = ohmActive?.map((p) => `${p.start} ${p.name}`).join('\n') ?? '';
+  // Zoomed in, only borders around the view are drawn (draping thousands on terrain is slow).
+  const ohmCullBox = altitudeKm < OHM_DETAIL_BELOW_KM ? viewBox : null;
+  const ohmLinesToDraw = useMemo(
+    () =>
+      ohmActive && ohmCoarse.data
+        ? ohmLines(
+            landBorders(ohmActive, ohmCoarse.data.ways, ohmCoarse.data.classes),
+            ohmCoarse.data.ways,
+            ohmDetail,
+            ohmCullBox,
+          )
+        : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeKey, ohmCoarse.data, ohmDetail, ohmCullBox],
+  );
+  const ohmLabels = useMemo(
+    () => (ohmActive ? polityLabels(ohmActive, viewBox) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeKey, viewBox],
+  );
+
+  const borders = useBorders(layers.borders && !ohm, historicalDetail(altitudeKm));
+  const modern =
+    layers.borders &&
+    borders.data?.selection.available === true &&
+    borders.data.selection.source === 'natural-earth';
+  const borderLines = useBorderLines(modernScale(altitudeKm), modern);
+  const outlines = useCountryOutlines(!!highlightIso3 || modern);
 
   useEffect(() => {
     if (!globe) return;
     safely('borders', () => {
+      if (ohm) {
+        if (ohmLinesToDraw) globe.setBorders([], ohmLinesToDraw, ohmLabels);
+        return;
+      }
       if (!layers.borders || !borders.data?.selection.available) return globe.setBorders(null);
       const sel = borders.data.selection;
       if (sel.source === 'natural-earth') {
-        if (!outlines.data) return;
+        // Land boundary lines are drawn; the 1:110m polygons only place the country labels.
+        if (!outlines.data || !borderLines.data) return;
         const feats: BorderFeatureLike[] = outlines.data.features.map((f) => ({
-          properties: {
-            name: f.properties.name,
-            certainty: DISPUTED_ISO3.has(f.properties.iso3) ? 'DISPUTED' : 'CERTAIN',
-          },
+          properties: { name: f.properties.name, certainty: 'CERTAIN' },
           geometry: f.geometry,
         }));
-        globe.setBorders(feats);
+        globe.setBorders(feats, borderLines.data.features);
       } else if (borders.data.features) {
         globe.setBorders(borders.data.features as BorderFeatureLike[]);
       }
     });
-  }, [globe, layers.borders, borders.data, outlines.data, tier]);
+    // Labels are refreshed separately below, so camera moves do not rebuild the lines.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    globe,
+    ohm,
+    ohmLinesToDraw,
+    layers.borders,
+    borders.data,
+    outlines.data,
+    borderLines.data,
+    tier,
+  ]);
+
+  useEffect(() => {
+    if (globe && ohm && ohmLabels) safely('border labels', () => globe.setBorderLabels(ohmLabels));
+  }, [globe, ohm, ohmLabels]);
 
   useEffect(() => {
     if (!globe) return;
@@ -195,6 +295,21 @@ export function GlobeView({
       : null;
     safely('highlight', () => globe.setHighlight(f ? f.geometry : null));
   }, [globe, highlightIso3, outlines.data]);
+
+  // Outline of the selected country: its borders on land (its coast is left to the imagery).
+  useEffect(() => {
+    if (!globe) return;
+    safely('country outline', () => {
+      const data = ohmCoarse.data;
+      if (!selectedCountry || !data) return globe.setCountryOutline(null);
+      globe.setCountryOutline(
+        selectedCountry.ways
+          .filter((w) => data.classes[w] !== '0')
+          .map((w) => ohmDetail.get(w) ?? data.ways[w])
+          .filter((flat): flat is number[] => !!flat),
+      );
+    });
+  }, [globe, selectedCountry, ohmCoarse.data, ohmDetail]);
 
   const frontlines = useFrontlines(layers.frontlines);
   useEffect(() => {

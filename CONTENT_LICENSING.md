@@ -25,7 +25,21 @@ Event titles, dates, coordinates and the short summaries / “why it mattered”
 
 ## Natural Earth
 
-Country outlines and the populated-places gazetteer are derived from Natural Earth (public domain), pinned to commit `ca96624a56bd078437bca8184e78163e5039ad19`. Modern boundaries are shown as depicted by Natural Earth (de facto); entities with disputed status/recognition are styled DISPUTED.
+Country outlines and the populated-places gazetteer are derived from Natural Earth (public domain), pinned to commit `ca96624a56bd078437bca8184e78163e5039ad19`. Modern boundaries are drawn from Natural Earth's land boundary lines at 1:110m, 1:50m and 1:10m (picked by camera altitude) as depicted by Natural Earth (de facto); disputed lines and lines of control are styled DISPUTED.
+
+The present-day ceasefire / control lines in the frontline layer (Korea, Kashmir, Golan, Cyprus, Western Sahara) are Natural Earth's "Line of control" boundary lines. Natural Earth gives only the geometry; their names, start dates and sides are WorldLens metadata in `packages/shared/src/data/frontlines.ts`.
+
+## OpenHistoricalMap (CC0)
+
+In historical mode the globe draws dated country borders from OpenHistoricalMap (`apps/web/public/data/ohm/`, built by `pnpm data:ohm`): every `admin_level=2` boundary — states, colonies, protectorates, occupation regimes — that existed at some point since 1800, with OHM's `start_date` / `end_date`, so borders change on the exact day recorded. OHM data is CC0 1.0. Only borders on land are drawn — coastlines and maritime limits are left to the imagery, using a land mask built from Natural Earth's 1:10m land polygons (public domain) at build time. `pnpm data:audit-borders` checks every date OHM records a change on (1,691 dates since 1800) for border lines that stop inland. Historical lines are OHM contributors' reconstructions, often traced from modern data; coverage is uneven (for example, the General Government of occupied Poland and the 2014/2022 Russian-occupied areas of Ukraine are not in the snapshot). LIVE mode keeps Natural Earth's present-day lines; the AI's `get_border_at_date` tool still describes the historical-basemaps snapshots below.
+
+### Flags of historical countries
+
+Clicking or searching a country shows the flag Wikidata records as in use on the selected date (property P41 with its start/end qualifiers, or the years in the flag's file name when a statement has none; when the item is a period of a state — "Fascist Italy" — the flag of the state it is part of, replaces or follows, named as such; an undated flag is never shown for a date before its dated flags end; with nothing in use that day, the nearest flag within five years is shown with its own dates, otherwise none), with the country's description, capital and English Wikipedia article (`apps/web/public/data/ohm/flags.json`, built by `pnpm data:flags`; Wikidata is CC0). The flag images are hotlinked from Wikimedia Commons — most are public domain — and each links to its Commons file page. Historical flags, including those of Nazi Germany and the Soviet Union, are shown unaltered as historical documentation.
+
+## Wikidata (CC0)
+
+The battle layer (`packages/shared/src/data/battles.json`, built by `pnpm data:battles`) holds battles, sieges, naval battles and offensives since 1800 from Wikidata: labels, descriptions, dates, coordinates, participants, locations and "part of" links. Wikidata's structured data is CC0 1.0, so no attribution is legally required; every record still links its Wikidata item, and to the English Wikipedia article when one exists (shown under that article's CC BY-SA 4.0 terms, as above). The records are Wikidata's statements, not curated by WorldLens, and are labelled with `provenance.provider = 'wikidata'`.
 
 ## historical-basemaps (GPL-3.0)
 

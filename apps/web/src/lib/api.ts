@@ -168,6 +168,7 @@ export const api = {
       bbox?: string | null;
       kinds?: string;
       demo: boolean;
+      battles: boolean;
       limit: number;
     },
     signal?: AbortSignal,
@@ -176,6 +177,7 @@ export const api = {
       mode: p.mode,
       res: p.res,
       demo: p.demo ? '1' : '0',
+      battles: p.battles ? '1' : '0',
       limit: String(p.limit),
     });
     if (p.t) q.set('t', p.t);

@@ -22,7 +22,15 @@ const DateArg = IsoInstantSchema.describe(
   'ISO 8601 date, e.g. "1815-06-18" or "1945" or "2026-10-14T09:00:00Z". Earliest navigable year is 1800.',
 );
 
-export const LAYERS = ['news', 'history', 'demo', 'borders', 'frontlines', 'labels'] as const;
+export const LAYERS = [
+  'news',
+  'history',
+  'battles',
+  'demo',
+  'borders',
+  'frontlines',
+  'labels',
+] as const;
 export const LayerSchema = z.enum(LAYERS);
 export type LayerId = z.infer<typeof LayerSchema>;
 

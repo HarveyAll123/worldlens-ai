@@ -7,7 +7,11 @@
  * Outputs (committed; public domain):
  *   packages/shared/src/data/geo/countries.json   – country index (name, ISO3, bbox, label point)
  *   packages/shared/src/data/geo/places.json      – ~1,250 populated places for search/geocoding
- *   apps/web/public/data/countries-110m.json      – simplified outlines for highlight/modern borders
+ *   apps/web/public/data/countries-110m.json      – simplified outlines for highlight and labels
+ *   apps/web/public/data/borders-{110m,50m,10m}.json – land boundary lines (no coastlines) for
+ *                                                   modern borders, picked by camera altitude
+ *   packages/shared/src/data/geo/ceasefire-lines.json – "Line of control" features (ceasefire and
+ *                                                   control lines), grouped by Natural Earth BRK_A3
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -16,7 +20,9 @@ import {
   countVertices,
   geometryBBox,
   roundGeometry,
+  simplifyLine,
   simplifyPolygonGeometry,
+  type LonLat,
   type PolyGeometry,
 } from '../packages/shared/src/geo';
 
@@ -26,10 +32,39 @@ const root = path.resolve(here, '..');
 const NE_COMMIT = 'ca96624a56bd078437bca8184e78163e5039ad19';
 const NE_RAW = `https://raw.githubusercontent.com/nvkelso/natural-earth-vector/${NE_COMMIT}/geojson`;
 
+type LineGeometry =
+  | { type: 'LineString'; coordinates: LonLat[] }
+  | { type: 'MultiLineString'; coordinates: LonLat[][] };
+
 interface Feature {
   properties: Record<string, unknown>;
-  geometry: PolyGeometry | { type: 'Point'; coordinates: [number, number] };
+  geometry: PolyGeometry | LineGeometry | { type: 'Point'; coordinates: [number, number] };
 }
+
+const lineParts = (g: LineGeometry): LonLat[][] =>
+  g.type === 'LineString' ? [g.coordinates] : g.coordinates;
+
+function simplifyParts(parts: LonLat[][], tolerance: number, digits: number): LonLat[][] {
+  const f = 10 ** digits;
+  const r = (v: number) => Math.round(v * f) / f;
+  return parts
+    .map((part) => simplifyLine(part, tolerance).map(([x, y]) => [r(x), r(y)] as LonLat))
+    .filter((part) => part.length >= 2);
+}
+
+/** Natural Earth boundary classes → certainty styling used by the web app. */
+function certaintyOf(featureClass: string): 'CERTAIN' | 'DISPUTED' | 'APPROXIMATE' {
+  if (/^International boundary/i.test(featureClass)) return 'CERTAIN';
+  if (/^(Disputed|Line of control)/i.test(featureClass)) return 'DISPUTED';
+  return 'APPROXIMATE';
+}
+
+/** [scale, simplification tolerance in degrees, coordinate decimals]. */
+const LINE_SCALES = [
+  ['110m', 0.02, 2],
+  ['50m', 0.004, 3],
+  ['10m', 0.0005, 4],
+] as const;
 
 async function load(name: string): Promise<{ features: Feature[] }> {
   const local = process.env.NE_DIR;
@@ -119,6 +154,59 @@ async function main() {
   console.log(
     `countries: ${index.length} (outline vertices ${vertices}); places: ${placeIndex.length}`,
   );
+
+  for (const [scale, tolerance, digits] of LINE_SCALES) {
+    const src = await load(`ne_${scale}_admin_0_boundary_lines_land.geojson`);
+    let points = 0;
+    const lines = src.features.flatMap((f) => {
+      const parts = simplifyParts(lineParts(f.geometry as LineGeometry), tolerance, digits);
+      if (!parts.length) return [];
+      points += parts.reduce((n, p) => n + p.length, 0);
+      return [
+        {
+          type: 'Feature',
+          properties: { certainty: certaintyOf(str(f.properties.FEATURECLA) ?? '') },
+          geometry: { type: 'MultiLineString', coordinates: parts },
+        },
+      ];
+    });
+    await writeFile(
+      path.join(webDir, `borders-${scale}.json`),
+      JSON.stringify({
+        type: 'FeatureCollection',
+        metadata: {
+          source: `Natural Earth 1:${scale.replace('m', '')} million Admin 0 – Boundary lines (land)`,
+          license: 'Public domain',
+          url: 'https://www.naturalearthdata.com/',
+          commit: NE_COMMIT,
+          note: `De facto land boundaries as depicted by Natural Earth (no coastlines); simplified (${tolerance}°).`,
+        },
+        features: lines,
+      }),
+    );
+    console.log(`borders-${scale}: ${lines.length} lines, ${points} points`);
+
+    if (scale === '10m') {
+      const groups = new Map<string, LonLat[][]>();
+      for (const f of src.features) {
+        if (!/^Line of control/i.test(str(f.properties.FEATURECLA) ?? '')) continue;
+        const key = str(f.properties.BRK_A3);
+        if (!key) continue;
+        const parts = simplifyParts(lineParts(f.geometry as LineGeometry), 0.0005, 4);
+        groups.set(key, [...(groups.get(key) ?? []), ...parts]);
+      }
+      await writeFile(
+        path.join(sharedDir, 'ceasefire-lines.json'),
+        JSON.stringify({
+          source: 'Natural Earth 1:10m Admin 0 – Boundary lines (land), class "Line of control"',
+          license: 'Public domain',
+          commit: NE_COMMIT,
+          lines: Object.fromEntries([...groups].sort(([a], [b]) => a.localeCompare(b))),
+        }),
+      );
+      console.log(`ceasefire lines: ${[...groups.keys()].join(', ')}`);
+    }
+  }
 }
 
 main().catch((err) => {

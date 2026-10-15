@@ -23,6 +23,10 @@
     "db:migrate": "tsx scripts/db-migrate.ts",
     "test:e2e": "playwright test",
     "data:build": "tsx scripts/build-geodata.ts",
+    "data:battles": "tsx scripts/build-battles.ts",
+    "data:ohm": "tsx scripts/build-ohm-borders.ts",
+    "data:flags": "tsx scripts/build-flags.ts",
+    "data:audit-borders": "tsx scripts/audit-ohm-borders.ts",
     "data:fetch-basemaps": "tsx scripts/fetch-historical-basemaps.ts",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test"
   },

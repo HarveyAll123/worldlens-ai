@@ -12,12 +12,17 @@ import {
   BordersLayer,
   FrontlineLayer,
   HighlightLayer,
+  OutlineLayer,
   type BorderFeatureLike,
+  type BorderLabel,
+  type BorderLineLike,
 } from './GeometryLayers';
 import { createBaseMap, createTerrain, type ImageryKind, type TerrainKind } from './providers';
 
 export interface GlobeCallbacks {
   onPick: (pick: PickId | null) => void;
+  /** A click on the globe surface that hit no marker. */
+  onGlobeClick?: (lon: number, lat: number) => void;
   onCamera: (c: { lat: number; lon: number; altitudeKm: number; bbox: string | null }) => void;
   onBaseMapNotice: (notice: string | null) => void;
   onQuality: (q: QualityState) => void;
@@ -61,6 +66,9 @@ function gpuRenderer(canvas: HTMLCanvasElement): string | null {
   }
 }
 
+/** Below this camera altitude, border and frontline lines are draped on 3D terrain. */
+const DRAPE_BELOW_KM = 800;
+
 export class GlobeController {
   readonly viewer: Cesium.Viewer;
   readonly perf: PerformanceManager;
@@ -68,12 +76,11 @@ export class GlobeController {
   private borders: BordersLayer;
   private highlight: HighlightLayer;
   private frontlines: FrontlineLayer;
+  private countryOutline: OutlineLayer;
   private imagery: ImageryKind | 'loading' = 'loading';
   private terrainKind: TerrainKind = 'ellipsoid';
   private terrainWanted: boolean | null = null;
   private removeListeners: Array<() => void> = [];
-  private reclusterPending = false;
-  private lastRecluster = 0;
   private gpu: string;
   private reducedMotion: boolean;
   private networkRequests = 0;
@@ -105,6 +112,7 @@ export class GlobeController {
     });
     this.perf = new PerformanceManager(tier, opts.quality, {
       allowHigh: (window.devicePixelRatio || 1) > 1 || window.innerWidth > 1600,
+      maxResolution: Math.min(2, window.devicePixelRatio || 1),
     });
 
     this.viewer = new Cesium.Viewer(container, {
@@ -151,6 +159,7 @@ export class GlobeController {
     this.borders = new BordersLayer(scene);
     this.highlight = new HighlightLayer(scene);
     this.frontlines = new FrontlineLayer(scene);
+    this.countryOutline = new OutlineLayer(scene);
 
     this.applyQuality(this.perf.quality);
     this.removeListeners.push(
@@ -160,17 +169,22 @@ export class GlobeController {
       }),
     );
     this.removeListeners.push(scene.postRender.addEventListener(() => this.perf.frame()));
-    this.removeListeners.push(
-      scene.camera.changed.addEventListener(() => this.scheduleRecluster()),
-    );
+    this.removeListeners.push(scene.preRender.addEventListener(() => this.events.update()));
     this.removeListeners.push(scene.camera.moveEnd.addEventListener(() => this.reportCamera()));
-    scene.camera.percentageChanged = 0.01;
 
     const handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
     handler.setInputAction((e: { position: Cesium.Cartesian2 }) => {
       const picked = scene.pick(e.position) as { id?: PickId } | undefined;
-      cb.onPick(
-        picked?.id && typeof picked.id === 'object' && 'kind' in picked.id ? picked.id : null,
+      const id =
+        picked?.id && typeof picked.id === 'object' && 'kind' in picked.id ? picked.id : null;
+      cb.onPick(id);
+      if (id) return;
+      const hit = scene.camera.pickEllipsoid(e.position, scene.globe.ellipsoid);
+      if (!hit) return;
+      const carto = Cesium.Cartographic.fromCartesian(hit);
+      cb.onGlobeClick?.(
+        Cesium.Math.toDegrees(carto.longitude),
+        Cesium.Math.toDegrees(carto.latitude),
       );
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
     handler.setInputAction((e: { endPosition: Cesium.Cartesian2 }) => {
@@ -211,6 +225,9 @@ export class GlobeController {
       if (this.destroyed || this.terrainWanted !== wanted) return;
       this.viewer.scene.terrainProvider = provider;
       this.terrainKind = kind;
+      // Redraw lines so they drape on (or come off) the terrain.
+      this.drawBorders();
+      this.drawFrontlines();
       this.viewer.scene.requestRender();
     });
   }
@@ -230,8 +247,10 @@ export class GlobeController {
     globe.showGroundAtmosphere = s.groundAtmosphere;
     if (scene.skyAtmosphere) scene.skyAtmosphere.show = s.skyAtmosphere;
     scene.fog.enabled = s.fog;
-    scene.postProcessStages.fxaa.enabled = s.fxaa;
-    scene.msaaSamples = s.msaaSamples;
+    // FXAA smears text and thin lines. High-DPI screens need no anti-aliasing at native
+    // resolution; elsewhere the tier's MSAA (geometry only — labels stay sharp) is used.
+    scene.postProcessStages.fxaa.enabled = false;
+    scene.msaaSamples = dpr >= 1.5 ? 1 : s.msaaSamples;
     scene.highDynamicRange = false;
     this.lighting = s.lighting;
     globe.enableLighting = s.lighting && this.lightingTimeMs !== null;
@@ -256,7 +275,7 @@ export class GlobeController {
   }
 
   setQualityPreference(p: QualityPreference): void {
-    this.perf.setPreference(p, window.devicePixelRatio || 1);
+    this.perf.setPreference(p);
     this.applyQuality(this.perf.quality);
     this.cb.onQuality(this.perf.quality);
   }
@@ -281,18 +300,73 @@ export class GlobeController {
     this.events.setSelected(id);
   }
 
-  setBorders(features: BorderFeatureLike[] | null): void {
-    if (!features) return this.borders.clear();
+  private bordersState: {
+    features: BorderFeatureLike[];
+    lines: BorderLineLike[] | null;
+    labels: BorderLabel[] | null;
+  } | null = null;
+  private frontlinesState: Frontline[] = [];
+
+  private altitudeKm = 20_000;
+
+  /**
+   * Lines are draped on the ground when 3D terrain is active and the camera is close enough
+   * for terrain to shift them visibly; from farther out, plain lines are as good and far cheaper.
+   */
+  private get clampToGround(): boolean {
+    return this.terrainKind !== 'ellipsoid' && this.altitudeKm < DRAPE_BELOW_KM;
+  }
+
+  /**
+   * `features` drive labels and fills; when `lines` are given (modern Natural Earth land
+   * boundaries) they are drawn instead of the polygon outlines.
+   */
+  setBorders(
+    features: BorderFeatureLike[] | null,
+    lines: BorderLineLike[] | null = null,
+    labels: BorderLabel[] | null = null,
+  ): void {
+    this.bordersState = features ? { features, lines, labels } : null;
+    this.drawBorders();
+  }
+
+  /** Update border name labels only (e.g. as the view moves) without rebuilding the lines. */
+  setBorderLabels(labels: BorderLabel[]): void {
+    if (!this.bordersState) return;
+    this.bordersState = { ...this.bordersState, labels };
+    this.borders.setLabels(labels, TIER_SETTINGS[this.perf.quality.tier].borderLabels);
+  }
+
+  private drawBorders(): void {
+    if (!this.bordersState) return this.borders.clear();
     const s = TIER_SETTINGS[this.perf.quality.tier];
-    this.borders.setFeatures(features, { fills: s.borderFills, labelBudget: s.borderLabels });
+    const { features, lines, labels } = this.bordersState;
+    this.borders.setFeatures(features, {
+      fills: s.borderFills,
+      labelBudget: s.borderLabels,
+      outlines: !lines,
+      ...(lines ? { lines } : {}),
+      ...(labels ? { labels } : {}),
+      clampToGround: this.clampToGround,
+    });
   }
 
   setHighlight(geometry: BorderFeatureLike['geometry'] | null): void {
     this.highlight.set(geometry);
   }
 
+  /** Glowing outline of the selected country (null clears it). */
+  setCountryOutline(parts: number[][] | null): void {
+    this.countryOutline.set(parts);
+  }
+
   setFrontlines(lines: Frontline[]): void {
-    this.frontlines.set(lines);
+    this.frontlinesState = lines;
+    this.drawFrontlines();
+  }
+
+  private drawFrontlines(): void {
+    this.frontlines.set(this.frontlinesState, this.clampToGround);
   }
 
   flyTo(lat: number, lon: number, altitudeKm: number): void {
@@ -315,26 +389,17 @@ export class GlobeController {
     this.flyTo(22, 60, 19_000);
   }
 
-  private scheduleRecluster(): void {
-    if (this.reclusterPending) return;
-    this.reclusterPending = true;
-    const minGap = this.perf.quality.tier === 'LOW' ? 250 : 120;
-    const wait = Math.max(0, minGap - (performance.now() - this.lastRecluster));
-    setTimeout(() => {
-      requestAnimationFrame(() => {
-        this.reclusterPending = false;
-        if (this.destroyed) return;
-        this.lastRecluster = performance.now();
-        this.events.recluster();
-      });
-    }, wait);
-  }
-
   private reportCamera(): void {
     const camera = this.viewer.camera;
     const carto = camera.positionCartographic;
     const rect = camera.computeViewRectangle(this.viewer.scene.globe.ellipsoid);
     const altitudeKm = carto.height / 1000;
+    const wasDraped = this.clampToGround;
+    this.altitudeKm = altitudeKm;
+    if (this.clampToGround !== wasDraped) {
+      this.drawBorders();
+      this.drawFrontlines();
+    }
     let bbox: string | null = null;
     if (rect && altitudeKm < 4000) {
       const d = Cesium.Math.toDegrees;
@@ -348,7 +413,7 @@ export class GlobeController {
       altitudeKm,
       bbox,
     });
-    this.events.recluster();
+    this.events.relabel();
   }
 
   diagnostics(): GlobeDiagnostics {

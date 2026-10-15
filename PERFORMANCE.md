@@ -22,19 +22,21 @@ WorldLens adapts to the device instead of assuming a gaming GPU. This document d
 
 Defined in `apps/web/src/perf/tiers.ts`.
 
-| Setting                        | LOW          | MEDIUM            | HIGH                                                |
-| ------------------------------ | ------------ | ----------------- | --------------------------------------------------- |
-| Resolution scale range         | 0.5 – 0.85   | 0.8 – 1.0         | 1.0 – 2.0 (HiDPI, capped at the device pixel ratio) |
-| `maximumScreenSpaceError`      | 6            | 2.5               | 1.5                                                 |
-| Tile cache                     | 80           | 200               | 400                                                 |
-| Terrain (MapTiler, if key)     | off          | on                | on                                                  |
-| Sky / ground atmosphere        | off          | on                | on                                                  |
-| Lighting                       | off          | on                | on                                                  |
-| Anti-aliasing                  | none         | FXAA              | MSAA ×4                                             |
-| Max markers / labels           | 120 / 12     | 400 / 40          | 800 / 80                                            |
-| Cluster cell                   | 84 px        | 60 px             | 46 px                                               |
-| Border fills / detail / labels | no / low / 0 | yes / medium / 25 | yes / high / 60                                     |
-| Animations, hover picking      | off          | on                | on                                                  |
+| Setting                    | LOW        | MEDIUM    | HIGH      |
+| -------------------------- | ---------- | --------- | --------- |
+| Resolution scale range     | 0.5 – 0.85 | 0.8 – 2.0 | 1.0 – 2.0 |
+| `maximumScreenSpaceError`  | 6          | 2.5       | 1.5       |
+| Tile cache                 | 80         | 200       | 400       |
+| Terrain (MapTiler, if key) | off        | on        | on        |
+| Sky / ground atmosphere    | off        | on        | on        |
+| Lighting                   | off        | on        | on        |
+| Anti-aliasing              | none       | MSAA ×4   | MSAA ×4   |
+| Max markers / labels       | 120 / 12   | 400 / 40  | 800 / 80  |
+| Cluster cell               | 84 px      | 60 px     | 46 px     |
+| Border fills / labels      | no / 0     | yes / 25  | yes / 60  |
+| Animations, hover picking  | off        | on        | on        |
+
+Resolution scale 1 renders at CSS pixels; above 1 is capped at the display's pixel ratio (2 on a Retina Mac). MEDIUM and HIGH start at that cap, so text, border lines and imagery are rendered at the screen's own resolution instead of being stretched (which looked blurry on high-DPI screens); AUTO lowers it in 0.1 steps when frames run over budget. Anti-aliasing: FXAA is not used (it smears text and thin lines); MSAA applies on standard-density screens only — at native high-DPI resolution none is needed. Border detail follows the camera altitude, not the tier.
 
 **Initial guess** (`initialTier`): LOW for software renderers (SwiftShader, llvmpipe, “Basic Render”), Save-Data, ≤2 cores or ≤2 GB memory, and small touch screens with less than 6 GB; MEDIUM otherwise. AUTO corrects the guess within seconds. HIGH is only reached by measured headroom or by choosing it manually.
 

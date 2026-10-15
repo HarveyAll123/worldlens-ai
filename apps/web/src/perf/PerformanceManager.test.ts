@@ -5,9 +5,10 @@ import { initialTier } from './tiers';
 function harness(
   initial: 'LOW' | 'MEDIUM' | 'HIGH',
   pref: 'AUTO' | 'LOW' | 'MEDIUM' | 'HIGH' = 'AUTO',
+  maxResolution = 1,
 ) {
   let t = 0;
-  const pm = new PerformanceManager(initial, pref, { now: () => t });
+  const pm = new PerformanceManager(initial, pref, { now: () => t, maxResolution });
   const run = (frameMs: number, seconds: number) => {
     const frames = Math.floor((seconds * 1000) / frameMs);
     for (let i = 0; i < frames; i++) {
@@ -42,6 +43,22 @@ describe('PerformanceManager', () => {
     for (let i = 1; i < pm.decisions.length; i++) {
       expect(pm.decisions[i]!.at - pm.decisions[i - 1]!.at).toBeGreaterThanOrEqual(3000);
     }
+  });
+
+  it('renders at the display resolution on high-DPI screens, and lowers it gradually', () => {
+    const { pm, run } = harness('MEDIUM', 'AUTO', 2);
+    expect(pm.quality.resolutionScale).toBe(2); // Retina: crisp, not stretched CSS pixels
+    run(28, 2.5);
+    expect(pm.decisions[0]!.to).toMatchObject({ tier: 'MEDIUM', resolutionScale: 1.9 });
+  });
+
+  it('never exceeds the display resolution and never gets blurrier by moving up a tier', () => {
+    expect(harness('HIGH', 'AUTO', 1).pm.quality.resolutionScale).toBe(1);
+    expect(harness('HIGH', 'AUTO', 2).pm.quality.resolutionScale).toBe(2);
+    const { pm, run } = harness('MEDIUM', 'AUTO', 2);
+    run(5, 40); // lots of headroom
+    expect(pm.quality.tier).toBe('HIGH');
+    expect(pm.quality.resolutionScale).toBe(2);
   });
 
   it('stabilises weak hardware at a 30 FPS target instead of thrashing', () => {
