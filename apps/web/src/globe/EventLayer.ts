@@ -47,7 +47,11 @@ function truncate(s: string, n: number): string {
 
 export class EventLayer {
   private points = new Cesium.PointPrimitiveCollection();
-  private labels = new Cesium.LabelCollection();
+  // Translucent pass only: markers and labels both sit at the near plane (no depth test), so
+  // whichever drew first won — cluster counts drawn in the opaque pass vanished under their
+  // circle depending on the view. The translucent pass runs after the markers and passes at
+  // equal depth, so counts and titles are always on top.
+  private labels = new Cesium.LabelCollection({ blendOption: Cesium.BlendOption.TRANSLUCENT });
   private events: EventSummary[] = [];
   private byId = new Map<string, EventSummary>();
   private positions = new Map<string, Cesium.Cartesian3>();

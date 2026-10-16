@@ -31,7 +31,7 @@ import {
 } from '@worldlens/shared';
 import { api } from '../lib/api';
 import { parseDateInput } from '../lib/dateInput';
-import { edgePush, edgeShift } from '../lib/timelineDrag';
+import { edgePush, edgeShift, trackUnit, viewAfter } from '../lib/timelineDrag';
 import { useVisibleEvents } from '../hooks/useData';
 import { TIER_SETTINGS } from '../perf/tiers';
 import { useAppStore } from '../state/store';
@@ -90,10 +90,11 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
 
   const timeMs = mode === 'live' ? nowMs : storeTime;
   const [viewRes, setViewRes] = useState<Resolution>('century');
-  // The track zoom follows the selected resolution, but the default view shows the full range.
+  // The track zoom follows the selected resolution; the overview stays for picked years.
   useEffect(() => {
-    setViewRes(mode === 'live' && resolution === 'day' ? 'century' : resolution);
+    setViewRes((view) => viewAfter(view, resolution, mode));
   }, [resolution, mode]);
+  const unitRes = trackUnit(viewRes, resolution);
 
   // The visible window stays put while the selected time moves inside it; it only re-centres
   // when the time leaves the window (or the zoom changes) — and never during a drag, where a
@@ -142,7 +143,7 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
   );
 
   const commit = useCallback(
-    (ms: number, res: Resolution = resolution) => {
+    (ms: number, res: Resolution = unitRes) => {
       const clamped = Math.min(nowMs, Math.max(min, ms));
       if (nowMs - clamped < 60_000) return returnToLive();
       // Snap to the resolution unit so the display never claims more precision than chosen.
@@ -152,14 +153,13 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
         effective === 'century' ? 'year' : effective,
       );
     },
-    [allowed, min, nowMs, resolution, returnToLive, setTime],
+    [allowed, min, nowMs, unitRes, returnToLive, setTime],
   );
 
-  const step = (n: number, unit: Resolution = resolution) =>
-    commit(addUnits(timeMs, unit === 'century' ? 'decade' : unit, n), resolution);
+  const step = (n: number) => commit(addUnits(timeMs, unitRes, n));
 
   const onKeyDown = (e: React.KeyboardEvent) => {
-    const r = resolution === 'century' ? 'year' : resolution;
+    const r = unitRes;
     switch (e.key) {
       case 'ArrowLeft':
       case 'ArrowDown':
@@ -205,9 +205,9 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
     }
   };
 
-  // Dragging moves in units of the selected resolution and never changes it: committing at a
-  // finer unit used to zoom the track in mid-drag, which made dragging run away.
-  const dragUnit: Resolution = resolution === 'century' ? 'year' : resolution;
+  // Dragging moves in units of the selected resolution (years on the overview) and never
+  // changes the track zoom: committing at a finer unit used to zoom in mid-drag, which made
+  // dragging run away.
   const lastCommit = useRef(0);
   const previewRef = useRef<number | null>(null);
   const draggingRef = useRef(false);
@@ -337,7 +337,7 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
   liveRef.current = returnToLive;
   useEffect(() => {
     if (!playing) return;
-    const unit: Resolution = resolution === 'century' ? 'decade' : resolution;
+    const unit = unitRes;
     const timer = setInterval(() => {
       const next = addUnits(timeRef.current, unit, 1);
       if (next >= Date.now() - 60_000) {
@@ -348,7 +348,7 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
       commitRef.current(next);
     }, 900 / speed);
     return () => clearInterval(timer);
-  }, [playing, speed, resolution]);
+  }, [playing, speed, unitRes]);
 
   const [draft, setDraft] = useState('');
   const jumpTo = (text: string) => {
@@ -397,12 +397,18 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
         >
           {RESOLUTIONS.map((r) => {
             const ok = allowed.includes(r);
+            // The overview (C) selects years; Y means the zoomed-in year track.
+            const pressed =
+              mode === 'historical' &&
+              (r === 'century'
+                ? viewRes === 'century'
+                : resolution === r && !(r === 'year' && viewRes === 'century'));
             return (
               <button
                 key={r}
                 type="button"
                 disabled={!ok}
-                aria-pressed={resolution === r}
+                aria-pressed={pressed}
                 title={
                   ok ? RES_LABEL[r] : `${RES_LABEL[r]} — not supported by the data at this date`
                 }
@@ -411,7 +417,7 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
                   setViewRes(r);
                   if (mode === 'historical') commit(timeMs, r);
                 }}
-                className={`px-2 py-1 font-medium ${resolution === r && mode === 'historical' ? 'bg-white/15 text-white' : 'text-slate-300 hover:bg-white/10'} disabled:cursor-not-allowed disabled:text-slate-600`}
+                className={`px-2 py-1 font-medium ${pressed ? 'bg-white/15 text-white' : 'text-slate-300 hover:bg-white/10'} disabled:cursor-not-allowed disabled:text-slate-600`}
               >
                 {compact ? RES_SHORT[r] : RES_LABEL[r]}
               </button>
@@ -510,7 +516,7 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
             title="Type a date to jump to it"
             aria-label="Go to a date"
           >
-            {mode === 'live' ? 'LIVE' : formatAt(shownMs, dragging ? dragUnit : resolution)}
+            {mode === 'live' ? 'LIVE' : formatAt(shownMs, dragging ? unitRes : resolution)}
           </button>
         )}
         {mode === 'historical' && (

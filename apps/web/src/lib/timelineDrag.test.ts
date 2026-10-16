@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { edgePush, edgeShift } from './timelineDrag';
+import { edgePush, edgeShift, trackUnit, viewAfter } from './timelineDrag';
 
 describe('timeline edge scrolling', () => {
   it('pushes only near or past the ends of the track', () => {
@@ -15,5 +15,27 @@ describe('timeline edge scrolling', () => {
     expect(yearsPerSecond(0.2)).toBeLessThan(0.2);
     expect(yearsPerSecond(1.4)).toBeCloseTo(8.2, 1);
     expect(yearsPerSecond(-1.4)).toBeCloseTo(-8.2, 1);
+  });
+});
+
+describe('timeline overview', () => {
+  it('moves in years on the 1800–now overview, whatever the selected resolution', () => {
+    expect(trackUnit('century', 'day')).toBe('year'); // LIVE: overview with day resolution
+    expect(trackUnit('century', 'year')).toBe('year');
+    expect(trackUnit('year', 'year')).toBe('year');
+    expect(trackUnit('month', 'month')).toBe('month');
+    expect(trackUnit('day', 'day')).toBe('day');
+  });
+
+  it('keeps the overview when a year is picked on it', () => {
+    expect(viewAfter('century', 'year', 'historical')).toBe('century');
+    expect(viewAfter('century', 'day', 'live')).toBe('century');
+  });
+
+  it('follows other resolution changes (buttons, search, AI)', () => {
+    expect(viewAfter('century', 'day', 'historical')).toBe('day');
+    expect(viewAfter('century', 'month', 'historical')).toBe('month');
+    expect(viewAfter('year', 'year', 'historical')).toBe('year');
+    expect(viewAfter('day', 'year', 'historical')).toBe('year');
   });
 });

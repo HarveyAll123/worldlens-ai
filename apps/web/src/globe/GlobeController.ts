@@ -61,6 +61,22 @@ export interface GlobeDiagnostics {
   decisions: Array<{ reason: string; tier: string; scale: number; targetFps: number }>;
 }
 
+/** Any label collection still waiting for glyphs (LabelCollection#ready is private API). */
+function labelsPending(scene: Cesium.Scene): boolean {
+  const primitives = scene.primitives;
+  for (let i = 0; i < primitives.length; i++) {
+    const p: unknown = primitives.get(i);
+    if (
+      p instanceof Cesium.LabelCollection &&
+      p.show &&
+      p.length > 0 &&
+      (p as unknown as { ready?: boolean }).ready === false
+    )
+      return true;
+  }
+  return false;
+}
+
 /** Camera altitudes for the night side: full above, fading out below, gone below the second. */
 const NIGHT_FULL_ABOVE_M = 6_000_000;
 const NIGHT_GONE_BELOW_M = 1_000_000;
@@ -185,7 +201,15 @@ export class GlobeController {
         cb.onQuality(q);
       }),
     );
-    this.removeListeners.push(scene.postRender.addEventListener(() => this.perf.frame()));
+    this.removeListeners.push(
+      scene.postRender.addEventListener(() => {
+        this.perf.frame();
+        // Letters for new label text are drawn into Cesium's glyph atlas in the background; in
+        // request-render mode nothing asked for the frame that shows them, so new labels
+        // stayed with missing letters ("attle of a e has") until the camera next moved.
+        if (labelsPending(scene)) scene.requestRender();
+      }),
+    );
     this.removeListeners.push(
       scene.preRender.addEventListener(() => {
         this.events.update();
