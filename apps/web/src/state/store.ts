@@ -72,6 +72,10 @@ interface AppState {
   quality: QualityPreference;
   /** Tier currently in effect (from the PerformanceManager). */
   qualityTier: QualityTier;
+  /** Darken the side of the globe where the sun has set (off = evenly lit). */
+  dayNight: boolean;
+  /** City lights on the night side (only with dayNight). */
+  nightLights: boolean;
   diagnosticsOpen: boolean;
   camera: CameraState;
   flyRequest: FlyRequest | null;
@@ -91,6 +95,8 @@ interface AppState {
   openTakeAction: (s: TakeActionState | null) => void;
   setTour: (t: TourState | null) => void;
   setQuality: (q: QualityPreference) => void;
+  setDayNight: (on: boolean) => void;
+  setNightLights: (on: boolean) => void;
   setDiagnostics: (open: boolean) => void;
   setCamera: (c: CameraState) => void;
   flyTo: (req: Omit<FlyRequest, 'seq'>) => void;
@@ -105,6 +111,24 @@ function readQuality(): QualityPreference {
     /* storage unavailable */
   }
   return 'AUTO';
+}
+
+function readFlag(key: string, fallback: boolean): boolean {
+  try {
+    const v = localStorage.getItem(key);
+    if (v === '1' || v === '0') return v === '1';
+  } catch {
+    /* storage unavailable */
+  }
+  return fallback;
+}
+
+function saveFlag(key: string, on: boolean): void {
+  try {
+    localStorage.setItem(key, on ? '1' : '0');
+  } catch {
+    /* storage unavailable */
+  }
 }
 
 let flySeq = 0;
@@ -135,6 +159,8 @@ export const useAppStore = create<AppState>()(
     tour: null,
     quality: readQuality(),
     qualityTier: 'MEDIUM',
+    dayNight: readFlag('worldlens.dayNight', true),
+    nightLights: readFlag('worldlens.nightLights', true),
     diagnosticsOpen: false,
     camera: { lat: 20, lon: 30, altitudeKm: 18000, bbox: null },
     flyRequest: null,
@@ -183,6 +209,14 @@ export const useAppStore = create<AppState>()(
         /* storage unavailable */
       }
       set({ quality });
+    },
+    setDayNight: (dayNight) => {
+      saveFlag('worldlens.dayNight', dayNight);
+      set({ dayNight });
+    },
+    setNightLights: (nightLights) => {
+      saveFlag('worldlens.nightLights', nightLights);
+      set({ nightLights });
     },
     setDiagnostics: (diagnosticsOpen) => set({ diagnosticsOpen }),
     setCamera: (camera) => set({ camera }),

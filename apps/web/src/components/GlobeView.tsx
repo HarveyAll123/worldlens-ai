@@ -27,6 +27,21 @@ import { useReducedMotion } from '../hooks/useMedia';
 import { identifyCountry } from '../lib/countries';
 import { useAppStore } from '../state/store';
 
+const DAY_MS = 86_400_000;
+
+/**
+ * Moment the sun is placed for: now in LIVE; the selected hour when the timeline is at hour
+ * level; otherwise the selected day at the current time of day (past dates rarely record the
+ * hour, and the night side should still show).
+ */
+function sunTime(): number {
+  const { mode, timeMs, resolution } = useAppStore.getState();
+  const now = Date.now();
+  if (mode === 'live') return now;
+  if (resolution === 'hour') return timeMs;
+  return floorTo(timeMs, 'day') + (now % DAY_MS);
+}
+
 /**
  * Border detail follows the camera: world-scale data looks wrong up close, fine data is
  * wasted (and slow) from orbit. Historical snapshots: API detail levels; modern borders:
@@ -154,20 +169,23 @@ export function GlobeView({
           (on) => gl.setLabels(on),
         ),
         useAppStore.subscribe(
+          (s) => [s.dayNight, s.nightLights] as const,
+          ([dayNight, nightLights]) => gl.setNightOptions({ dayNight, nightLights }),
+          { equalityFn: (a, b) => a[0] === b[0] && a[1] === b[1], fireImmediately: true },
+        ),
+        useAppStore.subscribe(
           (s) => [s.mode, s.timeMs, s.resolution] as const,
-          ([mode, timeMs, resolution]) =>
-            gl.setLightingTime(
-              mode === 'live' ? Date.now() : resolution === 'hour' ? timeMs : null,
-            ),
+          () => gl.setLightingTime(sunTime()),
           {
             equalityFn: (a, b) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2],
             fireImmediately: true,
           },
         ),
       ];
-      // Keep the day/night terminator current in LIVE mode (one render per minute).
+      // Keep the day/night terminator moving with the clock (one render per minute).
       const sun = setInterval(() => {
-        if (useAppStore.getState().mode === 'live') gl.setLightingTime(Date.now());
+        const s = useAppStore.getState();
+        if (s.mode === 'live' || s.resolution !== 'hour') gl.setLightingTime(sunTime());
       }, 60_000);
       return () => {
         unsubs.forEach((u) => u());

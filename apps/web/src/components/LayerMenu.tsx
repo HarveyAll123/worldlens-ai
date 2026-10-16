@@ -32,6 +32,10 @@ export function LayerMenu() {
   const quality = useAppStore((s) => s.quality);
   const tier = useAppStore((s) => s.qualityTier);
   const setQuality = useAppStore((s) => s.setQuality);
+  const dayNight = useAppStore((s) => s.dayNight);
+  const setDayNight = useAppStore((s) => s.setDayNight);
+  const nightLights = useAppStore((s) => s.nightLights);
+  const setNightLights = useAppStore((s) => s.setNightLights);
   const setDiagnostics = useAppStore((s) => s.setDiagnostics);
   const diagnostics = useAppStore((s) => s.diagnosticsOpen);
   const ref = useRef<HTMLDivElement>(null);
@@ -62,9 +66,9 @@ export function LayerMenu() {
       </button>
       {open && (
         <div
-          className="glass absolute right-0 top-full z-50 mt-2 w-72 rounded-xl p-3 shadow-2xl"
+          className="glass scroll-thin absolute right-0 top-full z-50 mt-2 max-h-[calc(100dvh-10rem)] w-72 overflow-y-auto rounded-xl p-3 shadow-2xl"
           role="dialog"
-          aria-label="Layers and quality"
+          aria-label="Layers and settings"
         >
           <fieldset>
             <legend className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
@@ -88,6 +92,48 @@ export function LayerMenu() {
                 </span>
               </label>
             ))}
+          </fieldset>
+          <fieldset className="mt-3 border-t border-white/10 pt-3">
+            <legend className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+              Day and night
+            </legend>
+            <label className="flex cursor-pointer items-start gap-2 rounded-md px-1 py-1.5 hover:bg-white/5">
+              <input
+                type="checkbox"
+                className="mt-0.5 accent-sky-300"
+                checked={dayNight}
+                onChange={(e) => setDayNight(e.target.checked)}
+                data-testid="setting-day-night"
+              />
+              <span>
+                <span className="block text-[13px] text-slate-100">Night time</span>
+                <span className="block text-[11px] text-slate-400">
+                  {tier === 'LOW'
+                    ? 'Not drawn at LOW graphics quality.'
+                    : 'Darkens where the sun has set (past dates: at today’s time of day). Off: evenly lit.'}
+                </span>
+              </span>
+            </label>
+            <label
+              className={`flex items-start gap-2 rounded-md px-1 py-1.5 ${dayNight ? 'cursor-pointer hover:bg-white/5' : 'cursor-not-allowed opacity-50'}`}
+            >
+              <input
+                type="checkbox"
+                className="mt-0.5 accent-sky-300"
+                checked={dayNight && nightLights}
+                disabled={!dayNight}
+                onChange={(e) => setNightLights(e.target.checked)}
+                data-testid="setting-night-lights"
+              />
+              <span>
+                <span className="block text-[13px] text-slate-100">City lights at night</span>
+                <span className="block text-[11px] text-slate-400">
+                  {dayNight
+                    ? 'From 1880, when electric street lighting began; fewer and dimmer further back (NASA, 2016 data).'
+                    : 'Needs night time on.'}
+                </span>
+              </span>
+            </label>
           </fieldset>
           <fieldset className="mt-3 border-t border-white/10 pt-3">
             <legend className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">

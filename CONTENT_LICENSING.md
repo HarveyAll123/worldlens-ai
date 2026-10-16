@@ -51,6 +51,7 @@ Historical border snapshots come from [aourednik/historical-basemaps](https://gi
 
 - MapTiler satellite imagery and terrain: shown with “© MapTiler © OpenStreetMap contributors” attribution in the globe credits; use is governed by your MapTiler plan.
 - Natural Earth II raster (bundled with CesiumJS) is public domain.
+- City lights on the night side: NASA GIBS “VIIRS_Night_Lights” (Suomi NPP VIIRS, 2016 composite), loaded at runtime from `gibs.earthdata.nasa.gov` with no key. NASA imagery is not copyrighted; GIBS asks for acknowledgement, given in the globe credits (“Night lights: NASA GIBS / VIIRS (2016)”). The app recolours the grey tiles to a warm lamp colour and, for past dates, thins them out (none before 1880) — it is an illustration of when electric lighting spread, not historical data.
 - CesiumJS is Apache-2.0; its credit display is kept.
 
 ## Political-orientation ratings

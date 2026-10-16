@@ -37,6 +37,7 @@ export function DiagnosticsPanel() {
         ['Target', `${d.targetFps} FPS`],
         ['Resolution scale', `${d.resolutionScale} (px ratio ${d.effectivePixelRatio})`],
         ['Canvas', d.canvas],
+        ['Lighting', d.lighting],
         ['Camera altitude', `${d.cameraAltitudeKm.toLocaleString()} km`],
         ['Visible events', `${d.visibleEvents} (${d.clusters} clusters)`],
         ['Visible labels', d.visibleLabels],
