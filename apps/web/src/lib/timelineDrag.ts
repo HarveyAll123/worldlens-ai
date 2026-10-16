@@ -1,3 +1,28 @@
+import type { Resolution } from '@worldlens/shared';
+
+/**
+ * Unit the track and the step buttons move in: years on the 1800–now overview (a single day
+ * picked there left almost nothing on the map).
+ */
+export function trackUnit(view: Resolution, resolution: Resolution): Resolution {
+  return view === 'century' || resolution === 'century' ? 'year' : resolution;
+}
+
+/**
+ * Track zoom after the selected resolution changes: the full range in LIVE, and picking a year
+ * on the overview keeps the overview (the Y button zooms in explicitly). Zooming in on the first
+ * click used to land on a single day of a two-month track.
+ */
+export function viewAfter(
+  view: Resolution,
+  resolution: Resolution,
+  mode: 'live' | 'historical',
+): Resolution {
+  if (mode === 'live' && resolution === 'day') return 'century';
+  if (view === 'century' && resolution === 'year') return 'century';
+  return resolution;
+}
+
 /**
  * Edge scrolling for the timeline drag. Holding the pointer within `zone` px of either end of
  * the track — or past it — pushes the visible window through time.
