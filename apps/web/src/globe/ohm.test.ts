@@ -6,11 +6,13 @@ import {
   borderLines,
   flagFor,
   flagForPolity,
+  followCountry,
   landBorders,
   parseOhmIndex,
   polityLabels,
   tilesInView,
   type OhmPolity,
+  type Succession,
 } from './ohm';
 
 const polity = (name: string, start: string, end: string | null, ways: number[]): OhmPolity => ({
@@ -184,5 +186,72 @@ describe('the bundled OpenHistoricalMap snapshot', () => {
     expect(names('1940-01-01').has('Manchukuo')).toBe(true);
     expect(activeOn(index.polities, '2026-01-01').length).toBeGreaterThan(150);
     expect(landBorders(activeOn(index.polities, '1941-07-01')).length).toBeGreaterThan(1000);
+  });
+});
+
+describe('a selected country follows the timeline', () => {
+  const dir = path.resolve(__dirname, '../../public/data/ohm');
+  const read = (f: string) => JSON.parse(readFileSync(path.join(dir, f), 'utf8'));
+  const index = parseOhmIndex(read('polities.json'));
+  const succession = read('succession.json').items as Succession;
+  const coarse = (read('ways-coarse.json') as { ways: number[][] }).ways;
+  const at = (name: string, day: string) => {
+    const p = activeOn(index.polities, day).find((q) => q.name === name);
+    if (!p) throw new Error(`${name} not in force on ${day}`);
+    return p;
+  };
+  const follow = (name: string, from: string, to: string) =>
+    followCountry(at(name, from), index.polities, succession, to, coarse);
+  const lands = (r: ReturnType<typeof follow>) =>
+    r.kind === 'switch' ? `${r.polity.name} ${r.polity.start}` : r.kind;
+
+  it('stays while the selected borders are in force', () => {
+    expect(follow('German Reich', '1941-09-01', '1943-01-01').kind).toBe('keep');
+  });
+
+  it('moves to the same country’s borders of the day (Nazi Germany → Weimar Republic)', () => {
+    const r = follow('German Reich', '1941-09-01', '1930-06-01');
+    expect(r).toMatchObject({ kind: 'switch', how: 'same' });
+    expect(lands(r)).toBe('German Reich 1922-06-20');
+    // The German Empire (another Wikidata id) is the same country in Wikidata's terms.
+    expect(lands(follow('German Reich', '1930-06-01', '1910-01-01'))).toBe(
+      'German Reich 1890-07-01',
+    );
+  });
+
+  it('moves to a successor going forward, a predecessor going back', () => {
+    const zone = follow('German Reich', '1941-09-01', '1946-06-01');
+    expect(zone).toMatchObject({ kind: 'switch', how: 'successor' });
+    expect(lands(zone)).toMatch(/occupation zone in Germany/);
+    expect(
+      lands(follow('American occupation zone in Germany', '1947-01-01', '1951-01-01')),
+    ).toMatch(/^West Germany/);
+    expect(lands(follow('Soviet Union', '1980-01-01', '1995-01-01'))).toMatch(/^Russia/);
+    const back = follow('West Germany', '1950-01-01', '1947-06-01');
+    expect(back).toMatchObject({ kind: 'switch', how: 'predecessor' });
+  });
+
+  it('keeps the selection over a short hole in the data', () => {
+    // Kingdom of Prussia: no version between 20 Sep and 1 Oct 1866.
+    expect(follow('Kingdom of Prussia', '1866-06-01', '1866-09-25').kind).toBe('keep');
+  });
+
+  it('closes when nothing continues the country', () => {
+    const island = (name: string, start: string, end: string | null, ways: number[]) => ({
+      ...polity(name, start, end, ways),
+      wikidata: name,
+    });
+    const gone = island('Q1', '1900', '1910', [1, 2]);
+    const other = {
+      ...island('Q2', '1905', null, [3, 4]),
+      bbox: [5, 5, 6, 6] as OhmPolity['bbox'],
+    };
+    expect(followCountry(gone, [gone, other], {}, '1920-01-01').kind).toBe('close');
+    // …but a neighbour that took over most of its border continues it.
+    const heir = island('Q3', '1910', null, [1, 2, 5]);
+    expect(followCountry(gone, [gone, heir], {}, '1920-01-01')).toMatchObject({
+      kind: 'switch',
+      how: 'border',
+    });
   });
 });

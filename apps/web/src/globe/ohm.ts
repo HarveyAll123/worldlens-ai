@@ -472,3 +472,173 @@ export function searchPolities(
     .slice(0, limit)
     .map(({ score: _score, ...m }) => m);
 }
+
+/**
+ * Wikidata succession for OHM polities (succession.json, `pnpm data:succession`): for a
+ * polity's Wikidata id, the other ids that are the same country, and its successors and
+ * predecessors with how many steps away they are.
+ */
+export type Succession = Record<
+  string,
+  [same: string[], next: Array<[string, number]>, prev: Array<[string, number]>]
+>;
+
+/** A selected country version (CountrySelection carries these). */
+export type PolityRef = Omit<OhmPolity, 'tier'>;
+
+export type FollowResult =
+  | { kind: 'keep' }
+  | {
+      kind: 'switch';
+      polity: OhmPolity;
+      how: 'same' | 'successor' | 'predecessor' | 'border' | 'territory';
+    }
+  | { kind: 'close' };
+
+const isActive = (p: { start: string; end: string | null }, day: string) =>
+  p.start <= day && (!p.end || p.end > day);
+
+/** "1866" / "1866-09" / "1866-09-20" → ms (start of that period). */
+const dayMs = (d: string) =>
+  Date.parse(d.length === 4 ? `${d}-01-01` : d.length === 7 ? `${d}-01` : d);
+
+/**
+ * Short holes in the data are not the end of a country: Greece has no version between
+ * 1 Jan and 10 Feb 1947, Prussia none between 20 Sep and 1 Oct 1866.
+ */
+const MAX_GAP_MS = 400 * 86_400_000;
+
+function sharedWays(a: number[], b: number[]): number {
+  const set = new Set(a);
+  let n = 0;
+  for (const w of b) if (set.has(w)) n++;
+  return n;
+}
+
+const overlaps = (a: PolityRef, b: PolityRef) =>
+  a.bbox[0] <= b.bbox[2] &&
+  b.bbox[0] <= a.bbox[2] &&
+  a.bbox[1] <= b.bbox[3] &&
+  b.bbox[1] <= a.bbox[3];
+
+/** Best continuation among candidates: covers the old label point, else shares most border. */
+function pick(cands: OhmPolity[], sel: PolityRef, coarse?: number[][]): OhmPolity | null {
+  if (cands.length <= 1) return cands[0] ?? null;
+  const at = coarse ? polityAt(cands, coarse, sel.label[0], sel.label[1]) : null;
+  if (at) return at;
+  let best: OhmPolity | null = null;
+  let bestScore = -1;
+  for (const c of cands) {
+    const score = sharedWays(sel.ways, c.ways);
+    if (score > bestScore) [best, bestScore] = [c, score];
+  }
+  return best;
+}
+
+/**
+ * Where a selected country goes when the timeline leaves the period of its selected version:
+ *  1. the same country's version in force that day (border changes, Weimar ↔ Nazi Germany);
+ *  2. its nearest successor (moving forward) or predecessor (moving back) that day;
+ *  3. a country of the same name;
+ *  4. a country sharing at least half its border (same territory, renamed, no Wikidata link);
+ *  5. the country that holds its land that day (annexed, merged, or carved out of it).
+ * Successors, predecessors and namesakes must overlap it — the one covers the other's label
+ * point — which drops wrong-way or stray Wikidata links (Papal States → Republic of Cospaia).
+ * A hole in the data (something continues it within MAX_GAP further on) keeps the selection:
+ * checked after steps 1–3 for the same country, and before closing for anything; otherwise
+ * it closes.
+ */
+export function followCountry(
+  sel: PolityRef,
+  all: OhmPolity[],
+  succession: Succession,
+  day: string,
+  coarse?: number[][],
+  today: string = new Date().toISOString().slice(0, 10),
+): FollowResult {
+  if (isActive(sel, day)) return { kind: 'keep' };
+  const forward = !!sel.end && day >= sel.end;
+  const at = (d: string, steps: 'strong' | 'all') =>
+    continuation(sel, all, succession, d, forward, steps, coarse);
+  // Dates within MAX_GAP further on where the map changes near it, nearest first.
+  const target = dayMs(day);
+  const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+  const probes = [
+    ...new Set(
+      all
+        .filter((p) => overlaps(p, sel))
+        .map((p) => (forward ? p.start : p.end && iso(dayMs(p.end) - 86_400_000)))
+        .filter(
+          (d): d is string =>
+            !!d &&
+            (forward ? d > day && d <= today : d < day) &&
+            Math.abs(dayMs(d) - target) <= MAX_GAP_MS,
+        ),
+    ),
+  ].sort((a, b) => Math.abs(dayMs(a) - target) - Math.abs(dayMs(b) - target));
+  const soon = (steps: 'strong' | 'all') => probes.some((d) => !!at(d, steps));
+
+  const strong = at(day, 'strong');
+  if (strong) return strong;
+  if (soon('strong')) return { kind: 'keep' };
+  const weak = at(day, 'all');
+  if (weak) return weak;
+  if (soon('all')) return { kind: 'keep' };
+  return { kind: 'close' };
+}
+
+function continuation(
+  sel: PolityRef,
+  all: OhmPolity[],
+  succession: Succession,
+  day: string,
+  forward: boolean,
+  steps: 'strong' | 'all',
+  coarse?: number[][],
+): FollowResult | null {
+  const active = activeOn(all, day);
+  const entry = sel.wikidata ? succession[sel.wikidata] : undefined;
+  const same = new Set([sel.wikidata, ...(entry?.[0] ?? [])].filter((q): q is string => !!q));
+  const isSame = (p: OhmPolity) =>
+    p.wikidata ? same.has(p.wikidata) : !sel.wikidata && p.name === sel.name;
+
+  const sameNow = pick(active.filter(isSame), sel, coarse);
+  if (sameNow) return { kind: 'switch', polity: sameNow, how: 'same' };
+
+  const nearby = active.filter((p) => overlaps(p, sel));
+  const covers = (p: PolityRef, [lon, lat]: [number, number]) =>
+    !coarse || polityAt([{ ...p, tier: 2 }], coarse, lon, lat) !== null;
+  const related = (p: OhmPolity) => covers(p, sel.label) || covers(sel, p.label);
+  const links = (forward ? entry?.[1] : entry?.[2]) ?? [];
+  for (const depth of [...new Set(links.map(([, d]) => d))].sort((a, b) => a - b)) {
+    const ids = new Set(links.filter(([, d]) => d === depth).map(([q]) => q));
+    const found = pick(
+      nearby.filter((p) => p.wikidata && ids.has(p.wikidata) && related(p)),
+      sel,
+      coarse,
+    );
+    if (found) return { kind: 'switch', polity: found, how: forward ? 'successor' : 'predecessor' };
+  }
+
+  const named = pick(
+    nearby.filter((p) => p.name === sel.name && related(p)),
+    sel,
+    coarse,
+  );
+  if (named) return { kind: 'switch', polity: named, how: 'same' };
+  if (steps === 'strong') return null;
+
+  const border = pick(
+    nearby.filter(
+      (p) => sel.ways.length > 0 && sharedWays(sel.ways, p.ways) * 2 >= sel.ways.length,
+    ),
+    sel,
+    coarse,
+  );
+  if (border) return { kind: 'switch', polity: border, how: 'border' };
+  // Only where the label point is really inside it (Prussia's 1866 point lies in Saxony).
+  const holder =
+    coarse && covers(sel, sel.label) ? polityAt(nearby, coarse, sel.label[0], sel.label[1]) : null;
+  if (holder) return { kind: 'switch', polity: holder, how: 'territory' };
+  return null;
+}

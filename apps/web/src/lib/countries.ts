@@ -4,13 +4,16 @@
  */
 import type { QueryClient } from '@tanstack/react-query';
 import { floorTo, parseIso, toIso, type Resolution } from '@worldlens/shared';
-import { activeOn, polityAt, type OhmPolity, type PolityMatch } from '../globe/ohm';
-import { ohmCoarseQuery, ohmIndexQuery } from '../hooks/useData';
+import { activeOn, followCountry, polityAt, type OhmPolity, type PolityMatch } from '../globe/ohm';
+import { ohmCoarseQuery, ohmIndexQuery, ohmSuccessionQuery } from '../hooks/useData';
 import { useAppStore, type CountrySelection } from '../state/store';
 
-function currentDay(): string {
-  const s = useAppStore.getState();
+function dayOf(s: { mode: string; timeMs: number }): string {
   return toIso(floorTo(s.mode === 'live' ? Date.now() : s.timeMs, 'day')).slice(0, 10);
+}
+
+function currentDay(): string {
+  return dayOf(useAppStore.getState());
 }
 
 export function toSelection(p: OhmPolity): CountrySelection {
@@ -73,4 +76,41 @@ export function showCountry(m: PolityMatch): void {
   s.setSheet('detail', true);
   flyToCountry(c);
   s.announce(`Showing ${c.name}`);
+}
+
+/**
+ * Keep a selected country in step with the timeline. When the date leaves the period of the
+ * selected borders, the panel and outline move to the same country's borders of that day, or
+ * its successor / predecessor, or whoever holds its land (followCountry); with nothing to
+ * follow, the panel closes. Returns the unsubscribe function.
+ */
+export function followCountriesInTime(qc: QueryClient): () => void {
+  let latest = 0;
+  return useAppStore.subscribe(
+    (s) => [s.selectedCountry, dayOf(s)] as const,
+    async ([selected, day]) => {
+      if (!selected) return;
+      if (selected.start <= day && (!selected.end || selected.end > day)) return;
+      const run = ++latest;
+      const [index, coarse, succession] = await Promise.all([
+        qc.ensureQueryData(ohmIndexQuery),
+        qc.ensureQueryData(ohmCoarseQuery),
+        qc.ensureQueryData(ohmSuccessionQuery),
+      ]);
+      const s = useAppStore.getState();
+      // A newer date or another selection arrived while the data loaded.
+      if (run !== latest || s.selectedCountry !== selected || dayOf(s) !== day) return;
+      const result = followCountry(selected, index.polities, succession, day, coarse.ways);
+      if (result.kind === 'keep') return;
+      if (result.kind === 'close') {
+        s.selectCountry(null);
+        s.announce(`${selected.name} did not exist on this date`);
+        return;
+      }
+      const next = toSelection(result.polity);
+      s.selectCountry(next);
+      if (next.name !== selected.name) s.announce(`Now ${next.name}`);
+    },
+    { equalityFn: (a, b) => a[0] === b[0] && a[1] === b[1] },
+  );
 }

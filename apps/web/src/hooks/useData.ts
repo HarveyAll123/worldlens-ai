@@ -3,7 +3,7 @@ import { keepPreviousData, queryOptions, useQueries, useQuery } from '@tanstack/
 import { floorTo, toIso, type Resolution } from '@worldlens/shared';
 import { useEffect, useMemo, useState } from 'react';
 import type { BorderLineLike } from '../globe/GeometryLayers';
-import { parseOhmIndex } from '../globe/ohm';
+import { parseOhmIndex, type Succession } from '../globe/ohm';
 import { api } from '../lib/api';
 import { useAppStore } from '../state/store';
 
@@ -177,6 +177,14 @@ export const ohmFlagsQuery = queryOptions({
   queryKey: ['ohm-flags'],
   queryFn: async () =>
     (await fetchJson<{ items: Record<string, FlagsEntry> }>('/data/ohm/flags.json')).items,
+  staleTime: Number.POSITIVE_INFINITY,
+  retry: 1,
+});
+
+/** Which country comes before / after which (Wikidata), for a selection following the date. */
+export const ohmSuccessionQuery = queryOptions({
+  queryKey: ['ohm-succession'],
+  queryFn: async () => (await fetchJson<{ items: Succession }>('/data/ohm/succession.json')).items,
   staleTime: Number.POSITIVE_INFINITY,
   retry: 1,
 });
