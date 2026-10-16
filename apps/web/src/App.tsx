@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import { AssistantPanel } from './components/AssistantPanel';
 import { CountryPanel } from './components/CountryPanel';
 import { EventDetail } from './components/EventDetail';
@@ -12,6 +13,7 @@ import { SearchBox, TopBar } from './components/TopBar';
 import { Notice } from './components/ui';
 import { useConfig } from './hooks/useData';
 import { useIsMobile } from './hooks/useMedia';
+import { followCountriesInTime } from './lib/countries';
 import { useAppStore } from './state/store';
 
 function PanelBody() {
@@ -99,6 +101,9 @@ export function App() {
   const setAssistantOpen = useAppStore((s) => s.setAssistantOpen);
   const config = useConfig();
   const [notice, setNotice] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  // A selected country follows the timeline (its borders of the day, successor, or closes).
+  useEffect(() => followCountriesInTime(queryClient), [queryClient]);
 
   return (
     <div className="relative h-full w-full overflow-hidden">
