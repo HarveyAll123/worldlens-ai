@@ -29,7 +29,7 @@ Defined in `apps/web/src/perf/tiers.ts`.
 | Tile cache                 | 80         | 200       | 400       |
 | Terrain (MapTiler, if key) | off        | on        | on        |
 | Sky / ground atmosphere    | off        | on        | on        |
-| Lighting                   | off        | on        | on        |
+| Lighting (night side)      | off        | on        | on        |
 | Anti-aliasing              | none       | MSAA ×4   | MSAA ×4   |
 | Max markers / labels       | 120 / 12   | 400 / 40  | 800 / 80  |
 | Cluster cell               | 84 px      | 60 px     | 46 px     |
@@ -37,6 +37,8 @@ Defined in `apps/web/src/perf/tiers.ts`.
 | Animations, hover picking  | off        | on        | on        |
 
 Resolution scale 1 renders at CSS pixels; above 1 is capped at the display's pixel ratio (2 on a Retina Mac). MEDIUM and HIGH start at that cap, so text, border lines and imagery are rendered at the screen's own resolution instead of being stretched (which looked blurry on high-DPI screens); AUTO lowers it in 0.1 steps when frames run over budget. Anti-aliasing: FXAA is not used (it smears text and thin lines); MSAA applies on standard-density screens only — at native high-DPI resolution none is needed. Border detail follows the camera altitude, not the tier.
+
+**Day and night** (Layers menu, saved per browser): the night side and its city lights can be switched off; with the night side off the globe is evenly lit and city lights are off too. LOW never draws them. City lights are one extra imagery layer (NASA GIBS, max level 8, ~500 m) that is only drawn on the night side; it fades out with the night side as the camera comes below ~6,000 km and is gone below 1,000 km, where maps should stay readable. MapTiler terrain is requested without vertex normals: with them Cesium switches to per-vertex terrain lighting, which ignores the lights layer's night-only alpha (lights showed in daylight) and never fades the night when zooming in.
 
 **Initial guess** (`initialTier`): LOW for software renderers (SwiftShader, llvmpipe, “Basic Render”), Save-Data, ≤2 cores or ≤2 GB memory, and small touch screens with less than 6 GB; MEDIUM otherwise. AUTO corrects the guess within seconds. HIGH is only reached by measured headroom or by choosing it manually.
 

@@ -17,7 +17,14 @@ import {
   type BorderLabel,
   type BorderLineLike,
 } from './GeometryLayers';
-import { createBaseMap, createTerrain, type ImageryKind, type TerrainKind } from './providers';
+import { nightLightsAt, type NightLightsLook } from './nightLights';
+import {
+  createBaseMap,
+  createNightLights,
+  createTerrain,
+  type ImageryKind,
+  type TerrainKind,
+} from './providers';
 
 export interface GlobeCallbacks {
   onPick: (pick: PickId | null) => void;
@@ -47,10 +54,16 @@ export interface GlobeDiagnostics {
   networkRequests: number;
   imagery: ImageryKind | 'loading';
   terrain: TerrainKind;
+  /** "night side + lights 85 %", "night side", or why the globe is evenly lit. */
+  lighting: string;
   canvas: string;
   gpu: string;
   decisions: Array<{ reason: string; tier: string; scale: number; targetFps: number }>;
 }
+
+/** Camera altitudes for the night side: full above, fading out below, gone below the second. */
+const NIGHT_FULL_ABOVE_M = 6_000_000;
+const NIGHT_GONE_BELOW_M = 1_000_000;
 
 function gpuRenderer(canvas: HTMLCanvasElement): string | null {
   try {
@@ -148,6 +161,10 @@ export class GlobeController {
     globe.showGroundAtmosphere = true;
     globe.dynamicAtmosphereLighting = true;
     globe.dynamicAtmosphereLightingFromSun = true;
+    // The night side fades out as the camera comes close (so zoomed-in maps stay readable).
+    // Cesium starts that at ~13,600 km altitude; keep the night down to country-sized views.
+    globe.lightingFadeInDistance = globe.ellipsoid.maximumRadius + NIGHT_FULL_ABOVE_M;
+    globe.lightingFadeOutDistance = globe.ellipsoid.maximumRadius + NIGHT_GONE_BELOW_M;
     if (scene.moon) scene.moon.show = false;
     scene.fog.enabled = true;
     scene.screenSpaceCameraController.minimumZoomDistance = 800;
@@ -169,7 +186,12 @@ export class GlobeController {
       }),
     );
     this.removeListeners.push(scene.postRender.addEventListener(() => this.perf.frame()));
-    this.removeListeners.push(scene.preRender.addEventListener(() => this.events.update()));
+    this.removeListeners.push(
+      scene.preRender.addEventListener(() => {
+        this.events.update();
+        this.fadeNightLights();
+      }),
+    );
     this.removeListeners.push(scene.camera.moveEnd.addEventListener(() => this.reportCamera()));
 
     const handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
@@ -207,7 +229,8 @@ export class GlobeController {
 
     void createBaseMap(opts.mapTilerKey).then((base) => {
       if (this.destroyed) return;
-      this.viewer.imageryLayers.add(new Cesium.ImageryLayer(base.provider));
+      // At the bottom: the night-lights layer may already be on top of it.
+      this.viewer.imageryLayers.add(new Cesium.ImageryLayer(base.provider), 0);
       this.imagery = base.imagery;
       cb.onBaseMapNotice(base.notice);
       scene.requestRender();
@@ -253,7 +276,7 @@ export class GlobeController {
     scene.msaaSamples = dpr >= 1.5 ? 1 : s.msaaSamples;
     scene.highDynamicRange = false;
     this.lighting = s.lighting;
-    globe.enableLighting = s.lighting && this.lightingTimeMs !== null;
+    this.syncLighting();
     this.events.setSettings({
       maxEvents: s.maxEvents,
       maxLabels: s.maxLabels,
@@ -263,15 +286,78 @@ export class GlobeController {
     scene.requestRender();
   }
 
+  /** The quality tier allows lighting (off on LOW). */
   private lighting = true;
   private lightingTimeMs: number | null = null;
+  /** User settings: night side, and city lights on it. */
+  private dayNight = true;
+  private nightLights = true;
+  private nightLayer: Cesium.ImageryLayer | null = null;
+  private nightLook: NightLightsLook | null = null;
 
   /** Sun position for lighting. null = uniform lighting (used when the time-of-day is unknown). */
   setLightingTime(ms: number | null): void {
     this.lightingTimeMs = ms;
     if (ms !== null) this.viewer.clock.currentTime = Cesium.JulianDate.fromDate(new Date(ms));
-    this.viewer.scene.globe.enableLighting = this.lighting && ms !== null;
+    this.syncLighting();
+  }
+
+  /** Night side on/off (off = evenly lit globe) and city lights on the night side. */
+  setNightOptions(o: { dayNight: boolean; nightLights: boolean }): void {
+    this.dayNight = o.dayNight;
+    this.nightLights = o.nightLights;
+    this.syncLighting();
+  }
+
+  private lightingStatus(): string {
+    if (!this.dayNight) return 'evenly lit (setting off)';
+    if (!this.lighting) return 'evenly lit (LOW quality)';
+    if (this.lightingTimeMs === null) return 'evenly lit (time of day not set)';
+    const layer = this.nightLayer;
+    return layer?.show
+      ? `night side + lights ${Math.round(layer.nightAlpha * 100)} %, cut ${layer.colorToAlphaThreshold.toFixed(2)}`
+      : 'night side';
+  }
+
+  private syncLighting(): void {
+    const time = this.lighting && this.dayNight ? this.lightingTimeMs : null;
+    this.viewer.scene.globe.enableLighting = time !== null;
+    // No lights before electric lighting; fewer and dimmer further back (nightLights.ts).
+    const look = time !== null && this.nightLights ? nightLightsAt(time) : null;
+    this.nightLook = look;
+    if (look && !this.nightLayer) {
+      this.nightLayer = new Cesium.ImageryLayer(createNightLights(), {
+        dayAlpha: 0,
+        colorToAlpha: Cesium.Color.BLACK,
+      });
+      this.viewer.imageryLayers.add(this.nightLayer);
+    }
+    if (this.nightLayer) {
+      this.nightLayer.show = !!look;
+      if (look) this.nightLayer.colorToAlphaThreshold = look.cut;
+    }
+    this.fadeNightLights();
     this.viewer.scene.requestRender();
+  }
+
+  /**
+   * Every frame: the lights fade with the night side as the camera comes close (lights over a
+   * daylit-looking map would glare), and are brightened by as much as the night side is
+   * darkened (GlobeFS shades full night to 30 %), so they keep the same strength at any zoom.
+   */
+  private fadeNightLights(): void {
+    const layer = this.nightLayer;
+    if (!layer?.show || !this.nightLook) return;
+    const globe = this.viewer.scene.globe;
+    const distance = Cesium.Cartesian3.magnitude(this.viewer.camera.positionWC);
+    const fade = Cesium.Math.clamp(
+      (distance - globe.lightingFadeOutDistance) /
+        (globe.lightingFadeInDistance - globe.lightingFadeOutDistance),
+      0,
+      1,
+    );
+    layer.nightAlpha = this.nightLook.alpha * fade;
+    layer.brightness = 1 / (1 - 0.7 * fade);
   }
 
   setQualityPreference(p: QualityPreference): void {
@@ -436,6 +522,7 @@ export class GlobeController {
       networkRequests: this.networkRequests,
       imagery: this.imagery,
       terrain: this.terrainKind,
+      lighting: this.lightingStatus(),
       canvas: `${canvas.width}×${canvas.height}`,
       gpu: this.gpu,
       decisions: this.perf.decisions.slice(-6).map((d) => ({
