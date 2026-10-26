@@ -2,7 +2,9 @@
 # `pnpm db:migrate`. Placeholders only.
 PAYPAL_CLIENT_ID=
 PAYPAL_CLIENT_SECRET=
+PAYPAL_ENVIRONMENT=sandbox
 PAYPAL_WEBHOOK_ID=
+PUBLIC_APP_URL=http://localhost:5173
 ANTHROPIC_API_KEY=
 # Neon → Connect → pooled connection string for the worldlens_app role (see MANUAL_SETUP.md).
 # `wrangler dev` accepts only Neon hosts (*.neon.tech); `pnpm dev:node` also accepts any other

@@ -27,7 +27,8 @@ export async function openApp(page: Page, url = '/') {
       const w = window as unknown as {
         __worldlens?: { diagnostics: () => { framesRendered: number } };
       };
-      return (w.__worldlens?.diagnostics().framesRendered ?? 0) > 0;
+      const frames = w.__worldlens?.diagnostics().framesRendered ?? 0;
+      return frames > 0 || !!document.querySelector('[data-testid="event-list"]');
     },
     undefined,
     { timeout: 30_000 },

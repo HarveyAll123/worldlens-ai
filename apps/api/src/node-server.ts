@@ -13,18 +13,27 @@ import { FakePayPal } from './testing/fake-paypal';
 import { classifyDatabaseUrl, type SqlClient } from './data/sql';
 import { nodePostgresClient } from './data/sql-node';
 
-function loadDevVars(): Record<string, string> {
-  const file = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '.dev.vars');
+function parseDevVarsFile(file: string): Record<string, string> {
   if (!existsSync(file)) return {};
   const out: Record<string, string> = {};
   for (const line of readFileSync(file, 'utf8').split('\n')) {
     const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/.exec(line);
-    if (m && m[2] !== '') out[m[1]!] = m[2]!.replace(/^(['"])(.*)\1$/, '$2');
+    if (m && m[2] !== '') out[m[1]!] = m[2]!.replace(/^(['"])(.*)\1$/, '$2').trim();
   }
   return out;
 }
 
-const env = { ...loadDevVars(), ...process.env } as unknown as Env;
+function loadDevVars(): Record<string, string> {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const appDevVars = path.join(here, '..', '.dev.vars');
+  const rootDevVars = path.join(here, '..', '..', '..', '.dev.vars');
+  return { ...parseDevVarsFile(rootDevVars), ...parseDevVarsFile(appDevVars) };
+}
+
+const nonBlankProcessEnv = Object.fromEntries(
+  Object.entries(process.env).filter(([_, v]) => v !== undefined && v.trim() !== ''),
+);
+const env = { ...loadDevVars(), ...nonBlankProcessEnv } as unknown as Env;
 
 // TEST-ONLY: route PayPal REST calls to an in-process fake (used by Playwright). Never used
 // by the Worker. Orders are auto-approved because the browser-side SDK is faked too.
@@ -58,9 +67,15 @@ const deps = createDeps(env, { ...(fetchImpl ? { fetchImpl } : {}), ...(sql ? { 
 const app = createApp(deps);
 const port = Number(process.env.API_PORT ?? 8787);
 serve({ fetch: app.fetch, port, hostname: '127.0.0.1' }, (info) => {
+  const pp = deps.payments.publicConfig();
+  const missing = [
+    !deps.config.paypal.clientId && 'PAYPAL_CLIENT_ID',
+    !deps.config.paypal.clientSecret && 'PAYPAL_CLIENT_SECRET',
+  ].filter(Boolean);
+  const ppStatus = pp.configured
+    ? pp.environment
+    : `not configured (missing: ${missing.join(', ') || 'credentials'})`;
   console.info(
-    `[worldlens-api] http://127.0.0.1:${info.port}  ai=${deps.ai.available ? 'on' : 'offline'}  paypal=${
-      deps.payments.publicConfig().configured ? deps.config.paypal.environment : 'not configured'
-    }  repo=${deps.repo.name}  gdelt=${deps.news ? 'on' : 'off'}`,
+    `[worldlens-api] http://127.0.0.1:${info.port}  ai=${deps.ai.available ? 'on' : 'offline'}  paypal=${ppStatus}  repo=${deps.repo.name}  gdelt=${deps.news ? 'on' : 'off'}`,
   );
 });

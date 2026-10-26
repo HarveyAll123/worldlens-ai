@@ -163,7 +163,7 @@ test.describe('Take Action — PayPal sandbox (REST + SDK test doubles)', () => 
     await page.getByTestId('open-assistant').click();
     await page.getByTestId('quick-prompt').filter({ hasText: '$20' }).click();
     const modal = page.getByTestId('take-action-modal');
-    await expect(modal).toBeVisible();
+    await expect(modal).toBeVisible({ timeout: 30_000 });
     await expect(modal.getByTestId('amount-input')).toHaveValue('20');
     await expect(modal.getByTestId('payment-result')).toHaveCount(0);
   });

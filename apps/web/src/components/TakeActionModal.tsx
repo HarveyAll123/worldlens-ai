@@ -308,6 +308,17 @@ export function TakeActionModal() {
                       <Notice testId="paypal-not-configured">
                         PayPal sandbox is not configured on this server (see MANUAL_SETUP.md). No
                         payment can be made.
+                        {pp?.diagnostics && (
+                          <span className="mt-1 block text-[11px] text-slate-400">
+                            Missing in .dev.vars:{' '}
+                            {[
+                              !pp.diagnostics.hasClientId && 'PAYPAL_CLIENT_ID',
+                              !pp.diagnostics.hasClientSecret && 'PAYPAL_CLIENT_SECRET',
+                            ]
+                              .filter(Boolean)
+                              .join(', ') || 'credentials'}
+                          </span>
+                        )}
                       </Notice>
                     ) : !ack ? (
                       <p className="text-[12px] text-slate-500">

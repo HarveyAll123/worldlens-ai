@@ -83,6 +83,12 @@ export interface AppConfig {
     environment: 'sandbox' | 'live';
     clientId: string | null;
     webhooksConfigured: boolean;
+    diagnostics?: {
+      hasClientId: boolean;
+      hasClientSecret: boolean;
+      environment: string;
+      hasWebhookId: boolean;
+    };
   };
   news: { liveProvider: string | null };
 }

@@ -75,8 +75,9 @@ async function findActionOptions(ctx: ToolContext, budget?: number, eventId?: st
   const candidates: WorldEvent[] = [];
   if (eventId) {
     const e = await ctx.repo.getEvent(eventId, ctx.nowMs);
-    if (e) candidates.push(e);
-  } else {
+    if (e && ctx.repo.actionOptions(e).length > 0) candidates.push(e);
+  }
+  if (candidates.length === 0) {
     const list = await ctx.repo.listEvents({
       mode: 'live',
       timeMs: ctx.nowMs,
