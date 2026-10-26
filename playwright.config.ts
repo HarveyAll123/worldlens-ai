@@ -38,7 +38,10 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'pnpm --filter @worldlens/api start:node',
+      command:
+        process.platform === 'win32'
+          ? 'npx pnpm --filter @worldlens/api start:node'
+          : 'pnpm --filter @worldlens/api start:node',
       url: 'http://127.0.0.1:8787/api/health',
       // Never reuse a running dev API: it could have real PayPal credentials or a database.
       // If port 8787 is busy, stop `pnpm dev` first.
@@ -54,7 +57,10 @@ export default defineConfig({
       timeout: 60_000,
     },
     {
-      command: 'pnpm --filter @worldlens/web dev',
+      command:
+        process.platform === 'win32'
+          ? 'npx pnpm --filter @worldlens/web dev'
+          : 'pnpm --filter @worldlens/web dev',
       url: 'http://127.0.0.1:5173',
       reuseExistingServer: !process.env.CI,
       timeout: 90_000,

@@ -110,6 +110,12 @@ export class PaymentService {
       clientId: this.d.client ? paypal.clientId : null,
       webhooksConfigured: !!paypal.webhookId,
       store: this.d.store.name,
+      diagnostics: {
+        hasClientId: !!paypal.clientId,
+        hasClientSecret: !!paypal.clientSecret,
+        environment: paypal.environment,
+        hasWebhookId: !!paypal.webhookId,
+      },
     };
   }
 

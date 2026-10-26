@@ -477,6 +477,32 @@ describe('PayPal sandbox payments', () => {
         )
       ).status,
     ).toBe(400);
+    expect((await post('/api/payments/orders', order('20', { currency: 'EUR' }))).status).toBe(400);
+    expect((await post('/api/payments/orders', order('-10'))).status).toBe(400);
+    expect((await post('/api/payments/orders', order('abc'))).status).toBe(400);
+  });
+
+  it('rejects malformed or invalid order IDs', async () => {
+    const { post } = setup({ paypal: new FakePayPal() });
+    expect((await post('/api/payments/orders/bad!id/capture', {})).status).toBe(400);
+    expect((await post('/api/payments/orders/bad!id/cancel', {})).status).toBe(400);
+  });
+
+  it('fails capture when PayPal returns an amount mismatch', async () => {
+    const pp = new FakePayPal();
+    const { post, deps } = setup({ paypal: pp });
+    const { orderId, paymentId } = (await post('/api/payments/orders', order('20'))).body as {
+      orderId: string;
+      paymentId: string;
+    };
+    pp.approve(orderId);
+    // Tamper with the amount in PayPal's response to simulate manipulated transaction
+    pp.orders.get(orderId)!.amount = { currency_code: 'USD', value: '99.00' };
+    const r = await post(`/api/payments/orders/${orderId}/capture`, {});
+    expect(r.status).toBe(200);
+    const rec = await deps.paymentStore.get(paymentId);
+    expect(rec?.state).toBe('FAILED');
+    expect(rec?.lastError).toContain('does not match the reviewed amount');
   });
 
   it('refuses live payments in this build', async () => {
