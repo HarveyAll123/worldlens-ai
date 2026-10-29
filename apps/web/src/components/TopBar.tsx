@@ -296,14 +296,20 @@ export function TopBar({ mobile }: { mobile: boolean }) {
   const country = useAppStore((s) => s.selectedCountry);
   const sheetExpanded = useAppStore((s) => s.sheetExpanded);
   const wide = useMediaQuery('(min-width: 1024px)');
-  const cardLabel = assistantOpen ? 'Ask AI' : country ? 'Country' : selected ? 'Event' : 'Events';
+  const cardLabel = assistantOpen
+    ? 'Assistant'
+    : country
+      ? 'Country'
+      : selected
+        ? 'Event'
+        : 'Events';
   const cardShown = mobile ? sheetExpanded : cardOpen;
 
   return (
     <header className="pointer-events-none absolute left-3 right-3 top-3 z-30 flex items-center justify-between gap-2">
       <div className="glass-chrome pointer-events-auto flex h-12 shrink-0 items-center gap-2 rounded-full pl-3.5 pr-3">
         <span className="flex shrink-0 items-center gap-2 text-[13px] tracking-tight text-white/90">
-          <Icon name="globe" className="h-[18px] w-[18px] text-white/70" />
+          <Icon name="globe" className="h-[18px] w-[18px] text-white/70 md:h-5 md:w-5" />
           <span className={mobile || !wide ? 'sr-only' : ''}>WorldLens</span>
         </span>
         <span
@@ -329,41 +335,52 @@ export function TopBar({ mobile }: { mobile: boolean }) {
             className="grid h-9 w-9 place-items-center rounded-full text-white/70 transition-colors hover:bg-white/[0.08] hover:text-white"
             aria-label="Search"
           >
-            <Icon name="search" className="h-4 w-4" />
+            <Icon name="search" className="h-[18px] w-[18px]" />
           </button>
         )}
         <button
           type="button"
           onClick={() => (mobile ? setSheet('assistant', true) : setAssistantOpen(!assistantOpen))}
           aria-pressed={!mobile ? assistantOpen : undefined}
-          className={`flex h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] transition-colors ${
+          className={`flex h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] transition-colors md:h-10 ${
             !mobile && assistantOpen
               ? 'bg-white/[0.12] text-white'
               : 'text-white/70 hover:bg-white/[0.08] hover:text-white'
           }`}
           data-testid="open-assistant"
         >
-          <Icon name="sparkle" className="h-3.5 w-3.5" />
+          <Icon name="sparkle" className="h-4 w-4 md:h-5 md:w-5" />
           <span className={mobile ? 'hidden sm:inline lg:hidden' : 'hidden lg:inline'}>
             {mobile ? 'AI' : 'Ask AI'}
           </span>
         </button>
+        <span
+          className="mx-0.5 hidden w-px shrink-0 self-stretch bg-white/12 md:block"
+          aria-hidden
+        />
         <HelpSheet />
+        <span
+          className="mx-0.5 hidden w-px shrink-0 self-stretch bg-white/12 md:block"
+          aria-hidden
+        />
         <LayerMenu />
-        <span className="mx-1 w-px shrink-0 self-stretch bg-white/12" aria-hidden />
+        <span
+          className="mx-0.5 hidden w-px shrink-0 self-stretch bg-white/12 md:block"
+          aria-hidden
+        />
         <button
           type="button"
           onClick={() => (mobile ? setSheetExpanded(!sheetExpanded) : setCardOpen(!cardOpen))}
           aria-expanded={cardShown}
           aria-controls={mobile ? 'bottom-sheet' : 'context-card'}
-          className={`flex h-9 items-center gap-1.5 rounded-full px-2.5 text-[12.5px] transition-colors ${
+          className={`flex h-9 items-center gap-1.5 rounded-full px-2.5 text-[12.5px] transition-colors md:h-10 ${
             cardShown
               ? 'bg-white/[0.12] text-white'
               : 'text-white/70 hover:bg-white/[0.08] hover:text-white'
           }`}
           data-testid="toggle-context-card"
         >
-          <Icon name="panel" className="h-4 w-4" />
+          <Icon name="panel" className="h-4 w-4 md:h-5 md:w-5" />
           <span className={mobile ? 'hidden sm:inline lg:hidden' : 'hidden lg:inline'}>
             {cardLabel}
           </span>

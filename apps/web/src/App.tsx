@@ -47,6 +47,7 @@ function MobileSheet() {
       id="bottom-sheet"
       className={`glass pointer-events-auto absolute inset-x-3 bottom-3 z-20 flex flex-col rounded-[var(--radius-outer)] transition-[height] duration-300 ${expanded ? 'h-[62dvh]' : 'h-[64px]'}`}
       aria-label={label}
+      data-label-occluder
       data-testid="bottom-sheet"
     >
       <button
@@ -122,6 +123,9 @@ export function App() {
   useEffect(() => {
     if (selectedId || country || assistantOpen) setCardOpen(true);
   }, [selectedId, country, assistantOpen, setCardOpen]);
+  useEffect(() => {
+    window.dispatchEvent(new Event('worldlens:chrome'));
+  }, [cardOpen, sheetExpanded, mobile, assistantOpen]);
 
   return (
     <div className="relative h-full w-full overflow-hidden">
@@ -168,6 +172,7 @@ export function App() {
           id="context-card"
           className="glass pointer-events-auto absolute bottom-[124px] right-3 top-[68px] z-20 flex w-[380px] flex-col overflow-hidden rounded-[var(--radius-outer)]"
           aria-label="Context card"
+          data-label-occluder
           data-testid="context-panel"
         >
           <ErrorBoundary label="The context card">

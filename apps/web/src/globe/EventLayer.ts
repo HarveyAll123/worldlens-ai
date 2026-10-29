@@ -70,6 +70,7 @@ export class EventLayer {
   stats = { visibleEvents: 0, visibleLabels: 0, clusters: 0 };
 
   constructor(private readonly scene: Cesium.Scene) {
+    window.addEventListener('worldlens:chrome', () => this.relabel());
     scene.primitives.add(this.points);
     scene.primitives.add(this.labels);
   }
@@ -258,13 +259,23 @@ export class EventLayer {
     const height = this.scene.canvas.clientHeight;
     // Keep labels clear of the chrome: the detached card on the right and the top dock.
     const wide = window.matchMedia('(min-width: 768px)').matches;
-    const cardOpen = wide && !!document.getElementById('context-card');
     const safe = {
       left: 8,
-      right: cardOpen ? 404 : 10,
       top: 78,
       bottom: wide ? 128 : 196,
     };
+    // Any open panel marks itself as an occluder; labels never sit behind glass.
+    const occluders = [...document.querySelectorAll('[data-label-occluder]')]
+      .map((el) => el.getBoundingClientRect())
+      .filter((r) => r.width > 0 && r.height > 0)
+      .map((r) => ({
+        left: r.left - 10,
+        right: r.right + 10,
+        top: r.top - 10,
+        bottom: r.bottom + 10,
+      }));
+    const obscured = (x: number, y: number, w: number, h: number) =>
+      occluders.some((o) => x < o.right && x + w > o.left && y < o.bottom && y + h > o.top);
     type Candidate = {
       id: string;
       x: number;
@@ -286,7 +297,7 @@ export class EventLayer {
         if (!w || w.x < 0 || w.y < 0 || w.x > width || w.y > height) continue;
         if (w.y < safe.top || w.y > height - safe.bottom) continue;
         const e = this.byId.get(d.ids[0]!)!;
-        const roomRight = width - safe.right - (w.x + 14);
+        const roomRight = width - safe.left - (w.x + 14);
         const roomLeft = w.x - 14 - safe.left;
         const side: 'left' | 'right' = roomRight >= 120 || roomRight >= roomLeft ? 'right' : 'left';
         const room = side === 'right' ? roomRight : roomLeft;
@@ -295,9 +306,12 @@ export class EventLayer {
         if (chars < 10) continue;
         const text = truncate(e.title, chars);
         const labelWidth = chars * 7.2 + 18;
+        const labelX = side === 'right' ? w.x + 10 : w.x - 10 - labelWidth;
+        if (labelX < safe.left || labelX + labelWidth > width - safe.left) continue;
+        if (obscured(labelX, w.y - 11, labelWidth, 22)) continue;
         candidates.push({
           id: key,
-          x: side === 'right' ? w.x + 10 : w.x - 10 - labelWidth,
+          x: labelX,
           y: w.y - 11,
           width: labelWidth,
           height: 22,

@@ -10,7 +10,7 @@
 
   /* Chrome (bar, dock) is airy; panels with text are denser. Both neutral. */
   --color-chrome: rgb(16 16 18 / 0.68);
-  --color-panel: rgb(16 16 18 / 0.88);
+  --color-panel: rgb(14 14 16 / 0.62);
   --color-tile: rgb(255 255 255 / 0.055);
   --color-line: rgb(255 255 255 / 0.09);
 
@@ -79,8 +79,9 @@ body,
 
 .glass {
   background: var(--color-panel);
-  backdrop-filter: blur(16px) saturate(1.05);
-  -webkit-backdrop-filter: blur(16px) saturate(1.05);
+  /* Darken what is behind so bright globe labels cannot bleed through the text. */
+  backdrop-filter: blur(28px) brightness(0.4) saturate(1.05);
+  -webkit-backdrop-filter: blur(28px) brightness(0.4) saturate(1.05);
   border: 1px solid var(--color-line);
 }
 
@@ -89,13 +90,6 @@ body,
   /* Over bright satellite imagery the chrome must stay dark enough to read. */
   backdrop-filter: blur(20px) brightness(0.6) saturate(1.05);
   -webkit-backdrop-filter: blur(20px) brightness(0.6) saturate(1.05);
-  border: 1px solid var(--color-line);
-}
-
-.glass-solid {
-  background: rgb(16 16 18 / 0.98);
-  backdrop-filter: blur(20px) saturate(1.05);
-  -webkit-backdrop-filter: blur(20px) saturate(1.05);
   border: 1px solid var(--color-line);
 }
 

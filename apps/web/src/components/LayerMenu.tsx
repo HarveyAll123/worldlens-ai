@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import type { LayerId } from '@worldlens/shared';
 import type { QualityPreference } from '../perf/tiers';
 import { useAppStore } from '../state/store';
@@ -113,10 +114,18 @@ export function LayerMenu() {
   const diagnostics = useAppStore((s) => s.diagnosticsOpen);
   const cardOpen = useAppStore((s) => s.cardOpen);
   const ref = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    window.dispatchEvent(new Event('worldlens:chrome'));
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
-    const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    const close = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!ref.current?.contains(t) && !panelRef.current?.contains(t)) setOpen(false);
+    };
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
     window.addEventListener('mousedown', close);
     window.addEventListener('keydown', esc);
@@ -136,96 +145,100 @@ export function LayerMenu() {
         aria-haspopup="true"
         aria-pressed={open}
         onClick={() => setOpen(!open)}
-        className={`flex h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] transition-colors ${
+        className={`flex h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] transition-colors md:h-10 ${
           open
             ? 'bg-white/[0.12] text-white'
             : 'text-white/70 hover:bg-white/[0.08] hover:text-white'
         }`}
         data-testid="layers-button"
       >
-        <Icon name="layers" className="h-3.5 w-3.5" />
+        <Icon name="layers" className="h-4 w-4 md:h-5 md:w-5" />
         <span className="hidden lg:inline">Layers</span>
         <span className="tabular hidden text-[10.5px] text-white/35 lg:inline">{activeCount}</span>
       </button>
-      {open && (
-        <div
-          className={`glass-solid scroll-thin fixed top-14 z-50 max-h-[calc(100dvh-12rem)] w-[320px] overflow-y-auto rounded-[var(--radius-outer)] p-2 ${cardOpen ? 'right-[388px]' : 'right-3'}`}
-          role="dialog"
-          aria-label="Layers and settings"
-        >
-          <Group title="Layers" first>
-            {LAYERS.map((l) => (
-              <ToggleRow
-                key={l.id}
-                checked={!!layers[l.id]}
-                onChange={(next) => setLayer(l.id, next)}
-                label={l.label}
-                hint={l.hint}
-                testId={`layer-${l.id}`}
-              />
-            ))}
-          </Group>
-          <Group title="Day and night">
-            <ToggleRow
-              checked={dayNight}
-              onChange={setDayNight}
-              label="Night time"
-              hint={
-                tier === 'LOW'
-                  ? 'Not drawn at LOW graphics quality.'
-                  : 'Darkens where the sun has set. Off: evenly lit.'
-              }
-              testId="setting-day-night"
-            />
-            <ToggleRow
-              checked={dayNight && nightLights}
-              onChange={setNightLights}
-              label="City lights at night"
-              hint={
-                dayNight
-                  ? 'From 1880, when electric street lighting began (NASA, 2016 data).'
-                  : 'Needs night time on.'
-              }
-              testId="setting-night-lights"
-              disabled={!dayNight}
-            />
-          </Group>
-          <Group title="Graphics quality">
-            <div className="grid grid-cols-4 gap-1 px-1">
-              {(['AUTO', 'LOW', 'MEDIUM', 'HIGH'] as QualityPreference[]).map((q) => (
-                <button
-                  key={q}
-                  type="button"
-                  aria-pressed={quality === q}
-                  onClick={() => setQuality(q)}
-                  className={`rounded-full py-1.5 text-[11px] transition-colors ${
-                    quality === q
-                      ? 'bg-[var(--active-bg)] text-[var(--active-fg)]'
-                      : 'text-white/55 hover:bg-white/[0.06] hover:text-white/90'
-                  }`}
-                  data-testid={`quality-${q}`}
-                >
-                  {q === 'MEDIUM' ? 'MED' : q}
-                </button>
+      {open &&
+        createPortal(
+          <div
+            ref={panelRef}
+            data-label-occluder
+            className={`glass scroll-thin fixed top-[68px] z-50 max-h-[calc(100dvh-12rem)] w-[320px] overflow-y-auto rounded-[var(--radius-outer)] p-2 ${cardOpen ? 'right-[400px]' : 'right-3'}`}
+            role="dialog"
+            aria-label="Layers and settings"
+          >
+            <Group title="Layers" first>
+              {LAYERS.map((l) => (
+                <ToggleRow
+                  key={l.id}
+                  checked={!!layers[l.id]}
+                  onChange={(next) => setLayer(l.id, next)}
+                  label={l.label}
+                  hint={l.hint}
+                  testId={`layer-${l.id}`}
+                />
               ))}
+            </Group>
+            <Group title="Day and night">
+              <ToggleRow
+                checked={dayNight}
+                onChange={setDayNight}
+                label="Night time"
+                hint={
+                  tier === 'LOW'
+                    ? 'Not drawn at LOW graphics quality.'
+                    : 'Darkens where the sun has set. Off: evenly lit.'
+                }
+                testId="setting-day-night"
+              />
+              <ToggleRow
+                checked={dayNight && nightLights}
+                onChange={setNightLights}
+                label="City lights at night"
+                hint={
+                  dayNight
+                    ? 'From 1880, when electric street lighting began (NASA, 2016 data).'
+                    : 'Needs night time on.'
+                }
+                testId="setting-night-lights"
+                disabled={!dayNight}
+              />
+            </Group>
+            <Group title="Graphics quality">
+              <div className="grid grid-cols-4 gap-1 px-1">
+                {(['AUTO', 'LOW', 'MEDIUM', 'HIGH'] as QualityPreference[]).map((q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    aria-pressed={quality === q}
+                    onClick={() => setQuality(q)}
+                    className={`rounded-full py-1.5 text-[11px] transition-colors ${
+                      quality === q
+                        ? 'bg-[var(--active-bg)] text-[var(--active-fg)]'
+                        : 'text-white/55 hover:bg-white/[0.06] hover:text-white/90'
+                    }`}
+                    data-testid={`quality-${q}`}
+                  >
+                    {q === 'MEDIUM' ? 'MED' : q}
+                  </button>
+                ))}
+              </div>
+              <p className="px-2.5 pb-1 pt-2 text-[10.5px] text-white/35">
+                {quality === 'AUTO'
+                  ? `Adaptive — currently ${tier}. Adjusts to keep motion smooth.`
+                  : `Fixed at ${quality}.`}
+              </p>
+            </Group>
+            <div className="mt-2 border-t border-white/[0.07] pt-2">
+              <ToggleRow
+                checked={diagnostics}
+                onChange={setDiagnostics}
+                label="Developer diagnostics"
+                hint="Shift+D"
+                testId="setting-diagnostics"
+              />
             </div>
-            <p className="px-2.5 pb-1 pt-2 text-[10.5px] text-white/35">
-              {quality === 'AUTO'
-                ? `Adaptive — currently ${tier}. Adjusts to keep motion smooth.`
-                : `Fixed at ${quality}.`}
-            </p>
-          </Group>
-          <div className="mt-2 border-t border-white/[0.07] pt-2">
-            <ToggleRow
-              checked={diagnostics}
-              onChange={setDiagnostics}
-              label="Developer diagnostics"
-              hint="Shift+D"
-              testId="setting-diagnostics"
-            />
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
