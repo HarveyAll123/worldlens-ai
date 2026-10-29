@@ -25,13 +25,19 @@ async function verify() {
 
   console.log('--- PayPal Sandbox Credential Check ---');
   console.log(`Environment config: ${environment}`);
-  console.log(`PAYPAL_CLIENT_ID configured: ${clientId ? 'YES' : 'NO (missing in apps/api/.dev.vars)'}`);
-  console.log(`PAYPAL_CLIENT_SECRET configured: ${clientSecret ? 'YES' : 'NO (missing in apps/api/.dev.vars)'}`);
+  console.log(
+    `PAYPAL_CLIENT_ID configured: ${clientId ? 'YES' : 'NO (missing in apps/api/.dev.vars)'}`,
+  );
+  console.log(
+    `PAYPAL_CLIENT_SECRET configured: ${clientSecret ? 'YES' : 'NO (missing in apps/api/.dev.vars)'}`,
+  );
   console.log(`PUBLIC_APP_URL: ${vars.PUBLIC_APP_URL || 'http://localhost:5173'}`);
   console.log(`PAYPAL_WEBHOOK_ID configured: ${vars.PAYPAL_WEBHOOK_ID ? 'YES' : 'NO (optional)'}`);
 
   if (!clientId || !clientSecret) {
-    console.log('\n[STATUS] Credentials incomplete. Please add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET to apps/api/.dev.vars.');
+    console.log(
+      '\n[STATUS] Credentials incomplete. Please add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET to apps/api/.dev.vars.',
+    );
     process.exit(1);
   }
 
@@ -40,7 +46,9 @@ async function verify() {
     process.exit(1);
   }
 
-  console.log('\nTesting OAuth2 connection to PayPal Sandbox (https://api-m.sandbox.paypal.com/v1/oauth2/token)...');
+  console.log(
+    '\nTesting OAuth2 connection to PayPal Sandbox (https://api-m.sandbox.paypal.com/v1/oauth2/token)...',
+  );
   try {
     const authHeader = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
     const res = await fetch('https://api-m.sandbox.paypal.com/v1/oauth2/token', {
@@ -56,7 +64,9 @@ async function verify() {
     if (res.ok) {
       const data = (await res.json()) as { token_type?: string; expires_in?: number };
       console.log(`[STATUS] SUCCESS: OAuth2 authentication succeeded (HTTP ${res.status}).`);
-      console.log(`Token type: ${data.token_type ?? 'Bearer'}, Expires in: ${data.expires_in ?? 3600}s.`);
+      console.log(
+        `Token type: ${data.token_type ?? 'Bearer'}, Expires in: ${data.expires_in ?? 3600}s.`,
+      );
       console.log('PayPal Sandbox is ready for end-to-end checkout testing.');
     } else {
       const errText = await res.text();
@@ -67,11 +77,15 @@ async function verify() {
       } catch {
         errorDescription = errText.slice(0, 100);
       }
-      console.error(`[STATUS] FAILED: PayPal rejected credentials (HTTP ${res.status}). Reason: ${errorDescription}`);
+      console.error(
+        `[STATUS] FAILED: PayPal rejected credentials (HTTP ${res.status}). Reason: ${errorDescription}`,
+      );
       process.exit(1);
     }
   } catch (err) {
-    console.error(`[STATUS] NETWORK ERROR: Could not reach PayPal Sandbox API (${err instanceof Error ? err.message : String(err)}).`);
+    console.error(
+      `[STATUS] NETWORK ERROR: Could not reach PayPal Sandbox API (${err instanceof Error ? err.message : String(err)}).`,
+    );
     process.exit(1);
   }
 }

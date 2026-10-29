@@ -16,3 +16,12 @@ apps/web/public/cesium
 apps/web/public/vendor
 perf-results
 .neon
+
+# Installed agent skills / local artifacts
+.agents/
+agent/
+.codex/
+.claude/skills/design-taste-frontend
+.claude/skills/impeccable
+.claude/agents/
+env.local.download
