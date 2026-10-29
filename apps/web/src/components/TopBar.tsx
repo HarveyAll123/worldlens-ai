@@ -215,7 +215,7 @@ export function SearchBox({
             setOpen(false);
           }
         }}
-        className="h-9 w-full rounded-full border border-transparent bg-white/[0.06] py-0 pl-9 pr-3 text-[12.5px] text-white/90 placeholder:text-white/45 hover:bg-white/[0.08] focus:border-white/20 focus:bg-white/[0.08]"
+        className="h-9 w-full rounded-full border border-transparent bg-white/[0.06] py-0 pl-9 pr-4 text-[12.5px] text-white/90 placeholder:text-white/45 hover:bg-white/[0.08] focus:border-white/20 focus:bg-white/[0.08]"
         data-testid="search-input"
       />
       {error && <p className="mt-1 text-xs text-white/70">{error}</p>}
@@ -310,7 +310,7 @@ export function TopBar({ mobile }: { mobile: boolean }) {
       </div>
 
       {!mobile && (
-        <div className="glass-chrome pointer-events-auto flex h-12 min-w-0 max-w-[560px] flex-1 items-center rounded-full px-3">
+        <div className="glass-chrome pointer-events-auto flex h-12 min-w-0 max-w-[560px] flex-1 items-center rounded-full p-1.5">
           <SearchBox />
         </div>
       )}
