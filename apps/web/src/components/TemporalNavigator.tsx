@@ -601,11 +601,6 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
               </span>
             ))}
             <span
-              className="absolute right-1.5 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-live"
-              aria-hidden
-              title="Live"
-            />
-            <span
               className="absolute top-0 h-full w-0.5 -translate-x-1/2 bg-white"
               style={{ left: thumbLeft }}
               aria-hidden
@@ -617,14 +612,11 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
         <button
           type="button"
           onClick={returnToLive}
-          className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[10.5px] tracking-[0.08em] transition-colors ${
-            mode === 'live'
-              ? 'border-white/20 text-white/85'
-              : 'border-white/15 text-white/55 hover:border-white/30 hover:text-white/90'
+          className={`shrink-0 px-1 text-[10.5px] tracking-[0.1em] transition-colors ${
+            mode === 'live' ? 'text-white/30' : 'text-white/70 hover:text-white'
           }`}
           aria-label="Jump to live"
         >
-          <span className="h-1.5 w-1.5 rounded-full bg-live" aria-hidden />
           LIVE
         </button>
       </div>

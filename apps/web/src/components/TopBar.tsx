@@ -42,27 +42,30 @@ export function LiveStatus({
     return (
       <div className="flex min-w-0 items-center gap-2" data-testid="live-status" aria-live="off">
         <span className="live-dot h-1.5 w-1.5 shrink-0 rounded-full bg-live" aria-hidden />
+        <span className="hidden text-[10.5px] tracking-[0.1em] text-white/85 sm:inline">LIVE</span>
         {!minimal && (
-          <span className="tabular truncate text-[11.5px] tracking-[0.01em] text-white/85">
+          <span className="tabular truncate text-[11.5px] tracking-[0.01em] text-white/70">
             {compact ? time.replace(/:\d\d UTC$/, ' UTC') : date}
-            {!compact && <span className="text-white/45"> · {time}</span>}
+            {!compact && <span className="text-white/40"> · {time}</span>}
           </span>
         )}
-        {minimal && <span className="text-[11px] text-white/55">LIVE</span>}
       </div>
     );
   }
   return (
     <div className="flex min-w-0 items-center gap-2" data-testid="historical-status">
-      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-white/70" aria-hidden />
-      <span className="truncate text-[11.5px] text-white/85">
-        <span className="text-white/45">Historical</span>
-        {!compact && (
-          <span className="tabular ml-1.5" data-testid="historical-time">
-            {formatAt(timeMs, resolution)}
-          </span>
-        )}
+      <span className="h-1.5 w-1.5 shrink-0 rounded-full border border-white/60" aria-hidden />
+      <span className="hidden text-[10.5px] tracking-[0.1em] text-white/70 sm:inline">
+        Historical
       </span>
+      {!compact && !minimal && (
+        <span
+          className="tabular truncate text-[11.5px] text-white/80"
+          data-testid="historical-time"
+        >
+          {formatAt(timeMs, resolution)}
+        </span>
+      )}
       <button
         type="button"
         onClick={returnToLive}
