@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   parseIso,
   resolutionFor,
@@ -13,7 +13,7 @@ import { api, type SourcesResponse } from '../lib/api';
 import { relativeTime, safeExternalUrl, temporalWithPrecision } from '../lib/format';
 import { useEventDetail, useRelated, useSources, useWikipedia } from '../hooks/useData';
 import { useAppStore } from '../state/store';
-import { Badge, ExternalLink, Notice, Section, Spinner } from './ui';
+import { Badge, ExternalLink, Icon, Notice, Section, Spinner } from './ui';
 
 const RELATION_LABEL: Record<string, string> = {
   PRECEDED_BY: 'Earlier context',
@@ -57,7 +57,7 @@ function ImageBlock({ image, alt }: { image: NonNullable<WorldEvent['image']>; a
         className="h-44 w-full object-cover"
         onError={(e) => ((e.target as HTMLElement).style.display = 'none')}
       />
-      <figcaption className="px-4 pt-1 text-[10.5px] text-slate-500">
+      <figcaption className="px-4 pt-1 text-[10.5px] text-white/35">
         {image.credit} · {image.license}
         {page && (
           <>
@@ -81,20 +81,23 @@ function Header({ e }: { e: WorldEvent }) {
         <Badge>{e.category}</Badge>
         {e.isDemo && <Badge tone="demo">DEMO</Badge>}
       </div>
-      <h2 className="text-[18px] font-semibold leading-snug text-white" data-testid="event-title">
+      <h2
+        className="text-[17px] font-normal leading-snug tracking-[-0.01em] text-white"
+        data-testid="event-title"
+      >
         {e.title}
       </h2>
-      <p className="mt-1 text-[12.5px] text-slate-300">
+      <p className="mt-1 text-[12.5px] text-white/70">
         <span>{e.location.name}</span>
         {e.location.precision !== 'city' && e.location.precision !== 'exact' && (
-          <span className="text-slate-500"> (location {e.location.precision})</span>
+          <span className="text-white/35"> (location {e.location.precision})</span>
         )}
       </p>
-      <p className="text-[12.5px] text-slate-400">
+      <p className="text-[12.5px] text-white/50">
         <time dateTime={e.time.start}>{t.label}</time>
-        <span className="text-slate-500"> · {t.precision}</span>
+        <span className="text-white/35"> · {t.precision}</span>
         {e.kind === 'news' && (
-          <span className="text-slate-500"> · {relativeTime(e.updatedAt ?? e.time.start)}</span>
+          <span className="text-white/35"> · {relativeTime(e.updatedAt ?? e.time.start)}</span>
         )}
       </p>
     </div>
@@ -105,6 +108,7 @@ function Participants({ e }: { e: WorldEvent }) {
   if (!e.participants.length) return null;
   return (
     <Section
+      id="sec-participants"
       title={
         e.kind === 'news' && e.participants.some((p) => p.role === 'mentioned')
           ? 'Participants (mentioned)'
@@ -115,7 +119,7 @@ function Participants({ e }: { e: WorldEvent }) {
         {e.participants.map((p) => (
           <li
             key={p.name}
-            className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[12px] text-slate-200"
+            className="rounded-full border border-white/[0.08] bg-white/[0.05] px-2 py-0.5 text-[12px] text-white/85"
           >
             {p.name}
           </li>
@@ -128,9 +132,13 @@ function Participants({ e }: { e: WorldEvent }) {
 function SourceCoverage({ data }: { data: SourcesResponse }) {
   const byId = new Map(data.sources.map((s) => [s.id, s]));
   return (
-    <Section title={`Source coverage (${data.articles.length})`} testId="source-coverage">
+    <Section
+      id="sec-sources"
+      title={`Source coverage (${data.articles.length})`}
+      testId="source-coverage"
+    >
       {data.isDemo && (
-        <p className="mb-2 text-[11.5px] text-violet-200">
+        <p className="mb-2 text-[11.5px] text-white/80">
           Fictional outlets and articles (DEMO) — no external pages.
         </p>
       )}
@@ -142,16 +150,16 @@ function SourceCoverage({ data }: { data: SourcesResponse }) {
             const href = a.isDemo ? null : safeExternalUrl(a.url);
             return (
               <li key={a.id} className="text-[13px] leading-snug">
-                <span className="text-[11px] text-slate-400">
+                <span className="text-[11px] text-white/50">
                   {src?.name ?? a.sourceId}
                   {src?.nationalPerspective && (
-                    <span className="text-slate-500"> · {src.nationalPerspective}</span>
+                    <span className="text-white/35"> · {src.nationalPerspective}</span>
                   )}{' '}
                   · {relativeTime(a.publishedAt)}
                 </span>
-                <span className="block text-slate-100">
+                <span className="block text-white/90">
                   {href ? (
-                    <ExternalLink href={href} className="text-slate-100">
+                    <ExternalLink href={href} className="text-white/90">
                       {a.headline}
                     </ExternalLink>
                   ) : (
@@ -162,7 +170,7 @@ function SourceCoverage({ data }: { data: SourcesResponse }) {
             );
           })}
       </ul>
-      <p className="mt-2 text-[10.5px] text-slate-500">
+      <p className="mt-2 text-[10.5px] text-white/35">
         Headlines link to the original publishers. WorldLens does not republish articles.
       </p>
     </Section>
@@ -182,14 +190,14 @@ function Bar({
 }) {
   return (
     <li className="grid grid-cols-[minmax(0,9rem)_1fr_1.5rem] items-center gap-2 text-[12px]">
-      <span className="truncate text-slate-300">{label}</span>
-      <span className="h-1.5 rounded-full bg-white/5">
+      <span className="truncate text-white/70">{label}</span>
+      <span className="h-1.5 rounded-full bg-white/[0.05]">
         <span
-          className={`block h-1.5 rounded-full ${tone ?? 'bg-sky-300/70'}`}
+          className={`block h-1.5 rounded-full ${tone ?? 'bg-white/[0.05]0'}`}
           style={{ width: `${(value / Math.max(1, max)) * 100}%` }}
         />
       </span>
-      <span className="text-right tabular-nums text-slate-400">{value}</span>
+      <span className="text-right tabular-nums text-white/50">{value}</span>
     </li>
   );
 }
@@ -197,8 +205,8 @@ function Bar({
 function RatingDetails({ s }: { s: NewsSource }) {
   if (s.rating.value === 'UNRATED') return null;
   return (
-    <li className="text-[11.5px] text-slate-400">
-      <span className="text-slate-200">{s.name}</span>: {s.rating.value}
+    <li className="text-[11.5px] text-white/50">
+      <span className="text-white/85">{s.name}</span>: {s.rating.value}
       {s.rating.illustrative && <Badge tone="demo">illustrative</Badge>} — {s.rating.methodology}{' '}
       Source: {s.rating.source}; confidence {s.rating.confidence}; reviewed {s.rating.lastReviewed}.
     </li>
@@ -213,23 +221,23 @@ function CoveragePerspectives({ data }: { data: SourcesResponse }) {
   const maxT = Math.max(...type.map(([, v]) => v), 1);
   const unrated = c.byRating.UNRATED ?? 0;
   return (
-    <Section title="Coverage perspectives" testId="coverage-perspectives">
-      <p className="mb-2 text-[11.5px] text-slate-400">
+    <Section id="sec-perspectives" title="Coverage perspectives" testId="coverage-perspectives">
+      <p className="mb-2 text-[11.5px] text-white/50">
         Orientation metadata describes publishers, never the event itself.
       </p>
-      <h4 className="mb-1 text-[12px] font-medium text-slate-200">National perspective</h4>
+      <h4 className="mb-1 text-[12px] font-medium text-white/85">National perspective</h4>
       <ul className="mb-3 space-y-1">
         {country.map(([k, v]) => (
           <Bar key={k} label={k} value={v} max={maxC} />
         ))}
       </ul>
-      <h4 className="mb-1 text-[12px] font-medium text-slate-200">Publisher type</h4>
+      <h4 className="mb-1 text-[12px] font-medium text-white/85">Publisher type</h4>
       <ul className="mb-3 space-y-1">
         {type.map(([k, v]) => (
           <Bar key={k} label={k.replace(/-/g, ' ')} value={v} max={maxT} tone="bg-history/60" />
         ))}
       </ul>
-      <h4 className="mb-1 text-[12px] font-medium text-slate-200">
+      <h4 className="mb-1 text-[12px] font-medium text-white/85">
         Political orientation (publishers)
       </h4>
       <ul className="mb-2 space-y-1">
@@ -239,12 +247,12 @@ function CoveragePerspectives({ data }: { data: SourcesResponse }) {
             label={r}
             value={c.byRating[r]!}
             max={data.sources.length}
-            tone={r === 'UNRATED' ? 'bg-slate-500/60' : 'bg-violet-300/60'}
+            tone={r === 'UNRATED' ? 'bg-white/25' : 'bg-white/50'}
           />
         ))}
       </ul>
       {unrated > 0 && (
-        <p className="text-[11px] text-slate-500">
+        <p className="text-[11px] text-white/35">
           UNRATED means no rating with a documented methodology, source, confidence and review date
           is loaded for that publisher. WorldLens never guesses ratings.
         </p>
@@ -271,6 +279,7 @@ function SourceFraming({ eventId, sources }: { eventId: string; sources: NewsSou
   const f: Framing | null | undefined = m.data?.framing;
   return (
     <Section
+      id="sec-framing"
       title="How sources frame this event"
       testId="source-framing"
       actions={
@@ -279,7 +288,7 @@ function SourceFraming({ eventId, sources }: { eventId: string; sources: NewsSou
             type="button"
             onClick={() => m.mutate()}
             disabled={m.isPending}
-            className="rounded-md border border-white/15 px-2 py-0.5 text-[11.5px] text-slate-100 hover:bg-white/10"
+            className="rounded-md border border-white/12 px-2 py-0.5 text-[11.5px] text-white/90 hover:bg-white/10"
             data-testid="compare-framing"
           >
             {m.isPending ? 'Comparing…' : 'Compare'}
@@ -288,40 +297,40 @@ function SourceFraming({ eventId, sources }: { eventId: string; sources: NewsSou
       }
     >
       {!f && !m.isPending && !m.data?.message && (
-        <p className="text-[12px] text-slate-400">
+        <p className="text-[12px] text-white/50">
           Compare what outlets agree on, where they differ, and how they frame it.
         </p>
       )}
       {m.isPending && <Spinner label="Comparing coverage" />}
       {m.isError && <Notice tone="danger">Comparison unavailable right now.</Notice>}
-      {m.data?.message && <p className="text-[12px] text-slate-400">{m.data.message}</p>}
+      {m.data?.message && <p className="text-[12px] text-white/50">{m.data.message}</p>}
       {f && (
         <div className="space-y-3 text-[12.5px]">
-          <p className="text-[11px] text-slate-500">
+          <p className="text-[11px] text-white/35">
             Method:{' '}
             {f.method === 'ai' ? `AI-assisted (${f.model ?? 'model'})` : 'automated heuristic'} ·
             labels distinguish fact, claim, allegation and assessment.
           </p>
           {f.sharedTopics && f.sharedTopics.length > 0 && (
-            <p className="text-slate-300">
-              <span className="text-slate-400">Topics shared across outlets:</span>{' '}
+            <p className="text-white/70">
+              <span className="text-white/50">Topics shared across outlets:</span>{' '}
               {f.sharedTopics.join(', ')}
             </p>
           )}
           <div>
-            <h4 className="mb-1 font-medium text-slate-200">Commonly reported</h4>
+            <h4 className="mb-1 font-medium text-white/85">Commonly reported</h4>
             <ul className="space-y-1.5">
               {f.commonlyReported.length === 0 && (
-                <li className="text-slate-400">
+                <li className="text-white/50">
                   No statement is corroborated strongly enough to list as commonly reported.
                 </li>
               )}
               {f.commonlyReported.map((c, i) => (
                 <li key={i} className="flex gap-2">
                   <Badge tone={KIND_TONE[c.kind]}>{c.kind}</Badge>
-                  <span className="text-slate-200">
+                  <span className="text-white/85">
                     {c.text}{' '}
-                    <span className="text-slate-500">— {c.sourceIds.map(name).join(', ')}</span>
+                    <span className="text-white/35">— {c.sourceIds.map(name).join(', ')}</span>
                   </span>
                 </li>
               ))}
@@ -329,11 +338,11 @@ function SourceFraming({ eventId, sources }: { eventId: string; sources: NewsSou
           </div>
           {f.disagreements.length > 0 && (
             <div>
-              <h4 className="mb-1 font-medium text-slate-200">Points of disagreement</h4>
+              <h4 className="mb-1 font-medium text-white/85">Points of disagreement</h4>
               {f.disagreements.map((d, i) => (
                 <div key={i} className="mb-1.5">
-                  <p className="text-slate-300">{d.topic}</p>
-                  <ul className="ml-3 list-disc text-slate-400">
+                  <p className="text-white/70">{d.topic}</p>
+                  <ul className="ml-3 list-disc text-white/50">
                     {d.positions.map((p, j) => (
                       <li key={j}>{p.text}</li>
                     ))}
@@ -343,16 +352,16 @@ function SourceFraming({ eventId, sources }: { eventId: string; sources: NewsSou
             </div>
           )}
           <div>
-            <h4 className="mb-1 font-medium text-slate-200">Differences in framing</h4>
-            <ul className="space-y-1 text-slate-300">
+            <h4 className="mb-1 font-medium text-white/85">Differences in framing</h4>
+            <ul className="space-y-1 text-white/70">
               {f.framingDifferences.map((d) => (
                 <li key={d.sourceId}>
-                  <span className="text-slate-400">{name(d.sourceId)}:</span> {d.framing}
+                  <span className="text-white/50">{name(d.sourceId)}:</span> {d.framing}
                 </li>
               ))}
             </ul>
           </div>
-          <ul className="space-y-0.5 text-[11px] text-slate-500">
+          <ul className="space-y-0.5 text-[11px] text-white/35">
             {f.caveats.map((c, i) => (
               <li key={i}>{c}</li>
             ))}
@@ -368,9 +377,9 @@ function HistoricalContext({ id }: { id: string }) {
   const related = q.data?.related ?? [];
   if (q.isLoading) return null;
   return (
-    <Section title="Historical context · Then ↔ Now" testId="historical-context">
+    <Section id="sec-context" title="Historical context · Then ↔ Now" testId="historical-context">
       {related.length === 0 ? (
-        <p className="text-[12px] text-slate-400">No linked context in WorldLens yet.</p>
+        <p className="text-[12px] text-white/50">No linked context in WorldLens yet.</p>
       ) : (
         <ol className="space-y-1">
           {related.map((r) => (
@@ -391,23 +400,23 @@ function HistoricalContext({ id }: { id: string }) {
                 }}
                 data-testid="context-item"
               >
-                <span className="text-[11px] text-slate-500">
+                <span className="text-[11px] text-white/35">
                   {temporalWithPrecision(r.event.time).label} ·{' '}
                   {RELATION_LABEL[r.relation.type] ?? r.relation.type} · confidence{' '}
                   {Math.round(r.relation.confidence * 100)}%
                 </span>
-                <span className="block text-[13px] text-slate-100">
+                <span className="block text-[13px] text-white/90">
                   {r.event.title} {r.event.isDemo && <Badge tone="demo">DEMO</Badge>}
                 </span>
                 {r.relation.notes && (
-                  <span className="block text-[11.5px] text-slate-400">{r.relation.notes}</span>
+                  <span className="block text-[11.5px] text-white/50">{r.relation.notes}</span>
                 )}
               </button>
             </li>
           ))}
         </ol>
       )}
-      <p className="mt-1 text-[10.5px] text-slate-500">
+      <p className="mt-1 text-[10.5px] text-white/35">
         Links show relevant context, not proven causation.
       </p>
     </Section>
@@ -418,19 +427,19 @@ function TakeActionSection({ e, actions }: { e: WorldEvent; actions: ActionOptio
   const open = useAppStore((s) => s.openTakeAction);
   if (!actions.length) return null;
   return (
-    <Section title="Take action" testId="take-action">
-      <div className="sandbox-banner mb-2 rounded-md border border-sandbox/40 px-2 py-1 text-center text-[11px] font-bold tracking-wider text-sandbox">
+    <Section id="sec-action" title="Take action" testId="take-action">
+      <div className="sandbox-banner mb-2 rounded-md border border-sandbox/40 px-2 py-1 text-center text-[11px] font-normal tracking-wider text-sandbox">
         SANDBOX DEMO — NO REAL MONEY TRANSFERRED
       </div>
       <ul className="space-y-2">
         {actions.map((a) => (
-          <li key={a.id} className="rounded-lg border border-white/10 p-3">
-            <p className="text-[13.5px] font-medium text-slate-100">{a.title}</p>
-            <p className="mt-0.5 text-[12px] text-slate-400">{a.description}</p>
+          <li key={a.id} className="rounded-lg border border-white/[0.08] p-3">
+            <p className="text-[13.5px] font-medium text-white/90">{a.title}</p>
+            <p className="mt-0.5 text-[12px] text-white/50">{a.description}</p>
             <button
               type="button"
               onClick={() => open({ eventId: e.id, optionId: a.id })}
-              className="mt-2 rounded-lg bg-sandbox px-3 py-1.5 text-[12.5px] font-semibold text-slate-900 hover:brightness-105"
+              className="mt-2 rounded-full bg-[var(--active-bg)] px-3.5 py-1.5 text-[12px] text-[var(--active-fg)] transition-colors hover:bg-white"
               data-testid="review-action"
             >
               Review &amp; continue
@@ -452,14 +461,14 @@ function AskAi({ e }: { e: WorldEvent }) {
         ]
       : ['Why did this matter?', 'What happened next?', 'Show me what led up to this'];
   return (
-    <Section title="Ask AI">
+    <Section id="sec-ask" title="Ask AI">
       <div className="flex flex-wrap gap-1.5">
         {prompts.filter(Boolean).map((p) => (
           <button
             key={p}
             type="button"
             onClick={() => askAi(p!)}
-            className="rounded-full border border-sky-300/30 px-2.5 py-1 text-[12px] text-sky-100 hover:bg-sky-300/10"
+            className="rounded-full border border-white/12 px-2.5 py-1 text-[12px] text-white/85 hover:bg-white/[0.06]"
           >
             {p}
           </button>
@@ -473,24 +482,24 @@ function NewsBody({ e, actions }: { e: WorldEvent; actions: ActionOption[] }) {
   const sources = useSources(e.id, e.kind === 'news');
   return (
     <>
-      <Section title="Summary">
+      <Section id="sec-summary" title="Summary">
         {e.summary ? (
-          <p className="text-[13.5px] leading-relaxed text-slate-200">{e.summary}</p>
+          <p className="text-[13.5px] leading-relaxed text-white/85">{e.summary}</p>
         ) : (
-          <p className="text-[12.5px] text-slate-400">
+          <p className="text-[12.5px] text-white/50">
             Reported by {e.sourceCount} outlet(s). A summary is not available; see the source
             coverage below.
           </p>
         )}
-        <p className="mt-1.5 text-[11px] text-slate-500">
+        <p className="mt-1.5 text-[11px] text-white/35">
           {e.provenance.provider === 'gdelt'
             ? `Discovered via GDELT · clustered automatically from ${e.articleCount} article(s) · confidence ${Math.round(e.confidence * 100)}%`
             : e.provenance.note}
         </p>
       </Section>
       {e.whyItMatters && (
-        <Section title="Why it matters">
-          <p className="text-[13px] leading-relaxed text-slate-300">{e.whyItMatters}</p>
+        <Section id="sec-why" title="Why it matters">
+          <p className="text-[13px] leading-relaxed text-white/70">{e.whyItMatters}</p>
         </Section>
       )}
       <Participants e={e} />
@@ -511,35 +520,35 @@ function HistoryBody({ e }: { e: WorldEvent }) {
   const ref = e.references[0];
   return (
     <>
-      <Section title="What happened">
-        <p className="text-[13.5px] leading-relaxed text-slate-200">{e.summary}</p>
+      <Section id="sec-summary" title="What happened">
+        <p className="text-[13.5px] leading-relaxed text-white/85">{e.summary}</p>
       </Section>
       {e.whyItMatters && (
-        <Section title="Why it mattered">
-          <p className="text-[13px] leading-relaxed text-slate-300">{e.whyItMatters}</p>
+        <Section id="sec-why" title="Why it mattered">
+          <p className="text-[13px] leading-relaxed text-white/70">{e.whyItMatters}</p>
         </Section>
       )}
       <Participants e={e} />
       <HistoricalContext id={e.id} />
-      <Section title="Learn more" testId="learn-more">
+      <Section id="sec-learn" title="Learn more" testId="learn-more">
         {wiki.data?.summary?.extract && (
-          <blockquote className="mb-2 border-l-2 border-white/15 pl-3 text-[12.5px] leading-relaxed text-slate-300">
+          <blockquote className="mb-2 border-l-2 border-white/12 pl-3 text-[12.5px] leading-relaxed text-white/70">
             {wiki.data.summary.extract.slice(0, 420)}
             {wiki.data.summary.extract.length > 420 ? '…' : ''}
-            <footer className="mt-1 text-[10.5px] text-slate-500">
+            <footer className="mt-1 text-[10.5px] text-white/35">
               From Wikipedia, CC BY-SA 4.0
             </footer>
           </blockquote>
         )}
         {wiki.data && !wiki.data.available && (
-          <p className="mb-2 text-[11.5px] text-slate-500">{wiki.data.message}</p>
+          <p className="mb-2 text-[11.5px] text-white/35">{wiki.data.message}</p>
         )}
         {ref && (
           <ExternalLink href={ref.url} className="text-[13px] font-medium">
             Read on Wikipedia →
           </ExternalLink>
         )}
-        <p className="mt-2 text-[10.5px] text-slate-500">
+        <p className="mt-2 text-[10.5px] text-white/35">
           Dates and summaries are from the WorldLens curated dataset; Wikipedia is linked for
           further reading.
         </p>
@@ -549,8 +558,22 @@ function HistoryBody({ e }: { e: WorldEvent }) {
   );
 }
 
+const SECTION_INDEX: Array<[string, string]> = [
+  ['sec-summary', 'Summary'],
+  ['sec-why', 'Why'],
+  ['sec-participants', 'Participants'],
+  ['sec-sources', 'Sources'],
+  ['sec-perspectives', 'Perspectives'],
+  ['sec-framing', 'Framing'],
+  ['sec-context', 'Then ↔ Now'],
+  ['sec-action', 'Take action'],
+  ['sec-learn', 'Learn more'],
+];
+
 export function EventDetail({ id, onBack }: { id: string; onBack: () => void }) {
   const q = useEventDetail(id);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [sections, setSections] = useState<string[]>([]);
   const wiki = useWikipedia(
     q.data?.event.kind === 'historical' ? q.data.event.wikipediaTitle : undefined,
   );
@@ -560,6 +583,19 @@ export function EventDetail({ id, onBack }: { id: string; onBack: () => void }) 
   }, [id]);
   const e = q.data?.event;
   const image = e?.image ?? wiki.data?.summary?.image ?? null;
+  // The index reflects what is actually rendered (sections mount as data resolves).
+  useEffect(() => {
+    const root = scrollRef.current;
+    if (!root) return;
+    const update = () =>
+      setSections(
+        SECTION_INDEX.filter(([sid]) => root.querySelector(`#${sid}`)).map(([sid]) => sid),
+      );
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(root, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [id]);
   return (
     <article
       className="flex h-full min-h-0 flex-col"
@@ -569,21 +605,44 @@ export function EventDetail({ id, onBack }: { id: string; onBack: () => void }) 
       <div
         ref={headingRef}
         tabIndex={-1}
-        className="flex items-center gap-2 px-3 pt-2 outline-none"
+        className="flex items-center gap-2 px-3 pb-1 pt-2.5 outline-none"
       >
         <button
           type="button"
           onClick={onBack}
-          className="rounded-md px-2 py-1 text-[12px] text-slate-300 hover:bg-white/10"
+          className="flex items-center gap-1.5 rounded-full px-2 py-1 text-[11px] text-white/50 transition-colors hover:bg-white/[0.06] hover:text-white"
           data-testid="back-to-list"
         >
-          ← Events
+          <Icon name="arrow-left" className="h-3.5 w-3.5" />
+          Events
         </button>
         <span id="event-detail-heading" className="sr-only">
           {e?.title ?? 'Event'}
         </span>
       </div>
-      <div className="scroll-thin min-h-0 flex-1 overflow-y-auto pb-6">
+      {sections.length > 1 && (
+        <nav
+          className="flex shrink-0 flex-wrap gap-0.5 px-2.5 pb-1.5"
+          aria-label="Sections"
+          data-testid="section-index"
+        >
+          {sections.map((sid) => (
+            <button
+              key={sid}
+              type="button"
+              onClick={() =>
+                scrollRef.current
+                  ?.querySelector(`#${sid}`)
+                  ?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+              }
+              className="shrink-0 rounded-full px-2 py-0.5 text-[10.5px] text-white/45 transition-colors hover:bg-white/[0.06] hover:text-white/90"
+            >
+              {SECTION_INDEX.find(([s]) => s === sid)?.[1]}
+            </button>
+          ))}
+        </nav>
+      )}
+      <div ref={scrollRef} className="scroll-thin min-h-0 flex-1 overflow-y-auto pb-6">
         {q.isLoading && (
           <div className="p-4">
             <Spinner />

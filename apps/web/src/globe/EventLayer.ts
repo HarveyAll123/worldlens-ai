@@ -33,6 +33,8 @@ interface Drawn {
   count: Cesium.Label | null;
   /** Event title on single markers (only when placed). */
   title: Cesium.Label | null;
+  /** Which side of the marker the title sits on (flips near the screen edge). */
+  titleSide?: 'left' | 'right';
   visible: boolean;
 }
 
@@ -204,7 +206,7 @@ export class EventLayer {
     const count = this.labels.add({
       position,
       text: String(ids.length),
-      font: '700 12px "Inter", system-ui, sans-serif',
+      font: '500 11.5px "Inter Variable", "Inter", system-ui, sans-serif',
       fillColor: Cesium.Color.fromCssColorString('#0b1220'),
       horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
       verticalOrigin: Cesium.VerticalOrigin.CENTER,
@@ -254,7 +256,24 @@ export class EventLayer {
   relabel(): void {
     const width = this.scene.canvas.clientWidth;
     const height = this.scene.canvas.clientHeight;
-    const candidates = [];
+    // Keep labels clear of the chrome: the detached card on the right and the top dock.
+    const wide = window.matchMedia('(min-width: 768px)').matches;
+    const safe = {
+      left: 8,
+      right: wide ? 404 : 10,
+      top: wide ? 150 : 176,
+      bottom: wide ? 10 : 88,
+    };
+    type Candidate = {
+      id: string;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      weight: number;
+    };
+    const candidates: Candidate[] = [];
+    const wanted = new Map<string, { side: 'left' | 'right'; text: string }>();
     if (this.settings.labels)
       for (const [key, d] of this.drawn) {
         if (d.ids.length !== 1 || !d.visible) continue;
@@ -264,40 +283,56 @@ export class EventLayer {
           scratchWin,
         );
         if (!w || w.x < 0 || w.y < 0 || w.x > width || w.y > height) continue;
+        if (w.y < safe.top || w.y > height - safe.bottom) continue;
         const e = this.byId.get(d.ids[0]!)!;
-        const chars = Math.min(TITLE_CHARS, e.title.length);
+        const roomRight = width - safe.right - (w.x + 14);
+        const roomLeft = w.x - 14 - safe.left;
+        const side: 'left' | 'right' = roomRight >= 120 || roomRight >= roomLeft ? 'right' : 'left';
+        const room = side === 'right' ? roomRight : roomLeft;
+        const maxChars = Math.floor((room - 20) / 7.2);
+        const chars = Math.min(TITLE_CHARS, e.title.length, maxChars);
+        if (chars < 10) continue;
+        const text = truncate(e.title, chars);
+        const labelWidth = chars * 7.2 + 18;
         candidates.push({
           id: key,
-          x: w.x + 10,
+          x: side === 'right' ? w.x + 10 : w.x - 10 - labelWidth,
           y: w.y - 11,
-          width: chars * 7.2 + 18,
+          width: labelWidth,
           height: 22,
           weight: e.importance + (e.id === this.selectedId ? 100 : 0),
         });
+        wanted.set(key, { side, text });
       }
     const chosen = placeLabels(candidates, this.settings.maxLabels);
     for (const [key, d] of this.drawn) {
-      const want = chosen.has(key);
-      if (want && !d.title) {
-        const e = this.byId.get(d.ids[0]!)!;
-        d.title = this.labels.add({
-          position: d.position,
-          text: truncate(e.title, TITLE_CHARS),
-          font: '500 13px "Inter", system-ui, sans-serif',
-          fillColor: COLORS.label,
-          showBackground: true,
-          backgroundColor: COLORS.labelBg,
-          backgroundPadding: new Cesium.Cartesian2(7, 4),
-          pixelOffset: new Cesium.Cartesian2(12, -2),
-          horizontalOrigin: Cesium.HorizontalOrigin.LEFT,
-          verticalOrigin: Cesium.VerticalOrigin.CENTER,
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
-          show: d.visible,
-          id: { kind: 'event', id: e.id } satisfies PickId,
-        });
-      } else if (!want && d.title) {
+      const want = chosen.has(key) ? wanted.get(key) : undefined;
+      if (want) {
+        if (!d.title || d.titleSide !== want.side || d.title.text !== want.text) {
+          if (d.title) this.labels.remove(d.title);
+          const e = this.byId.get(d.ids[0]!)!;
+          d.title = this.labels.add({
+            position: d.position,
+            text: want.text,
+            font: '400 12px "Inter Variable", "Inter", system-ui, sans-serif',
+            fillColor: COLORS.label,
+            showBackground: true,
+            backgroundColor: COLORS.labelBg,
+            backgroundPadding: new Cesium.Cartesian2(7, 4),
+            pixelOffset: new Cesium.Cartesian2(want.side === 'right' ? 12 : -12, -2),
+            horizontalOrigin:
+              want.side === 'right' ? Cesium.HorizontalOrigin.LEFT : Cesium.HorizontalOrigin.RIGHT,
+            verticalOrigin: Cesium.VerticalOrigin.CENTER,
+            disableDepthTestDistance: Number.POSITIVE_INFINITY,
+            show: d.visible,
+            id: { kind: 'event', id: e.id } satisfies PickId,
+          });
+          d.titleSide = want.side;
+        }
+      } else if (d.title) {
         this.labels.remove(d.title);
         d.title = null;
+        d.titleSide = undefined;
       }
     }
     this.cull();

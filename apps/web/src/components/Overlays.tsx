@@ -3,6 +3,7 @@ import { goToTourStep } from '../ai/actionExecutor';
 import { apiStats } from '../lib/api';
 import { useAppStore } from '../state/store';
 import { getGlobe } from './GlobeView';
+import { Icon } from './ui';
 import type { GlobeDiagnostics } from '../globe/GlobeController';
 
 /** Hidden developer diagnostics (Shift+D, ?diag=1, or the Layers menu). */
@@ -54,16 +55,16 @@ export function DiagnosticsPanel() {
     : [];
   return (
     <aside
-      className="glass pointer-events-auto absolute left-3 top-20 z-40 w-[290px] rounded-xl p-3 font-mono text-[11px]"
+      className="glass pointer-events-auto absolute left-3 top-[68px] z-40 w-[290px] rounded-[var(--radius-outer)] p-3 font-mono text-[10.5px]"
       aria-label="Developer diagnostics"
       data-testid="diagnostics"
     >
       <div className="mb-1.5 flex items-center">
-        <strong className="text-[11px] tracking-wider text-slate-200">DIAGNOSTICS</strong>
+        <strong className="text-[10.5px] tracking-[0.08em] text-white/55">Diagnostics</strong>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="ml-auto text-slate-400 hover:text-white"
+          className="ml-auto text-white/40 hover:text-white"
           aria-label="Close diagnostics"
         >
           ✕
@@ -72,9 +73,9 @@ export function DiagnosticsPanel() {
       <dl className="space-y-0.5">
         {rows.map(([k, v]) => (
           <div key={k} className="flex justify-between gap-2">
-            <dt className="text-slate-400">{k}</dt>
+            <dt className="text-white/40">{k}</dt>
             <dd
-              className="m-0 truncate text-right text-slate-100"
+              className="m-0 truncate text-right text-white/90"
               data-testid={`diag-${k.split(' ')[0]!.toLowerCase()}`}
             >
               {v}
@@ -83,7 +84,7 @@ export function DiagnosticsPanel() {
         ))}
       </dl>
       {d && d.decisions.length > 0 && (
-        <ul className="mt-2 space-y-0.5 border-t border-white/10 pt-1.5 text-[10px] text-slate-400">
+        <ul className="mt-2 space-y-0.5 border-t border-white/10 pt-1.5 text-[10px] text-white/40">
           {d.decisions.map((x, i) => (
             <li key={i}>
               → {x.tier} @{x.scale} ({x.targetFps}fps): {x.reason}
@@ -113,42 +114,42 @@ export function TourBar() {
   if (!tour) return null;
   return (
     <div
-      className="glass pointer-events-auto flex items-center gap-1 rounded-full px-2 py-1 text-[12px]"
+      className="glass-chrome pointer-events-auto flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px]"
       role="group"
       aria-label="Guided tour"
       data-testid="tour-bar"
     >
-      <span className="px-1 text-slate-300">
+      <span className="tabular px-1 text-white/60">
         Tour {tour.index + 1}/{tour.steps.length}
       </span>
       <button
         type="button"
-        className="rounded-full px-2 py-0.5 hover:bg-white/10 disabled:opacity-30"
+        className="grid h-6 w-6 place-items-center rounded-full text-white/65 hover:bg-white/[0.08] hover:text-white disabled:opacity-30"
         disabled={tour.index === 0}
         onClick={() => goToTourStep(tour.index - 1)}
         aria-label="Previous step"
       >
-        ‹
+        <Icon name="chevron-left" className="h-3 w-3" />
       </button>
       <button
         type="button"
-        className="rounded-full px-2 py-0.5 hover:bg-white/10"
+        className="rounded-full px-2 py-0.5 text-white/70 hover:bg-white/[0.08] hover:text-white"
         onClick={() => setTour({ ...tour, playing: !tour.playing })}
       >
         {tour.playing ? 'Pause' : 'Play'}
       </button>
       <button
         type="button"
-        className="rounded-full px-2 py-0.5 hover:bg-white/10 disabled:opacity-30"
+        className="grid h-6 w-6 place-items-center rounded-full text-white/65 hover:bg-white/[0.08] hover:text-white disabled:opacity-30"
         disabled={tour.index >= tour.steps.length - 1}
         onClick={() => goToTourStep(tour.index + 1)}
         aria-label="Next step"
       >
-        ›
+        <Icon name="chevron-right" className="h-3 w-3" />
       </button>
       <button
         type="button"
-        className="rounded-full px-2 py-0.5 text-slate-400 hover:bg-white/10"
+        className="rounded-full px-2 py-0.5 text-white/40 hover:bg-white/10"
         onClick={() => setTour(null)}
       >
         End

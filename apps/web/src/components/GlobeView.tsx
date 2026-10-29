@@ -351,7 +351,7 @@ export function GlobeView({
         data-testid="globe"
       />
       {error && (
-        <div className="absolute inset-0 grid place-items-center p-6 text-center text-sm text-slate-300">
+        <div className="absolute inset-0 grid place-items-center p-6 text-center text-sm text-white/70">
           <p className="glass max-w-md rounded-xl p-4">{error}</p>
         </div>
       )}

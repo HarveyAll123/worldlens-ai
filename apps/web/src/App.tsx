@@ -12,7 +12,7 @@ import { TemporalNavigator } from './components/TemporalNavigator';
 import { SearchBox, TopBar } from './components/TopBar';
 import { Notice } from './components/ui';
 import { useConfig } from './hooks/useData';
-import { useIsMobile } from './hooks/useMedia';
+import { useIsMobile, useMediaQuery } from './hooks/useMedia';
 import { followCountriesInTime } from './lib/countries';
 import { useAppStore } from './state/store';
 
@@ -44,7 +44,7 @@ function MobileSheet() {
             : 'Events';
   return (
     <section
-      className={`glass pointer-events-auto absolute inset-x-0 bottom-[108px] z-20 flex flex-col rounded-t-2xl transition-[height] duration-300 ${expanded ? 'h-[62dvh]' : 'h-[64px]'}`}
+      className={`glass pointer-events-auto absolute inset-x-3 bottom-3 z-20 flex flex-col rounded-[var(--radius-outer)] transition-[height] duration-300 ${expanded ? 'h-[62dvh]' : 'h-[64px]'}`}
       aria-label={label}
       data-testid="bottom-sheet"
     >
@@ -56,7 +56,7 @@ function MobileSheet() {
         data-testid="sheet-handle"
       >
         <span className="h-1 w-10 rounded-full bg-white/25" aria-hidden />
-        <span className="text-[13px] font-medium text-slate-200">{label}</span>
+        <span className="text-[13px] font-normal text-white/80">{label}</span>
       </button>
       {expanded && (
         <div className="flex min-h-0 flex-1 flex-col">
@@ -65,24 +65,31 @@ function MobileSheet() {
             role="tablist"
             aria-label="Panel"
           >
-            {(['events', 'assistant', 'search'] as const).map((v) => (
-              <button
-                key={v}
-                role="tab"
-                type="button"
-                aria-selected={sheet === v || (v === 'events' && sheet === 'detail')}
-                onClick={() => setSheet(v)}
-                className={`rounded-full px-3 py-1 capitalize ${sheet === v || (v === 'events' && sheet === 'detail') ? 'bg-white/15 text-white' : 'text-slate-400'}`}
-              >
-                {v === 'assistant' ? 'Ask AI' : v}
-              </button>
-            ))}
+            {(['events', 'assistant', 'search'] as const).map((v) => {
+              const on = sheet === v || (v === 'events' && sheet === 'detail');
+              return (
+                <button
+                  key={v}
+                  role="tab"
+                  type="button"
+                  aria-selected={on}
+                  onClick={() => setSheet(v)}
+                  className={`rounded-full px-3 py-1 ${
+                    on
+                      ? 'bg-[var(--active-bg)] text-[var(--active-fg)]'
+                      : 'text-white/55 hover:bg-white/[0.06] hover:text-white/85'
+                  }`}
+                >
+                  {v === 'assistant' ? 'Ask AI' : v === 'events' ? 'Events' : 'Search'}
+                </button>
+              );
+            })}
           </div>
           <div className="min-h-0 flex-1">
             {sheet === 'assistant' ? (
               <AssistantPanel />
             ) : sheet === 'search' ? (
-              <div className="p-3">
+              <div className="px-3 pb-3">
                 <SearchBox autoFocus onDone={() => setSheet('events', false)} />
               </div>
             ) : (
@@ -97,6 +104,7 @@ function MobileSheet() {
 
 export function App() {
   const mobile = useIsMobile();
+  const wide = useMediaQuery('(min-width: 1024px)');
   const assistantOpen = useAppStore((s) => s.assistantOpen);
   const setAssistantOpen = useAppStore((s) => s.setAssistantOpen);
   const config = useConfig();
@@ -118,60 +126,56 @@ export function App() {
       </ErrorBoundary>
       <TopBar mobile={mobile} />
 
-      <div className="pointer-events-none absolute left-3 right-3 top-[76px] z-20 flex flex-col items-start gap-2 md:left-auto md:right-[436px] md:items-end">
-        {config.isError && (
-          <Notice tone="danger">
-            The WorldLens API is unreachable. The globe still works; data will load when it returns.
-          </Notice>
-        )}
+      <div className="pointer-events-none absolute left-3 right-3 top-[68px] z-20 flex flex-col items-center gap-2 md:right-[404px]">
+        <div className="pointer-events-auto w-full max-w-[860px]">
+          <TemporalNavigator compact={mobile || !wide} />
+        </div>
+        <TourBar />
       </div>
 
       {!mobile && (
         <aside
-          className="glass pointer-events-auto absolute bottom-[124px] right-3 top-[76px] z-20 flex w-[410px] flex-col overflow-hidden rounded-2xl"
+          className="glass pointer-events-auto absolute bottom-3 right-3 top-3 z-20 flex w-[380px] flex-col overflow-hidden rounded-[var(--radius-outer)]"
           aria-label="Context panel"
           data-testid="context-panel"
         >
           <ErrorBoundary label="The context panel">
-            <PanelBody />
-          </ErrorBoundary>
-        </aside>
-      )}
-      {!mobile && assistantOpen && (
-        <aside className="glass pointer-events-auto absolute bottom-[124px] left-3 top-[76px] z-20 flex w-[380px] flex-col overflow-hidden rounded-2xl">
-          <ErrorBoundary label="The assistant">
-            <AssistantPanel onClose={() => setAssistantOpen(false)} />
+            {assistantOpen ? (
+              <AssistantPanel onClose={() => setAssistantOpen(false)} />
+            ) : (
+              <PanelBody />
+            )}
           </ErrorBoundary>
         </aside>
       )}
       {mobile && <MobileSheet />}
 
-      <div
-        className="pointer-events-none absolute inset-x-3 bottom-3 z-30 flex flex-col gap-2"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-      >
-        <div className="flex justify-center">
-          <TourBar />
-        </div>
-        <TemporalNavigator compact={mobile} />
-      </div>
-
-      {notice && (
-        <div
-          className="pointer-events-auto absolute left-1/2 top-[132px] z-10 flex w-max max-w-[min(420px,80vw)] -translate-x-1/2 items-start gap-2 rounded-lg border border-white/10 bg-black/45 px-2.5 py-1.5 text-[11px] leading-snug text-slate-300 backdrop-blur md:top-[78px]"
-          data-testid="basemap-notice"
-        >
-          <span>{notice}</span>
-          <button
-            type="button"
-            onClick={() => setNotice(null)}
-            className="text-slate-400 hover:text-white"
-            aria-label="Dismiss imagery notice"
+      <div className="pointer-events-none absolute inset-x-3 bottom-[84px] z-20 flex flex-col items-center gap-2 md:bottom-4">
+        {config.isError && (
+          <div className="pointer-events-auto">
+            <Notice tone="danger">
+              The WorldLens API is unreachable. The globe still works; data will load when it
+              returns.
+            </Notice>
+          </div>
+        )}
+        {notice && (
+          <div
+            className="glass pointer-events-auto flex w-max max-w-[min(460px,86vw)] items-start gap-2 rounded-full px-3 py-1.5 text-[11px] leading-snug text-white/60"
+            data-testid="basemap-notice"
           >
-            ✕
-          </button>
-        </div>
-      )}
+            <span>{notice}</span>
+            <button
+              type="button"
+              onClick={() => setNotice(null)}
+              className="text-white/40 hover:text-white"
+              aria-label="Dismiss imagery notice"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+      </div>
       <DiagnosticsPanel />
       <TakeActionModal />
       <Announcer />

@@ -16,7 +16,7 @@ export class ErrorBoundary extends Component<
     if (this.state.error)
       return (
         this.props.fallback ?? (
-          <div role="alert" className="glass m-3 rounded-xl p-3 text-[12.5px] text-rose-100">
+          <div role="alert" className="glass m-3 rounded-xl p-3 text-[12.5px] text-white/85">
             {this.props.label} hit an error and was paused. The rest of WorldLens keeps working.
             <button
               type="button"
