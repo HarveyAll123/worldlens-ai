@@ -92,6 +92,13 @@ body,
   border: 1px solid var(--color-line);
 }
 
+.glass-solid {
+  background: rgb(16 16 18 / 0.98);
+  backdrop-filter: blur(20px) saturate(1.05);
+  -webkit-backdrop-filter: blur(20px) saturate(1.05);
+  border: 1px solid var(--color-line);
+}
+
 .hairline {
   border-color: var(--color-line);
 }

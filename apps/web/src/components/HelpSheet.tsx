@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useAppStore } from '../state/store';
 import { Icon } from './ui';
 
 const KEYS: Array<{ label: string; keys: string[] }> = [
@@ -21,6 +22,7 @@ const TIPS = [
 
 export function HelpSheet() {
   const [open, setOpen] = useState(false);
+  const cardOpen = useAppStore((s) => s.cardOpen);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -39,6 +41,15 @@ export function HelpSheet() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    window.addEventListener('mousedown', close);
+    return () => window.removeEventListener('mousedown', close);
+  }, [open]);
 
   return (
     <div className="relative hidden md:block" ref={ref}>
@@ -59,52 +70,42 @@ export function HelpSheet() {
         <Icon name="help" className="h-4 w-4" />
       </button>
       {open && (
-        <div className="fixed inset-0 z-50 grid place-items-center p-4">
-          <div
-            className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"
-            aria-hidden
-            onClick={() => setOpen(false)}
-          />
-          <div
-            className="glass relative max-h-[86dvh] w-[min(430px,94vw)] overflow-y-auto rounded-[var(--radius-outer)] p-3.5"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Keyboard shortcuts and help"
-            data-testid="help-sheet"
-          >
-            <div className="flex items-center gap-2 px-1 pb-2">
-              <h2 className="text-[12px] text-white/55">Keyboard</h2>
-              <span className="ml-auto text-[10px] text-white/30">Press ? anytime</span>
-            </div>
-            <dl className="space-y-0.5">
-              {KEYS.map((row) => (
-                <div key={row.label} className="flex items-center gap-3 px-1 py-1">
-                  <dt className="min-w-0 flex-1 truncate text-[11.5px] text-white/65">
-                    {row.label}
-                  </dt>
-                  <dd className="m-0 flex shrink-0 items-center gap-1">
-                    {row.keys.map((k) => (
-                      <kbd
-                        key={k}
-                        className="rounded-[6px] border border-white/15 bg-white/[0.06] px-1.5 py-0.5 font-sans text-[9.5px] text-white/70"
-                      >
-                        {k}
-                      </kbd>
-                    ))}
-                  </dd>
-                </div>
+        <div
+          className={`glass-solid scroll-thin fixed top-14 z-50 max-h-[calc(100dvh-6rem)] w-[340px] overflow-y-auto rounded-[var(--radius-outer)] p-3.5 ${cardOpen ? 'right-[400px]' : 'right-3'}`}
+          role="dialog"
+          aria-label="Keyboard shortcuts and help"
+          data-testid="help-sheet"
+        >
+          <div className="flex items-center gap-2 px-1 pb-2">
+            <h2 className="text-[12px] text-white/55">Keyboard</h2>
+            <span className="ml-auto text-[10px] text-white/30">Press ? anytime</span>
+          </div>
+          <dl className="space-y-0.5">
+            {KEYS.map((row) => (
+              <div key={row.label} className="flex items-center gap-3 px-1 py-1">
+                <dt className="min-w-0 flex-1 truncate text-[11.5px] text-white/65">{row.label}</dt>
+                <dd className="m-0 flex shrink-0 items-center gap-1">
+                  {row.keys.map((k) => (
+                    <kbd
+                      key={k}
+                      className="rounded-[6px] border border-white/15 bg-white/[0.06] px-1.5 py-0.5 font-sans text-[9.5px] text-white/70"
+                    >
+                      {k}
+                    </kbd>
+                  ))}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <div className="mt-2 border-t border-white/[0.07] pt-2">
+            <h2 className="px-1 pb-1 text-[12px] text-white/55">Pointer</h2>
+            <ul className="space-y-1.5 px-1">
+              {TIPS.map((tip) => (
+                <li key={tip} className="text-[10.5px] leading-relaxed text-white/40">
+                  {tip}
+                </li>
               ))}
-            </dl>
-            <div className="mt-2 border-t border-white/[0.07] pt-2">
-              <h2 className="px-1 pb-1 text-[12px] text-white/55">Pointer</h2>
-              <ul className="space-y-1.5 px-1">
-                {TIPS.map((tip) => (
-                  <li key={tip} className="text-[10.5px] leading-relaxed text-white/40">
-                    {tip}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            </ul>
           </div>
         </div>
       )}
