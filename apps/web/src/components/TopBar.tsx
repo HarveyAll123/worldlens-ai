@@ -45,10 +45,7 @@ export function LiveStatus({
         {!minimal && (
           <span className="tabular truncate text-[11.5px] tracking-[0.01em] text-white/85">
             {compact ? `${date} · ${time}` : date}
-            <span className="text-white/45">
-              {compact ? '' : ` · ${time}`}
-              <span className="hidden lg:inline"> UTC</span>
-            </span>
+            <span className="text-white/45">{compact ? '' : ` · ${time}`}</span>
           </span>
         )}
         {minimal && <span className="text-[11px] text-white/55">LIVE</span>}
@@ -293,7 +290,7 @@ export function TopBar({ mobile }: { mobile: boolean }) {
 
   return (
     <header className="pointer-events-none absolute left-3 right-3 top-3 z-30 flex md:right-[404px]">
-      <div className="glass-chrome pointer-events-auto flex h-12 w-full max-w-[1180px] items-center gap-1 rounded-full pl-3.5 pr-1.5">
+      <div className="glass-chrome pointer-events-auto flex h-12 w-full items-center gap-1 rounded-full pl-3.5 pr-1.5">
         <span className="flex shrink-0 items-center gap-2 text-[13px] tracking-tight text-white/90">
           <Icon name="globe" className="h-[18px] w-[18px] text-white/70" />
           <span className={mobile || !wide ? 'sr-only' : ''}>WorldLens</span>
@@ -305,7 +302,7 @@ export function TopBar({ mobile }: { mobile: boolean }) {
         {!mobile && (
           <>
             <span className="mx-2.5 h-4 w-px shrink-0 bg-white/15" aria-hidden />
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 md:max-w-[560px]">
               <SearchBox />
             </div>
           </>

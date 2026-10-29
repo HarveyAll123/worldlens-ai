@@ -126,7 +126,7 @@ export function App() {
       </ErrorBoundary>
       <TopBar mobile={mobile} />
 
-      <div className="pointer-events-none absolute left-3 right-3 top-[68px] z-20 flex flex-col items-center gap-2 md:right-[404px]">
+      <div className="pointer-events-none absolute left-3 right-3 top-[68px] z-20 flex flex-col items-center gap-2 md:right-[404px] md:items-start">
         <div className="pointer-events-auto w-full max-w-[860px]">
           <TemporalNavigator compact={mobile || !wide} />
         </div>
