@@ -34,6 +34,14 @@ export function AssistantPanel({ onClose }: { onClose?: () => void }) {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
   }, [turns, busy]);
 
+  // Grow with the text, up to five lines (5 × 22px line + 14px padding), then scroll.
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 124)}px`;
+  }, [input]);
+
   const send = async (text: string) => {
     const q = text.trim();
     if (!q || busy) return;
@@ -78,6 +86,7 @@ export function AssistantPanel({ onClose }: { onClose?: () => void }) {
   });
 
   const aiOn = config.data?.ai.available;
+  const canSend = input.trim().length > 0 && !busy;
   return (
     <section
       className="flex h-full min-h-0 flex-col"
@@ -204,11 +213,11 @@ export function AssistantPanel({ onClose }: { onClose?: () => void }) {
         <label htmlFor="assistant-input" className="sr-only">
           Ask the assistant
         </label>
-        <div className="flex items-end gap-1.5">
+        <div className="flex items-center gap-1.5">
           <textarea
             id="assistant-input"
             ref={inputRef}
-            rows={2}
+            rows={1}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
@@ -218,13 +227,17 @@ export function AssistantPanel({ onClose }: { onClose?: () => void }) {
               }
             }}
             placeholder="e.g. What is happening near Taiwan?"
-            className="min-w-0 flex-1 resize-none rounded-[var(--radius-inner)] bg-white/[0.05] px-3 py-2 text-[12.5px] text-white/90 placeholder:text-white/30"
+            className="scroll-thin max-h-[124px] min-h-9 min-w-0 flex-1 resize-none overflow-y-auto rounded-[var(--radius-inner)] bg-white/[0.05] px-3 py-[7px] text-[12.5px] leading-[22px] text-white/90 placeholder:text-white/30 focus:bg-white/[0.09]"
             data-testid="assistant-input"
           />
           <button
             type="submit"
-            disabled={busy || !input.trim()}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--active-bg)] text-[var(--active-fg)] transition-colors hover:bg-white disabled:opacity-30"
+            disabled={!canSend}
+            className={`grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors ${
+              canSend
+                ? 'bg-[var(--active-bg)] text-[var(--active-fg)] hover:bg-white'
+                : 'bg-white/[0.05] text-white/30'
+            }`}
             aria-label="Send"
             data-testid="assistant-send"
           >

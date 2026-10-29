@@ -241,7 +241,7 @@ export function TakeActionModal() {
                         value={amount}
                         disabled={phase.kind !== 'review'}
                         onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
-                        className="w-20 rounded-md border border-white/15 bg-white/5 px-2 py-0.5 text-white/90"
+                        className="w-20 rounded-md border border-white/15 bg-white/5 px-2 py-0.5 text-white/90 focus:border-white/35 focus:bg-white/[0.09]"
                         data-testid="amount-input"
                       />
                     </label>

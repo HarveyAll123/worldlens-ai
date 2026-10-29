@@ -25,6 +25,7 @@
 :root {
   color-scheme: dark;
   --radius-outer: 20px;
+  --line-width: 2px;
   --radius-inner: 14px;
   --radius-pill: 9999px;
   --text-1: rgb(255 255 255 / 0.94);
@@ -82,7 +83,7 @@ body,
   /* Darken what is behind so bright globe labels cannot bleed through the text. */
   backdrop-filter: blur(28px) brightness(0.4) saturate(1.05);
   -webkit-backdrop-filter: blur(28px) brightness(0.4) saturate(1.05);
-  border: 1px solid var(--color-line);
+  border: var(--line-width) solid var(--color-line);
 }
 
 .glass-chrome {
@@ -90,7 +91,7 @@ body,
   /* Over bright satellite imagery the chrome must stay dark enough to read. */
   backdrop-filter: blur(20px) brightness(0.6) saturate(1.05);
   -webkit-backdrop-filter: blur(20px) brightness(0.6) saturate(1.05);
-  border: 1px solid var(--color-line);
+  border: var(--line-width) solid var(--color-line);
 }
 
 .hairline {
@@ -104,13 +105,22 @@ body,
 .focus-ring:focus-visible,
 button:focus-visible,
 a:focus-visible,
-input:focus-visible,
-textarea:focus-visible,
+input[type='checkbox']:focus-visible,
+input[type='radio']:focus-visible,
 select:focus-visible,
 [role='slider']:focus-visible,
 [role='option']:focus-visible {
   outline: 2px solid rgb(255 255 255 / 0.65);
   outline-offset: 2px;
+}
+
+/* Text fields get a fill change instead of a drawn-on rectangle. */
+input:not([type='checkbox']):not([type='radio']):focus,
+input:not([type='checkbox']):not([type='radio']):focus-visible,
+textarea:focus,
+textarea:focus-visible {
+  outline: none !important;
+  box-shadow: none;
 }
 
 .skip-link {

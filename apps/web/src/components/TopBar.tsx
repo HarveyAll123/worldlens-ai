@@ -218,7 +218,7 @@ export function SearchBox({
             setOpen(false);
           }
         }}
-        className="h-9 w-full rounded-full border border-transparent bg-white/[0.06] py-0 pl-9 pr-4 text-[12.5px] text-white/90 placeholder:text-white/45 hover:bg-white/[0.08] focus:border-white/20 focus:bg-white/[0.08]"
+        className="h-9 w-full rounded-full border-0 bg-white/[0.05] py-0 pl-9 pr-4 text-[12.5px] text-white/90 placeholder:text-white/30 hover:bg-white/[0.08] focus:bg-white/[0.09]"
         data-testid="search-input"
       />
       {error && <p className="mt-1 text-xs text-white/70">{error}</p>}
@@ -342,7 +342,7 @@ export function TopBar({ mobile }: { mobile: boolean }) {
           type="button"
           onClick={() => (mobile ? setSheet('assistant', true) : setAssistantOpen(!assistantOpen))}
           aria-pressed={!mobile ? assistantOpen : undefined}
-          className={`flex h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] transition-colors md:h-10 ${
+          className={`flex h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] transition-colors ${
             !mobile && assistantOpen
               ? 'bg-white/[0.12] text-white'
               : 'text-white/70 hover:bg-white/[0.08] hover:text-white'
@@ -373,7 +373,7 @@ export function TopBar({ mobile }: { mobile: boolean }) {
           onClick={() => (mobile ? setSheetExpanded(!sheetExpanded) : setCardOpen(!cardOpen))}
           aria-expanded={cardShown}
           aria-controls={mobile ? 'bottom-sheet' : 'context-card'}
-          className={`flex h-9 items-center gap-1.5 rounded-full px-2.5 text-[12.5px] transition-colors md:h-10 ${
+          className={`flex h-9 items-center gap-1.5 rounded-full px-2.5 text-[12.5px] transition-colors ${
             cardShown
               ? 'bg-white/[0.12] text-white'
               : 'text-white/70 hover:bg-white/[0.08] hover:text-white'

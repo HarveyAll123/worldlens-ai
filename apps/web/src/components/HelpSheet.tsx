@@ -67,7 +67,7 @@ export function HelpSheet() {
         aria-label="Keyboard shortcuts and help"
         title="Help (?)"
         onClick={() => setOpen(!open)}
-        className={`grid h-9 w-9 place-items-center rounded-full transition-colors md:h-10 md:w-10 ${
+        className={`grid h-9 w-9 place-items-center rounded-full transition-colors md:w-10 ${
           open
             ? 'bg-white/[0.12] text-white'
             : 'text-white/55 hover:bg-white/[0.08] hover:text-white'

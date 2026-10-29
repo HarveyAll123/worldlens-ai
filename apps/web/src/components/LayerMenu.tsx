@@ -145,7 +145,7 @@ export function LayerMenu() {
         aria-haspopup="true"
         aria-pressed={open}
         onClick={() => setOpen(!open)}
-        className={`flex h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] transition-colors md:h-10 ${
+        className={`flex h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] transition-colors ${
           open
             ? 'bg-white/[0.12] text-white'
             : 'text-white/70 hover:bg-white/[0.08] hover:text-white'
