@@ -44,6 +44,7 @@ function MobileSheet() {
             : 'Events';
   return (
     <section
+      id="bottom-sheet"
       className={`glass pointer-events-auto absolute inset-x-3 bottom-3 z-20 flex flex-col rounded-[var(--radius-outer)] transition-[height] duration-300 ${expanded ? 'h-[62dvh]' : 'h-[64px]'}`}
       aria-label={label}
       data-testid="bottom-sheet"
@@ -107,11 +108,20 @@ export function App() {
   const wide = useMediaQuery('(min-width: 1024px)');
   const assistantOpen = useAppStore((s) => s.assistantOpen);
   const setAssistantOpen = useAppStore((s) => s.setAssistantOpen);
+  const cardOpen = useAppStore((s) => s.cardOpen);
+  const setCardOpen = useAppStore((s) => s.setCardOpen);
+  const selectedId = useAppStore((s) => s.selectedEventId);
+  const country = useAppStore((s) => s.selectedCountry);
+  const sheetExpanded = useAppStore((s) => s.sheetExpanded);
   const config = useConfig();
   const [notice, setNotice] = useState<string | null>(null);
   const queryClient = useQueryClient();
   // A selected country follows the timeline (its borders of the day, successor, or closes).
   useEffect(() => followCountriesInTime(queryClient), [queryClient]);
+  // Opening an event, a country or the assistant brings the card back if it was closed.
+  useEffect(() => {
+    if (selectedId || country || assistantOpen) setCardOpen(true);
+  }, [selectedId, country, assistantOpen, setCardOpen]);
 
   return (
     <div className="relative h-full w-full overflow-hidden">
@@ -126,31 +136,7 @@ export function App() {
       </ErrorBoundary>
       <TopBar mobile={mobile} />
 
-      <div className="pointer-events-none absolute left-3 right-3 top-[68px] z-20 flex flex-col items-center gap-2 md:right-[404px] md:items-start">
-        <div className="pointer-events-auto w-full max-w-[860px]">
-          <TemporalNavigator compact={mobile || !wide} />
-        </div>
-        <TourBar />
-      </div>
-
-      {!mobile && (
-        <aside
-          className="glass pointer-events-auto absolute bottom-3 right-3 top-3 z-20 flex w-[380px] flex-col overflow-hidden rounded-[var(--radius-outer)]"
-          aria-label="Context panel"
-          data-testid="context-panel"
-        >
-          <ErrorBoundary label="The context panel">
-            {assistantOpen ? (
-              <AssistantPanel onClose={() => setAssistantOpen(false)} />
-            ) : (
-              <PanelBody />
-            )}
-          </ErrorBoundary>
-        </aside>
-      )}
-      {mobile && <MobileSheet />}
-
-      <div className="pointer-events-none absolute inset-x-3 bottom-[84px] z-20 flex flex-col items-center gap-2 md:bottom-4">
+      <div className="pointer-events-none absolute left-3 right-3 top-[68px] z-20 flex flex-col items-center gap-2 md:right-[404px]">
         {config.isError && (
           <div className="pointer-events-auto">
             <Notice tone="danger">
@@ -176,6 +162,36 @@ export function App() {
           </div>
         )}
       </div>
+
+      {!mobile && cardOpen && (
+        <aside
+          id="context-card"
+          className="glass pointer-events-auto absolute bottom-[124px] right-3 top-[68px] z-20 flex w-[380px] flex-col overflow-hidden rounded-[var(--radius-outer)]"
+          aria-label="Context card"
+          data-testid="context-panel"
+        >
+          <ErrorBoundary label="The context card">
+            {assistantOpen ? (
+              <AssistantPanel onClose={() => setAssistantOpen(false)} />
+            ) : (
+              <PanelBody />
+            )}
+          </ErrorBoundary>
+        </aside>
+      )}
+      {mobile && <MobileSheet />}
+
+      <div
+        className={`pointer-events-none absolute inset-x-3 bottom-[84px] z-20 flex-col items-center gap-2 md:bottom-3 md:flex ${
+          mobile && sheetExpanded ? 'hidden' : 'flex'
+        }`}
+      >
+        <TourBar />
+        <div className="pointer-events-auto w-full max-w-[860px]">
+          <TemporalNavigator compact={mobile || !wide} />
+        </div>
+      </div>
+
       <DiagnosticsPanel />
       <TakeActionModal />
       <Announcer />

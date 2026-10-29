@@ -135,7 +135,8 @@ export type IconName =
   | 'arrow-left'
   | 'check'
   | 'globe'
-  | 'help';
+  | 'help'
+  | 'panel';
 
 const PATHS: Record<IconName, ReactNode> = {
   search: (
@@ -183,6 +184,12 @@ const PATHS: Record<IconName, ReactNode> = {
       <circle cx="12" cy="12" r="9" />
       <path d="M9.4 9.2a2.8 2.8 0 1 1 4.1 2.5c-.9.5-1.5 1-1.5 2" />
       <path d="M12 17.2v.1" />
+    </>
+  ),
+  panel: (
+    <>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="3.5" />
+      <path d="M14.5 4.5v15" />
     </>
   ),
 };

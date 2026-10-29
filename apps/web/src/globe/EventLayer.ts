@@ -258,11 +258,12 @@ export class EventLayer {
     const height = this.scene.canvas.clientHeight;
     // Keep labels clear of the chrome: the detached card on the right and the top dock.
     const wide = window.matchMedia('(min-width: 768px)').matches;
+    const cardOpen = wide && !!document.getElementById('context-card');
     const safe = {
       left: 8,
-      right: wide ? 404 : 10,
-      top: wide ? 150 : 176,
-      bottom: wide ? 10 : 88,
+      right: cardOpen ? 404 : 10,
+      top: 78,
+      bottom: wide ? 128 : 196,
     };
     type Candidate = {
       id: string;

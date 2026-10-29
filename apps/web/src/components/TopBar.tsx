@@ -44,8 +44,8 @@ export function LiveStatus({
         <span className="live-dot h-1.5 w-1.5 shrink-0 rounded-full bg-live" aria-hidden />
         {!minimal && (
           <span className="tabular truncate text-[11.5px] tracking-[0.01em] text-white/85">
-            {compact ? `${date} · ${time}` : date}
-            <span className="text-white/45">{compact ? '' : ` · ${time}`}</span>
+            {compact ? time.replace(/:\d\d UTC$/, ' UTC') : date}
+            {!compact && <span className="text-white/45"> · {time}</span>}
           </span>
         )}
         {minimal && <span className="text-[11px] text-white/55">LIVE</span>}
@@ -286,59 +286,82 @@ export function TopBar({ mobile }: { mobile: boolean }) {
   const setAssistantOpen = useAppStore((s) => s.setAssistantOpen);
   const assistantOpen = useAppStore((s) => s.assistantOpen);
   const setSheet = useAppStore((s) => s.setSheet);
+  const setSheetExpanded = useAppStore((s) => s.setSheetExpanded);
+  const cardOpen = useAppStore((s) => s.cardOpen);
+  const setCardOpen = useAppStore((s) => s.setCardOpen);
+  const selected = useAppStore((s) => s.selectedEventId);
+  const country = useAppStore((s) => s.selectedCountry);
+  const sheetExpanded = useAppStore((s) => s.sheetExpanded);
   const wide = useMediaQuery('(min-width: 1024px)');
+  const cardLabel = assistantOpen ? 'Ask AI' : country ? 'Country' : selected ? 'Event' : 'Events';
+  const cardShown = mobile ? sheetExpanded : cardOpen;
 
   return (
-    <header className="pointer-events-none absolute left-3 right-3 top-3 z-30 flex md:right-[404px]">
-      <div className="glass-chrome pointer-events-auto flex h-12 w-full items-center gap-1 rounded-full pl-3.5 pr-1.5">
+    <header className="pointer-events-none absolute left-3 right-3 top-3 z-30 flex items-center gap-2">
+      <div className="glass-chrome pointer-events-auto flex h-12 shrink-0 items-center gap-2 rounded-full pl-3.5 pr-3">
         <span className="flex shrink-0 items-center gap-2 text-[13px] tracking-tight text-white/90">
           <Icon name="globe" className="h-[18px] w-[18px] text-white/70" />
           <span className={mobile || !wide ? 'sr-only' : ''}>WorldLens</span>
         </span>
-        <span className="mx-2.5 hidden h-4 w-px shrink-0 bg-white/15 sm:block" aria-hidden />
+        <span className="hidden h-4 w-px shrink-0 bg-white/15 sm:block" aria-hidden />
         <div className="min-w-0 shrink-0">
           <LiveStatus compact={mobile} minimal={!mobile && !wide} />
         </div>
-        {!mobile && (
-          <>
-            <span className="mx-2.5 h-4 w-px shrink-0 bg-white/15" aria-hidden />
-            <div className="min-w-0 flex-1 md:max-w-[560px]">
-              <SearchBox />
-            </div>
-          </>
-        )}
-        <div className="ml-auto flex shrink-0 items-center gap-0.5">
-          {mobile && (
-            <button
-              type="button"
-              onClick={() => setSheet('search', true)}
-              className="grid h-9 w-9 place-items-center rounded-full text-white/70 transition-colors hover:bg-white/[0.08] hover:text-white"
-              aria-label="Search"
-            >
-              <Icon name="search" className="h-4 w-4" />
-            </button>
-          )}
+      </div>
+
+      {!mobile && (
+        <div className="glass-chrome pointer-events-auto flex h-12 min-w-0 max-w-[560px] flex-1 items-center rounded-full px-3">
+          <SearchBox />
+        </div>
+      )}
+
+      <div className="glass-chrome pointer-events-auto ml-auto flex h-12 shrink-0 items-center gap-0.5 rounded-full pl-1.5 pr-1.5">
+        {mobile && (
           <button
             type="button"
-            onClick={() =>
-              mobile ? setSheet('assistant', true) : setAssistantOpen(!assistantOpen)
-            }
-            aria-pressed={!mobile ? assistantOpen : undefined}
-            className={`flex h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] transition-colors ${
-              !mobile && assistantOpen
-                ? 'bg-white/[0.12] text-white'
-                : 'text-white/70 hover:bg-white/[0.08] hover:text-white'
-            }`}
-            data-testid="open-assistant"
+            onClick={() => setSheet('search', true)}
+            className="grid h-9 w-9 place-items-center rounded-full text-white/70 transition-colors hover:bg-white/[0.08] hover:text-white"
+            aria-label="Search"
           >
-            <Icon name="sparkle" className="h-3.5 w-3.5" />
-            <span className={mobile ? 'hidden sm:inline lg:hidden' : 'hidden lg:inline'}>
-              {mobile ? 'AI' : 'Ask AI'}
-            </span>
+            <Icon name="search" className="h-4 w-4" />
           </button>
-          <HelpSheet />
-          <LayerMenu />
-        </div>
+        )}
+        <button
+          type="button"
+          onClick={() => (mobile ? setSheet('assistant', true) : setAssistantOpen(!assistantOpen))}
+          aria-pressed={!mobile ? assistantOpen : undefined}
+          className={`flex h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] transition-colors ${
+            !mobile && assistantOpen
+              ? 'bg-white/[0.12] text-white'
+              : 'text-white/70 hover:bg-white/[0.08] hover:text-white'
+          }`}
+          data-testid="open-assistant"
+        >
+          <Icon name="sparkle" className="h-3.5 w-3.5" />
+          <span className={mobile ? 'hidden sm:inline lg:hidden' : 'hidden lg:inline'}>
+            {mobile ? 'AI' : 'Ask AI'}
+          </span>
+        </button>
+        <HelpSheet />
+        <LayerMenu />
+        <span className="mx-1 h-5 w-px shrink-0 bg-white/15" aria-hidden />
+        <button
+          type="button"
+          onClick={() => (mobile ? setSheetExpanded(!sheetExpanded) : setCardOpen(!cardOpen))}
+          aria-expanded={cardShown}
+          aria-controls={mobile ? 'bottom-sheet' : 'context-card'}
+          className={`flex h-9 items-center gap-1.5 rounded-full px-2.5 text-[12.5px] transition-colors ${
+            cardShown
+              ? 'bg-white/[0.12] text-white'
+              : 'text-white/70 hover:bg-white/[0.08] hover:text-white'
+          }`}
+          data-testid="toggle-context-card"
+        >
+          <Icon name="panel" className="h-4 w-4" />
+          <span className={mobile ? 'hidden sm:inline lg:hidden' : 'hidden lg:inline'}>
+            {cardLabel}
+          </span>
+        </button>
       </div>
     </header>
   );
