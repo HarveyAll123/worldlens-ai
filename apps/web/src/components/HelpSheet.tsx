@@ -71,7 +71,7 @@ export function HelpSheet() {
       </button>
       {open && (
         <div
-          className={`glass-solid scroll-thin fixed top-14 z-50 max-h-[calc(100dvh-6rem)] w-[340px] overflow-y-auto rounded-[var(--radius-outer)] p-3.5 ${cardOpen ? 'right-[400px]' : 'right-3'}`}
+          className={`glass-solid scroll-thin fixed top-14 z-50 max-h-[calc(100dvh-6rem)] w-[340px] overflow-y-auto rounded-[var(--radius-outer)] p-3.5 ${cardOpen ? 'right-[388px]' : 'right-3'}`}
           role="dialog"
           aria-label="Keyboard shortcuts and help"
           data-testid="help-sheet"
