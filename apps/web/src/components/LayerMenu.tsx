@@ -115,6 +115,7 @@ export function LayerMenu() {
   const setNightLights = useAppStore((s) => s.setNightLights);
   const setDiagnostics = useAppStore((s) => s.setDiagnostics);
   const diagnostics = useAppStore((s) => s.diagnosticsOpen);
+  const cardOpen = useAppStore((s) => s.cardOpen);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -152,7 +153,7 @@ export function LayerMenu() {
       </button>
       {open && (
         <div
-          className="glass scroll-thin absolute right-0 top-full z-50 mt-2 max-h-[calc(100dvh-6rem)] w-[320px] overflow-y-auto rounded-[var(--radius-outer)] p-2"
+          className={`glass-solid scroll-thin fixed top-14 z-50 max-h-[calc(100dvh-12rem)] w-[320px] overflow-y-auto rounded-[var(--radius-outer)] p-2 ${cardOpen ? 'right-[388px]' : 'right-3'}`}
           role="dialog"
           aria-label="Layers and settings"
         >

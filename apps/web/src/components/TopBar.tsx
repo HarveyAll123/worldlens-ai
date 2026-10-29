@@ -303,7 +303,10 @@ export function TopBar({ mobile }: { mobile: boolean }) {
           <Icon name="globe" className="h-[18px] w-[18px] text-white/70" />
           <span className={mobile || !wide ? 'sr-only' : ''}>WorldLens</span>
         </span>
-        <span className="hidden h-4 w-px shrink-0 bg-white/15 sm:block" aria-hidden />
+        <span
+          className="mx-2.5 hidden w-px shrink-0 self-stretch bg-white/12 sm:block"
+          aria-hidden
+        />
         <div className="min-w-0 shrink-0">
           <LiveStatus compact={mobile} minimal={!mobile && !wide} />
         </div>
@@ -344,7 +347,7 @@ export function TopBar({ mobile }: { mobile: boolean }) {
         </button>
         <HelpSheet />
         <LayerMenu />
-        <span className="mx-1 h-5 w-px shrink-0 bg-white/15" aria-hidden />
+        <span className="mx-1 w-px shrink-0 self-stretch bg-white/12" aria-hidden />
         <button
           type="button"
           onClick={() => (mobile ? setSheetExpanded(!sheetExpanded) : setCardOpen(!cardOpen))}
