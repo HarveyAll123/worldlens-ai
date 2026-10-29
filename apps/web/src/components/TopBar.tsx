@@ -215,7 +215,7 @@ export function SearchBox({
             setOpen(false);
           }
         }}
-        className="h-9 w-full rounded-full border border-transparent bg-white/[0.06] py-0 pl-9 pr-3 text-[12.5px] text-white/90 placeholder:text-white/35 hover:bg-white/[0.08] focus:border-white/20 focus:bg-white/[0.08]"
+        className="h-9 w-full rounded-full border border-transparent bg-white/[0.06] py-0 pl-9 pr-3 text-[12.5px] text-white/90 placeholder:text-white/45 hover:bg-white/[0.08] focus:border-white/20 focus:bg-white/[0.08]"
         data-testid="search-input"
       />
       {error && <p className="mt-1 text-xs text-white/70">{error}</p>}
@@ -297,7 +297,7 @@ export function TopBar({ mobile }: { mobile: boolean }) {
   const cardShown = mobile ? sheetExpanded : cardOpen;
 
   return (
-    <header className="pointer-events-none absolute left-3 right-3 top-3 z-30 flex items-center gap-2">
+    <header className="pointer-events-none absolute left-3 right-3 top-3 z-30 flex items-center justify-between gap-2">
       <div className="glass-chrome pointer-events-auto flex h-12 shrink-0 items-center gap-2 rounded-full pl-3.5 pr-3">
         <span className="flex shrink-0 items-center gap-2 text-[13px] tracking-tight text-white/90">
           <Icon name="globe" className="h-[18px] w-[18px] text-white/70" />
@@ -315,7 +315,7 @@ export function TopBar({ mobile }: { mobile: boolean }) {
         </div>
       )}
 
-      <div className="glass-chrome pointer-events-auto ml-auto flex h-12 shrink-0 items-center gap-0.5 rounded-full pl-1.5 pr-1.5">
+      <div className="glass-chrome pointer-events-auto flex h-12 shrink-0 items-center gap-0.5 rounded-full pl-1.5 pr-1.5">
         {mobile && (
           <button
             type="button"
