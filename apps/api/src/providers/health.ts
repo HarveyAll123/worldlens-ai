@@ -7,6 +7,7 @@ export type ProviderName =
   | 'wikimedia-commons'
   | 'historical-basemaps'
   | 'anthropic'
+  | 'opencode'
   | 'paypal'
   | 'database';
 
