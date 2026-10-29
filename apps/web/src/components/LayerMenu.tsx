@@ -44,11 +44,7 @@ function ToggleRow({
   return (
     <label
       className={`group flex cursor-pointer items-center gap-3 rounded-[var(--radius-inner)] px-2.5 py-2 transition-colors ${
-        disabled
-          ? 'cursor-not-allowed opacity-40'
-          : checked
-            ? 'bg-white/[0.07] hover:bg-white/[0.09]'
-            : 'hover:bg-white/[0.05]'
+        disabled ? 'cursor-not-allowed opacity-40' : 'hover:bg-white/[0.05]'
       }`}
     >
       <input
