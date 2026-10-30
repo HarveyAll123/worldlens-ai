@@ -63,6 +63,11 @@ interface AppState {
   sheet: SheetView;
   sheetExpanded: boolean;
   assistantOpen: boolean;
+  /**
+   * A question asked outside the chat (an event's "Ask AI" prompts) while the assistant panel
+   * is not mounted; the panel sends it once it is shown.
+   */
+  pendingQuestion: string | null;
   /** Desktop Context Card visibility (mobile uses the bottom sheet). */
   cardOpen: boolean;
   layers: Record<LayerId, boolean>;
@@ -93,6 +98,9 @@ interface AppState {
   toggleSheetTab: (v: SheetView) => void;
   setSheetExpanded: (v: boolean) => void;
   setAssistantOpen: (v: boolean) => void;
+  setPendingQuestion: (q: string | null) => void;
+  /** Returns the pending question and clears it, so it is sent once. */
+  takePendingQuestion: () => string | null;
   setCardOpen: (v: boolean) => void;
   setLayer: (l: LayerId, on: boolean) => void;
   setKindFilter: (k: 'all' | 'news' | 'historical', categories?: EventCategory[] | null) => void;
@@ -147,7 +155,7 @@ export function sheetTabOpen(
 let flySeq = 0;
 
 export const useAppStore = create<AppState>()(
-  subscribeWithSelector((set) => ({
+  subscribeWithSelector((set, get) => ({
     mode: 'live',
     timeMs: Date.now(),
     resolution: 'day',
@@ -156,6 +164,7 @@ export const useAppStore = create<AppState>()(
     sheet: 'events',
     sheetExpanded: false,
     assistantOpen: false,
+    pendingQuestion: null,
     cardOpen: true,
     layers: {
       news: true,
@@ -219,6 +228,12 @@ export const useAppStore = create<AppState>()(
       }),
     setSheetExpanded: (sheetExpanded) => set({ sheetExpanded }),
     setAssistantOpen: (assistantOpen) => set({ assistantOpen }),
+    setPendingQuestion: (pendingQuestion) => set({ pendingQuestion }),
+    takePendingQuestion: () => {
+      const q = get().pendingQuestion;
+      if (q !== null) set({ pendingQuestion: null });
+      return q;
+    },
     setCardOpen: (cardOpen) => set({ cardOpen }),
     setLayer: (l, on) => set((s) => ({ layers: { ...s.layers, [l]: on } })),
     setKindFilter: (kindFilter, categories) =>

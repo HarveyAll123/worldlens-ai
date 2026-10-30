@@ -113,6 +113,17 @@ test.describe('AI assistant (offline fallback — no API key in CI)', () => {
     await expect(page.getByTestId('assistant-reply')).toContainText('LIVE');
   });
 
+  test('"Ask AI" prompts on an event are sent to the assistant', async ({ page }) => {
+    await openApp(page);
+    await page.getByTestId('event-list-item').filter({ hasText: 'Taiwan Strait' }).click();
+    await expect(page.getByTestId('event-title')).toContainText('Taiwan Strait');
+    const question = 'How are different sources covering this?';
+    await page.getByRole('button', { name: question }).click();
+    await expect(page.getByTestId('assistant-reply')).toBeVisible();
+    // Asked once, although StrictMode runs the panel's mount effect twice in development.
+    await expect(page.getByTestId('assistant').getByText(question, { exact: true })).toHaveCount(1);
+  });
+
   test('AI failure path still answers (offline assistant notice)', async ({ page }) => {
     await openApp(page);
     await page.getByTestId('open-assistant').click();

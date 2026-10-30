@@ -32,6 +32,8 @@ export function AssistantPanel() {
   const renameChat = useChatsStore((s) => s.rename);
   const pinChat = useChatsStore((s) => s.togglePin);
   const removeChat = useChatsStore((s) => s.remove);
+  const pendingQuestion = useAppStore((s) => s.pendingQuestion);
+  const takePendingQuestion = useAppStore((s) => s.takePendingQuestion);
 
   const [view, setView] = useState<View>('chat');
   const [input, setInput] = useState('');
@@ -165,10 +167,13 @@ export function AssistantPanel() {
     }
   };
 
+  // An event's "Ask AI" prompts are asked while this panel is not mounted (the card or the sheet
+  // shows the event), so the question waits in the store. It is taken rather than read from
+  // this render because StrictMode runs a mount effect twice, and it must be sent once.
   useEffect(() => {
-    const onAsk = (e: Event) => void send(String((e as CustomEvent).detail ?? ''));
-    window.addEventListener('worldlens:ask', onAsk);
-    return () => window.removeEventListener('worldlens:ask', onAsk);
+    if (!pendingQuestion || busy) return;
+    const q = takePendingQuestion();
+    if (q) void send(q);
   });
 
   const startChat = () => {

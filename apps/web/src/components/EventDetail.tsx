@@ -36,9 +36,10 @@ const RATING_ORDER: PoliticalRatingValue[] = [
   'UNRATED',
 ];
 
+// The assistant is not mounted while the event is shown, so it sends the question once it is.
 function askAi(text: string) {
   const s = useAppStore.getState();
-  window.dispatchEvent(new CustomEvent('worldlens:ask', { detail: text }));
+  s.setPendingQuestion(text);
   if (window.matchMedia('(max-width: 767px)').matches) s.setSheet('assistant', true);
   else s.setAssistantOpen(true);
 }
