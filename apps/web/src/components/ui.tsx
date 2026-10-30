@@ -136,7 +136,13 @@ export type IconName =
   | 'check'
   | 'globe'
   | 'help'
-  | 'panel';
+  | 'panel'
+  | 'clock'
+  | 'plus'
+  | 'pin'
+  | 'pencil'
+  | 'trash'
+  | 'dots';
 
 const PATHS: Record<IconName, ReactNode> = {
   search: (
@@ -192,6 +198,38 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="M14.5 4.5v15" />
     </>
   ),
+  clock: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </>
+  ),
+  plus: <path d="M12 5v14M5 12h14" />,
+  pin: (
+    <>
+      <path d="M9.5 3h5M11 3v5.6L8.5 11v1.2h7V11L13 8.6V3" />
+      <path d="M12 12.2V21" />
+    </>
+  ),
+  pencil: (
+    <>
+      <path d="M4 20h3.6l10-10-3.6-3.6-10 10z" />
+      <path d="M14.4 4.4 16.2 2.6l3.6 3.6-1.8 1.8" />
+    </>
+  ),
+  trash: (
+    <>
+      <path d="M4.5 7h15M9.5 7V4.5h5V7" />
+      <path d="M6.5 7l1 13h9l1-13" />
+    </>
+  ),
+  dots: (
+    <>
+      <circle cx="6" cy="12" r="1.5" />
+      <circle cx="12" cy="12" r="1.5" />
+      <circle cx="18" cy="12" r="1.5" />
+    </>
+  ),
 };
 
 export function Icon({
@@ -203,7 +241,7 @@ export function Icon({
   className?: string;
   filled?: boolean;
 }) {
-  const fillIcons = name === 'play' || name === 'sparkle';
+  const fillIcons = name === 'play' || name === 'sparkle' || name === 'dots';
   return (
     <svg
       viewBox="0 0 24 24"

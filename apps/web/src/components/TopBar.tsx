@@ -370,7 +370,20 @@ export function TopBar({ mobile }: { mobile: boolean }) {
         />
         <button
           type="button"
-          onClick={() => (mobile ? setSheetExpanded(!sheetExpanded) : setCardOpen(!cardOpen))}
+          onClick={() => {
+            if (mobile) {
+              setSheetExpanded(!sheetExpanded);
+              return;
+            }
+            // With the assistant open, the first click returns the card to Events instead of
+            // merely hiding it; otherwise the card could never leave the chat.
+            if (assistantOpen && cardOpen) {
+              setAssistantOpen(false);
+              setCardOpen(true);
+              return;
+            }
+            setCardOpen(!cardOpen);
+          }}
           aria-expanded={cardShown}
           aria-controls={mobile ? 'bottom-sheet' : 'context-card'}
           className={`flex h-9 items-center gap-1.5 rounded-full px-2.5 text-[12.5px] transition-colors ${

@@ -108,7 +108,6 @@ export function App() {
   const mobile = useIsMobile();
   const wide = useMediaQuery('(min-width: 1024px)');
   const assistantOpen = useAppStore((s) => s.assistantOpen);
-  const setAssistantOpen = useAppStore((s) => s.setAssistantOpen);
   const cardOpen = useAppStore((s) => s.cardOpen);
   const setCardOpen = useAppStore((s) => s.setCardOpen);
   const selectedId = useAppStore((s) => s.selectedEventId);
@@ -176,11 +175,7 @@ export function App() {
           data-testid="context-panel"
         >
           <ErrorBoundary label="The context card">
-            {assistantOpen ? (
-              <AssistantPanel onClose={() => setAssistantOpen(false)} />
-            ) : (
-              <PanelBody />
-            )}
+            {assistantOpen ? <AssistantPanel /> : <PanelBody />}
           </ErrorBoundary>
         </aside>
       )}
