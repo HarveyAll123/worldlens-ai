@@ -55,10 +55,13 @@ for (const [name, width, height] of WIDTHS) {
       await expect(sheet).toBeVisible();
       const box = await sheet.boundingBox();
       expect(box!.height).toBeLessThan(height * 0.2);
-      // Touch-friendly controls (measured before the sheet opens: the open sheet hides the dock)
-      const slider = await page.getByTestId('timeline-track').boundingBox();
+      // Touch-friendly controls. The time dock sits above the collapsed sheet and gives way
+      // to the expanded one.
+      const track = page.getByTestId('timeline-track');
+      const slider = await track.boundingBox();
       expect(slider!.height).toBeGreaterThanOrEqual(40);
       await page.getByTestId('sheet-handle').click();
+      await expect(track).toBeHidden();
       await expect(page.getByTestId('event-list')).toBeVisible();
       await page.getByTestId('event-list-item').first().click();
       await expect(page.getByTestId('event-detail')).toBeVisible();
