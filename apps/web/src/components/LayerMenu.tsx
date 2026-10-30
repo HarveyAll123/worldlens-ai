@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import type { LayerId } from '@worldlens/shared';
 import type { QualityPreference } from '../perf/tiers';
 import { useAppStore } from '../state/store';
+import { Icon } from './ui';
 
 const LAYERS: Array<{ id: LayerId; label: string; hint: string }> = [
   { id: 'news', label: 'Current events', hint: 'Live news clusters' },
@@ -25,6 +27,78 @@ const LAYERS: Array<{ id: LayerId; label: string; hint: string }> = [
   { id: 'labels', label: 'Labels', hint: 'Event names on the globe' },
 ];
 
+function ToggleRow({
+  checked,
+  onChange,
+  label,
+  hint,
+  testId,
+  disabled = false,
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  label: string;
+  hint?: string;
+  testId: string;
+  disabled?: boolean;
+}) {
+  return (
+    <label
+      className={`group flex cursor-pointer items-center gap-3 rounded-[var(--radius-inner)] px-2.5 py-2 transition-colors ${
+        disabled ? 'cursor-not-allowed opacity-40' : 'hover:bg-white/[0.05]'
+      }`}
+    >
+      <input
+        type="checkbox"
+        className="sr-only"
+        checked={checked}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.checked)}
+        data-testid={testId}
+      />
+      <span className="min-w-0 flex-1">
+        <span
+          className={`block truncate text-[12.5px] ${checked ? 'text-white/90' : 'text-white/60'}`}
+        >
+          {label}
+        </span>
+        {hint && (
+          <span className="mt-0.5 block text-[10.5px] leading-snug text-white/35">{hint}</span>
+        )}
+      </span>
+      <span
+        className={`grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full border transition-colors ${
+          checked
+            ? 'border-transparent bg-[var(--active-bg)] text-[var(--active-fg)]'
+            : 'border-white/25'
+        }`}
+        aria-hidden
+      >
+        {checked && <Icon name="check" className="h-2.5 w-2.5" />}
+      </span>
+    </label>
+  );
+}
+
+function Group({
+  title,
+  children,
+  first = false,
+}: {
+  title: string;
+  children: ReactNode;
+  first?: boolean;
+}) {
+  return (
+    <fieldset className={first ? '' : 'mt-2 border-t border-white/[0.07] pt-2'}>
+      <legend className="px-2.5 pb-1 pt-1 text-[10.5px] tracking-[0.08em] text-white/35">
+        {title}
+      </legend>
+      {children}
+    </fieldset>
+  );
+}
+
 export function LayerMenu() {
   const [open, setOpen] = useState(false);
   const layers = useAppStore((s) => s.layers);
@@ -38,11 +112,20 @@ export function LayerMenu() {
   const setNightLights = useAppStore((s) => s.setNightLights);
   const setDiagnostics = useAppStore((s) => s.setDiagnostics);
   const diagnostics = useAppStore((s) => s.diagnosticsOpen);
+  const cardOpen = useAppStore((s) => s.cardOpen);
   const ref = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    window.dispatchEvent(new Event('worldlens:chrome'));
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
-    const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    const close = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!ref.current?.contains(t) && !panelRef.current?.contains(t)) setOpen(false);
+    };
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
     window.addEventListener('mousedown', close);
     window.addEventListener('keydown', esc);
@@ -52,124 +135,110 @@ export function LayerMenu() {
     };
   }, [open]);
 
+  const activeCount = LAYERS.filter((l) => layers[l.id]).length;
+
   return (
     <div className="relative" ref={ref}>
       <button
         type="button"
         aria-expanded={open}
         aria-haspopup="true"
+        aria-pressed={open}
         onClick={() => setOpen(!open)}
-        className="glass rounded-xl px-3 py-2 text-[13px] font-medium hover:bg-white/10"
+        className={`flex h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] transition-colors ${
+          open
+            ? 'bg-white/[0.12] text-white'
+            : 'text-white/70 hover:bg-white/[0.08] hover:text-white'
+        }`}
         data-testid="layers-button"
       >
-        Layers
+        <Icon name="layers" className="h-4 w-4 md:h-5 md:w-5" />
+        <span className="hidden lg:inline">Layers</span>
+        <span className="tabular hidden text-[10.5px] text-white/35 lg:inline">{activeCount}</span>
       </button>
-      {open && (
-        <div
-          className="glass scroll-thin absolute right-0 top-full z-50 mt-2 max-h-[calc(100dvh-10rem)] w-72 overflow-y-auto rounded-xl p-3 shadow-2xl"
-          role="dialog"
-          aria-label="Layers and settings"
-        >
-          <fieldset>
-            <legend className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-              Layers
-            </legend>
-            {LAYERS.map((l) => (
-              <label
-                key={l.id}
-                className="flex cursor-pointer items-start gap-2 rounded-md px-1 py-1.5 hover:bg-white/5"
-              >
-                <input
-                  type="checkbox"
-                  className="mt-0.5 accent-sky-300"
-                  checked={layers[l.id]}
-                  onChange={(e) => setLayer(l.id, e.target.checked)}
-                  data-testid={`layer-${l.id}`}
+      {open &&
+        createPortal(
+          <div
+            ref={panelRef}
+            data-label-occluder
+            className={`glass scroll-thin fixed top-[68px] z-50 max-h-[calc(100dvh-12rem)] w-[320px] overflow-y-auto rounded-[var(--radius-outer)] p-2 ${cardOpen ? 'right-[400px]' : 'right-3'}`}
+            role="dialog"
+            aria-label="Layers and settings"
+          >
+            <Group title="Layers" first>
+              {LAYERS.map((l) => (
+                <ToggleRow
+                  key={l.id}
+                  checked={!!layers[l.id]}
+                  onChange={(next) => setLayer(l.id, next)}
+                  label={l.label}
+                  hint={l.hint}
+                  testId={`layer-${l.id}`}
                 />
-                <span>
-                  <span className="block text-[13px] text-slate-100">{l.label}</span>
-                  <span className="block text-[11px] text-slate-400">{l.hint}</span>
-                </span>
-              </label>
-            ))}
-          </fieldset>
-          <fieldset className="mt-3 border-t border-white/10 pt-3">
-            <legend className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-              Day and night
-            </legend>
-            <label className="flex cursor-pointer items-start gap-2 rounded-md px-1 py-1.5 hover:bg-white/5">
-              <input
-                type="checkbox"
-                className="mt-0.5 accent-sky-300"
-                checked={dayNight}
-                onChange={(e) => setDayNight(e.target.checked)}
-                data-testid="setting-day-night"
-              />
-              <span>
-                <span className="block text-[13px] text-slate-100">Night time</span>
-                <span className="block text-[11px] text-slate-400">
-                  {tier === 'LOW'
-                    ? 'Not drawn at LOW graphics quality.'
-                    : 'Darkens where the sun has set (past dates: at today’s time of day). Off: evenly lit.'}
-                </span>
-              </span>
-            </label>
-            <label
-              className={`flex items-start gap-2 rounded-md px-1 py-1.5 ${dayNight ? 'cursor-pointer hover:bg-white/5' : 'cursor-not-allowed opacity-50'}`}
-            >
-              <input
-                type="checkbox"
-                className="mt-0.5 accent-sky-300"
-                checked={dayNight && nightLights}
-                disabled={!dayNight}
-                onChange={(e) => setNightLights(e.target.checked)}
-                data-testid="setting-night-lights"
-              />
-              <span>
-                <span className="block text-[13px] text-slate-100">City lights at night</span>
-                <span className="block text-[11px] text-slate-400">
-                  {dayNight
-                    ? 'From 1880, when electric street lighting began; fewer and dimmer further back (NASA, 2016 data).'
-                    : 'Needs night time on.'}
-                </span>
-              </span>
-            </label>
-          </fieldset>
-          <fieldset className="mt-3 border-t border-white/10 pt-3">
-            <legend className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-              Graphics quality
-            </legend>
-            <div className="grid grid-cols-4 overflow-hidden rounded-lg border border-white/10 text-[12px]">
-              {(['AUTO', 'LOW', 'MEDIUM', 'HIGH'] as QualityPreference[]).map((q) => (
-                <button
-                  key={q}
-                  type="button"
-                  aria-pressed={quality === q}
-                  onClick={() => setQuality(q)}
-                  className={`py-1.5 font-medium ${quality === q ? 'bg-white/15 text-white' : 'text-slate-300 hover:bg-white/10'}`}
-                  data-testid={`quality-${q}`}
-                >
-                  {q === 'MEDIUM' ? 'MED' : q}
-                </button>
               ))}
+            </Group>
+            <Group title="Day and night">
+              <ToggleRow
+                checked={dayNight}
+                onChange={setDayNight}
+                label="Night time"
+                hint={
+                  tier === 'LOW'
+                    ? 'Not drawn at LOW graphics quality.'
+                    : 'Darkens where the sun has set. Off: evenly lit.'
+                }
+                testId="setting-day-night"
+              />
+              <ToggleRow
+                checked={dayNight && nightLights}
+                onChange={setNightLights}
+                label="City lights at night"
+                hint={
+                  dayNight
+                    ? 'From 1880, when electric street lighting began (NASA, 2016 data).'
+                    : 'Needs night time on.'
+                }
+                testId="setting-night-lights"
+                disabled={!dayNight}
+              />
+            </Group>
+            <Group title="Graphics quality">
+              <div className="grid grid-cols-4 gap-1 px-1">
+                {(['AUTO', 'LOW', 'MEDIUM', 'HIGH'] as QualityPreference[]).map((q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    aria-pressed={quality === q}
+                    onClick={() => setQuality(q)}
+                    className={`rounded-full py-1.5 text-[11px] transition-colors ${
+                      quality === q
+                        ? 'bg-[var(--active-bg)] text-[var(--active-fg)]'
+                        : 'text-white/55 hover:bg-white/[0.06] hover:text-white/90'
+                    }`}
+                    data-testid={`quality-${q}`}
+                  >
+                    {q === 'MEDIUM' ? 'MED' : q}
+                  </button>
+                ))}
+              </div>
+              <p className="px-2.5 pb-1 pt-2 text-[10.5px] text-white/35">
+                {quality === 'AUTO'
+                  ? `Adaptive — currently ${tier}. Adjusts to keep motion smooth.`
+                  : `Fixed at ${quality}.`}
+              </p>
+            </Group>
+            <div className="mt-2 border-t border-white/[0.07] pt-2">
+              <ToggleRow
+                checked={diagnostics}
+                onChange={setDiagnostics}
+                label="Developer diagnostics"
+                hint="Shift+D"
+                testId="setting-diagnostics"
+              />
             </div>
-            <p className="mt-1.5 text-[11px] text-slate-400">
-              {quality === 'AUTO'
-                ? `Adaptive — currently ${tier}. Adjusts to keep motion smooth.`
-                : `Fixed at ${quality}.`}
-            </p>
-          </fieldset>
-          <label className="mt-3 flex cursor-pointer items-center gap-2 border-t border-white/10 pt-3 text-[12px] text-slate-300">
-            <input
-              type="checkbox"
-              className="accent-sky-300"
-              checked={diagnostics}
-              onChange={(e) => setDiagnostics(e.target.checked)}
-            />
-            Developer diagnostics <span className="text-slate-500">(Shift+D)</span>
-          </label>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

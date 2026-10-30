@@ -25,7 +25,7 @@ WorldLens is a small TypeScript monorepo: a static web app, one Cloudflare Worke
    │ Payments: PayPal REST (Orders v2, webhook verify) + state store│
    │           └─ PostgresPaymentStore (if DATABASE_URL) or memory  │
    │ SqlClient: Neon HTTP driver (@neondatabase/serverless)         │
-   │ cron (*/30): news ingestion                                    │
+   │ cron (*/15): GDELT + RSS in one ingestion                                    │
    └───────────────┬───────────────────────────┬────────────────────┘
                    │ HTTPS, parameterised SQL  │
                    ▼                           ▼

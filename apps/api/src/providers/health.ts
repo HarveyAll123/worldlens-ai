@@ -3,10 +3,12 @@ import { redactSecrets } from '../lib/redact';
 /** Tracks the last known state of each external provider so the UI can explain degradations. */
 export type ProviderName =
   | 'gdelt'
+  | 'rss'
   | 'wikipedia'
   | 'wikimedia-commons'
   | 'historical-basemaps'
   | 'anthropic'
+  | 'opencode'
   | 'paypal'
   | 'database';
 

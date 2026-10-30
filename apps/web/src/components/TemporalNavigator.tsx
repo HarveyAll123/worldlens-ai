@@ -35,6 +35,7 @@ import { edgePush, edgeShift, trackUnit, viewAfter } from '../lib/timelineDrag';
 import { useVisibleEvents } from '../hooks/useData';
 import { TIER_SETTINGS } from '../perf/tiers';
 import { useAppStore } from '../state/store';
+import { Icon } from './ui';
 
 const RES_LABEL: Record<Resolution, string> = {
   century: 'Century',
@@ -386,14 +387,14 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
   return (
     <nav
       aria-label="Temporal navigator"
-      className="glass pointer-events-auto rounded-2xl px-3 pb-2 pt-2 md:px-4"
+      className="glass-chrome pointer-events-auto rounded-[var(--radius-outer)] px-2 py-1.5 md:px-2.5 md:py-2"
       data-testid="temporal-navigator"
     >
-      <div className="mb-1.5 flex flex-wrap items-center gap-2">
+      <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
         <div
           role="group"
           aria-label="Time resolution"
-          className="flex overflow-hidden rounded-lg border border-white/10 text-[11.5px]"
+          className="flex rounded-full bg-white/[0.05] p-0.5 text-[11px]"
         >
           {RESOLUTIONS.map((r) => {
             const ok = allowed.includes(r);
@@ -417,7 +418,11 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
                   setViewRes(r);
                   if (mode === 'historical') commit(timeMs, r);
                 }}
-                className={`px-2 py-1 font-medium ${pressed ? 'bg-white/15 text-white' : 'text-slate-300 hover:bg-white/10'} disabled:cursor-not-allowed disabled:text-slate-600`}
+                className={`rounded-full py-1 transition-colors ${compact ? 'px-1.5' : 'px-2.5'} ${
+                  pressed
+                    ? 'bg-[var(--active-bg)] text-[var(--active-fg)]'
+                    : 'text-white/55 hover:text-white/90'
+                } disabled:cursor-not-allowed disabled:text-white/20 disabled:hover:text-white/20`}
               >
                 {compact ? RES_SHORT[r] : RES_LABEL[r]}
               </button>
@@ -428,20 +433,20 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
           <button
             type="button"
             onClick={() => step(-10)}
-            className="rounded-md px-2 py-1 text-[15px] leading-none text-slate-200 hover:bg-white/10"
+            className={`${compact ? 'hidden' : 'grid'} h-7 w-7 place-items-center rounded-full text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white`}
             aria-label={`Back ten ${resolution === 'century' ? 'decades' : `${resolution}s`}`}
             title="Back 10 (Shift+←)"
           >
-            «
+            <Icon name="chevrons-left" className="h-3.5 w-3.5" />
           </button>
           <button
             type="button"
             onClick={() => step(-1)}
-            className="rounded-md px-2.5 py-1 text-[15px] leading-none text-slate-200 hover:bg-white/10"
+            className={`grid place-items-center rounded-full text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white ${compact ? 'h-6 w-6' : 'h-7 w-7'}`}
             aria-label={`Back one ${resolution}`}
             title="Back 1 (←)"
           >
-            ‹
+            <Icon name="chevron-left" className="h-3.5 w-3.5" />
           </button>
           <button
             type="button"
@@ -452,33 +457,37 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
             aria-pressed={playing}
             aria-label={playing ? 'Pause' : 'Play through time'}
             title={playing ? 'Pause (Space)' : 'Play through time (Space)'}
-            className={`rounded-md px-2.5 py-1 text-[13px] leading-none ${playing ? 'bg-white/15 text-white' : 'text-slate-200 hover:bg-white/10'}`}
+            className={`grid place-items-center rounded-full transition-colors ${compact ? 'h-6 w-6' : 'h-7 w-7'} ${
+              playing
+                ? 'bg-[var(--active-bg)] text-[var(--active-fg)]'
+                : 'text-white/75 hover:bg-white/[0.08] hover:text-white'
+            }`}
           >
-            {playing ? '❚❚' : '▶'}
+            <Icon name={playing ? 'pause' : 'play'} className="h-3 w-3" />
           </button>
           <button
             type="button"
             onClick={() => step(1)}
-            className="rounded-md px-2.5 py-1 text-[15px] leading-none text-slate-200 hover:bg-white/10"
+            className={`grid place-items-center rounded-full text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white ${compact ? 'h-6 w-6' : 'h-7 w-7'}`}
             aria-label={`Forward one ${resolution}`}
             title="Forward 1 (→)"
           >
-            ›
+            <Icon name="chevron-right" className="h-3.5 w-3.5" />
           </button>
           <button
             type="button"
             onClick={() => step(10)}
-            className="rounded-md px-2 py-1 text-[15px] leading-none text-slate-200 hover:bg-white/10"
+            className={`${compact ? 'hidden' : 'grid'} h-7 w-7 place-items-center rounded-full text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white`}
             aria-label={`Forward ten ${resolution === 'century' ? 'decades' : `${resolution}s`}`}
             title="Forward 10 (Shift+→)"
           >
-            »
+            <Icon name="chevrons-right" className="h-3.5 w-3.5" />
           </button>
           {playing && (
             <button
               type="button"
               onClick={() => setSpeed((v) => (v >= 8 ? 1 : v * 2))}
-              className="rounded-md px-1.5 py-1 font-mono text-[11px] text-slate-300 hover:bg-white/10"
+              className="tabular rounded-full px-1.5 py-1 text-[10.5px] text-white/55 transition-colors hover:bg-white/[0.08] hover:text-white/90"
               aria-label={`Playback speed ${speed}×`}
               title="Playback speed"
             >
@@ -502,7 +511,7 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
               onKeyDown={(e) => e.key === 'Escape' && setEditing(false)}
               placeholder="1941-06-22"
               aria-label="Go to date (year, year-month or year-month-day)"
-              className="w-32 rounded-md border border-white/15 bg-black/30 px-2 py-0.5 font-mono text-[12px] text-white outline-none focus:border-white/40"
+              className="tabular w-32 rounded-full border border-white/20 bg-white/[0.06] px-2.5 py-1 text-[11.5px] text-white outline-none focus:border-white/40"
             />
           </form>
         ) : (
@@ -512,18 +521,25 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
               setDraft(mode === 'live' ? '' : toIso(timeMs).slice(0, 10));
               setEditing(true);
             }}
-            className="ml-auto rounded-md px-1.5 py-0.5 font-mono text-[12px] tabular-nums text-slate-200 hover:bg-white/10"
+            className="tabular ml-auto flex items-center gap-1.5 rounded-full px-2 py-1 text-[11.5px] text-white/70 transition-colors hover:bg-white/[0.08] hover:text-white"
             title="Type a date to jump to it"
             aria-label="Go to a date"
           >
-            {mode === 'live' ? 'LIVE' : formatAt(shownMs, dragging ? unitRes : resolution)}
+            <Icon name="calendar" className="h-3.5 w-3.5 text-white/40" />
+            {!compact && (
+              <span>
+                {mode === 'live'
+                  ? 'Jump to date'
+                  : formatAt(shownMs, dragging ? unitRes : resolution)}
+              </span>
+            )}
           </button>
         )}
         {mode === 'historical' && (
           <button
             type="button"
             onClick={returnToLive}
-            className="rounded-md bg-live/15 px-2 py-1 text-[11.5px] font-semibold text-live hover:bg-live/25"
+            className="rounded-full bg-[var(--active-bg)] px-2.5 py-1 text-[11px] text-[var(--active-fg)] transition-colors hover:bg-white"
           >
             Return to Live
           </button>
@@ -532,7 +548,7 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
       <div className="flex items-stretch gap-1.5">
         {showComingSoon && (
           <div
-            className="coming-soon flex shrink-0 items-center justify-center rounded-md border border-dashed border-white/15 px-2 text-center text-[10.5px] font-medium leading-tight text-slate-400"
+            className="coming-soon flex shrink-0 items-center justify-center rounded-[10px] border border-dashed border-white/12 px-2 text-center text-[10px] leading-tight text-white/35"
             style={{ width: compact ? 74 : 112 }}
             aria-disabled="true"
             data-testid="coming-soon"
@@ -557,52 +573,48 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
             onPointerUp={(e) => e.pointerId === dragPointer.current && endDrag()}
             onPointerCancel={(e) => e.pointerId === dragPointer.current && endDrag()}
             onWheel={onWheel}
-            className="relative h-11 cursor-pointer touch-none select-none rounded-md bg-white/[0.04]"
+            className="relative h-11 cursor-pointer touch-none select-none rounded-[var(--radius-inner)] bg-white/[0.04]"
             data-testid="timeline-track"
           >
             <div
-              className="absolute inset-x-0 bottom-3 flex h-5 items-end gap-px px-px opacity-70"
+              className="absolute inset-x-0 bottom-3 flex h-5 items-end gap-px px-px opacity-60"
               aria-hidden
             >
               {counts.map((c, i) => (
                 <span
                   key={i}
-                  className="flex-1 rounded-[1px] bg-history/55"
-                  style={{ height: `${c ? 18 + (c / maxCount) * 82 : 0}%` }}
+                  className="flex-1 rounded-[1px] bg-white/25"
+                  style={{ height: `${c ? 8 + (c / maxCount) * 52 : 0}%` }}
                 />
               ))}
             </div>
             {ticks.map((t) => (
               <span
                 key={t.ms}
-                className="absolute top-0 h-full border-l border-white/10"
+                className="absolute top-0 h-full border-l border-white/[0.08]"
                 style={{ left: `${fraction(t.ms) * 100}%` }}
                 aria-hidden
               >
-                <span className="absolute left-1 top-0.5 whitespace-nowrap text-[10px] text-slate-500">
+                <span className="tabular absolute left-1 top-0.5 whitespace-nowrap text-[10px] text-white/30">
                   {t.label}
                 </span>
               </span>
             ))}
             <span
-              className="absolute right-0 top-0 h-full w-1 rounded-r-md bg-live/70"
-              aria-hidden
-            />
-            <span
-              className={`absolute top-0 h-full w-0.5 -translate-x-1/2 ${mode === 'live' ? 'bg-live' : 'bg-white'}`}
+              className="absolute top-0 h-full w-0.5 -translate-x-1/2 bg-white"
               style={{ left: thumbLeft }}
               aria-hidden
             >
-              <span
-                className={`absolute -top-1 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full ${mode === 'live' ? 'bg-live' : 'bg-white'} shadow`}
-              />
+              <span className="absolute -top-1 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-white" />
             </span>
           </div>
         </div>
         <button
           type="button"
           onClick={returnToLive}
-          className={`shrink-0 rounded-md px-2 text-[11px] font-bold tracking-wider ${mode === 'live' ? 'bg-live/20 text-live' : 'border border-live/40 text-live hover:bg-live/15'}`}
+          className={`shrink-0 px-1 text-[10.5px] tracking-[0.1em] transition-colors ${
+            mode === 'live' ? 'text-white/30' : 'text-white/70 hover:text-white'
+          }`}
           aria-label="Jump to live"
         >
           LIVE

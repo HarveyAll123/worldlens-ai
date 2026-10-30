@@ -3,12 +3,15 @@ import { loadConfig, type Config, type Env } from './env';
 import { MemoryRepository } from './data/memory-repository';
 import type { EventRepository } from './data/repository';
 import { AnthropicProvider } from './ai/anthropic';
+import { OpenAiCompatibleProvider } from './ai/openai';
 import { AiBudget } from './ai/budget';
 import { NullAiProvider, type AiProvider } from './ai/provider';
+import type { CombinedRun, FallbackStore } from './pipeline/ingest';
 import type { FetchLike } from './lib/http';
 import { SingleFlight } from './lib/cache';
 import { HistoricalBordersProvider } from './providers/borders';
 import { GdeltProvider, type NewsProvider } from './providers/gdelt';
+import { RssProvider } from './providers/rss';
 import { ProviderHealth } from './providers/health';
 import { WikipediaProvider } from './providers/wikipedia';
 import { PayPalClient } from './payments/paypal-client';
@@ -24,11 +27,14 @@ export interface AppDeps {
   wikipedia: WikipediaProvider;
   borders: HistoricalBordersProvider;
   news: NewsProvider | null;
+  rss: RssProvider | null;
+  /** Last good normalised batch per provider (isolate memory; best-effort on the Worker). */
+  ingestFallback: FallbackStore;
   ai: AiProvider;
   budget: AiBudget;
   payments: PaymentService;
   paymentStore: PaymentStore;
-  ingestFlight: SingleFlight<void>;
+  ingestFlight: SingleFlight<CombinedRun | null>;
   now: () => number;
 }
 
@@ -70,10 +76,12 @@ export function createDeps(env: Env, o: DepOverrides = {}): AppDeps {
         : 'DATABASE_URL must be a Neon connection string (host *.neon.tech) in the Worker; other PostgreSQL servers work only with the Node dev server (pnpm dev:node).'
       : null;
   health.register('gdelt', config.gdelt.enabled);
+  health.register('rss', config.rss.enabled);
   health.register('wikipedia', true);
   health.register('wikimedia-commons', true);
   health.register('historical-basemaps', true);
-  health.register('anthropic', !!config.ai.apiKey);
+  const aiProviderName = config.ai.provider === 'openai' ? 'opencode' : 'anthropic';
+  health.register(aiProviderName, !!config.ai.apiKey);
   health.register('paypal', !!(config.paypal.clientId && config.paypal.clientSecret));
   health.register('database', !!sql || !!databaseProblem);
   if (databaseProblem) {
@@ -88,10 +96,19 @@ export function createDeps(env: Env, o: DepOverrides = {}): AppDeps {
   const ai =
     o.ai ??
     (config.ai.apiKey
-      ? new AnthropicProvider(config.ai.apiKey, {
-          fast: config.ai.fastModel,
-          strong: config.ai.strongModel,
-        })
+      ? config.ai.provider === 'openai'
+        ? new OpenAiCompatibleProvider({
+            apiKey: config.ai.apiKey,
+            baseUrl: config.ai.baseUrl ?? 'https://opencode.ai/inference/go/openai/v1',
+            models: { fast: config.ai.fastModel, strong: config.ai.strongModel },
+            providerName: 'opencode',
+            sessionId: config.ai.sessionId ?? `worldlens-${crypto.randomUUID()}`,
+            ...(o.fetchImpl ? { fetchImpl: o.fetchImpl } : {}),
+          })
+        : new AnthropicProvider(config.ai.apiKey, {
+            fast: config.ai.fastModel,
+            strong: config.ai.strongModel,
+          })
       : new NullAiProvider());
   const budget = new AiBudget(config.ai.dailyBudgetUsd, now);
   const client =
@@ -125,11 +142,13 @@ export function createDeps(env: Env, o: DepOverrides = {}): AppDeps {
       env.GEO_CACHE,
     ),
     news: config.gdelt.enabled ? new GdeltProvider(fetchImpl) : null,
+    rss: config.rss.enabled ? new RssProvider({ fetchImpl }) : null,
+    ingestFallback: new Map(),
     ai,
     budget,
     payments,
     paymentStore,
-    ingestFlight: new SingleFlight<void>(),
+    ingestFlight: new SingleFlight<CombinedRun | null>(),
     now,
   };
 }

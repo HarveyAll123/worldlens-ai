@@ -63,6 +63,8 @@ interface AppState {
   sheet: SheetView;
   sheetExpanded: boolean;
   assistantOpen: boolean;
+  /** Desktop Context Card visibility (mobile uses the bottom sheet). */
+  cardOpen: boolean;
   layers: Record<LayerId, boolean>;
   kindFilter: 'all' | 'news' | 'historical';
   categoryFilter: EventCategory[] | null;
@@ -89,6 +91,7 @@ interface AppState {
   setSheet: (v: SheetView, expanded?: boolean) => void;
   setSheetExpanded: (v: boolean) => void;
   setAssistantOpen: (v: boolean) => void;
+  setCardOpen: (v: boolean) => void;
   setLayer: (l: LayerId, on: boolean) => void;
   setKindFilter: (k: 'all' | 'news' | 'historical', categories?: EventCategory[] | null) => void;
   setHighlight: (iso3: string | null) => void;
@@ -143,6 +146,7 @@ export const useAppStore = create<AppState>()(
     sheet: 'events',
     sheetExpanded: false,
     assistantOpen: false,
+    cardOpen: true,
     layers: {
       news: true,
       history: true,
@@ -196,6 +200,7 @@ export const useAppStore = create<AppState>()(
       set((s) => ({ sheet, sheetExpanded: expanded ?? s.sheetExpanded })),
     setSheetExpanded: (sheetExpanded) => set({ sheetExpanded }),
     setAssistantOpen: (assistantOpen) => set({ assistantOpen }),
+    setCardOpen: (cardOpen) => set({ cardOpen }),
     setLayer: (l, on) => set((s) => ({ layers: { ...s.layers, [l]: on } })),
     setKindFilter: (kindFilter, categories) =>
       set({ kindFilter, categoryFilter: categories ?? null }),

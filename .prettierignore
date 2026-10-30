@@ -11,3 +11,8 @@ packages/shared/src/data/battles.json
 .wrangler
 apps/web/public/data
 .claude/skills
+
+.agents
+agent
+.claude
+DESIGN.md

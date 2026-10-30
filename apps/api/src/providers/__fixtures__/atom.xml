@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Example Atom</title>
+  <entry>
+    <title>Missile strike reported near Kharkiv</title>
+    <link rel="alternate" href="https://atom.example.org/story/kharkiv"/>
+    <updated>2026-10-14T07:15:00Z</updated>
+    <summary>Local officials report damage to power infrastructure.</summary>
+  </entry>
+</feed>

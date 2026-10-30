@@ -34,6 +34,8 @@ export function buildEventFromCluster(c: Cluster, nowMs: number): BuiltEvent | n
       publishedAt: toIso(m.article.publishedAtMs),
       language: m.article.language,
       sourceCountry: m.article.sourceCountry,
+      origin: m.article.origin,
+      ...(m.article.snippet ? { snippet: m.article.snippet } : {}),
       ...(m.article.imageUrl ? { imageUrl: m.article.imageUrl } : {}),
       isDemo: false,
     };

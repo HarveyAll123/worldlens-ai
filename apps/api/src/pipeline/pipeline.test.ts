@@ -6,7 +6,8 @@ import { clusterArticles } from './cluster';
 import { extractEntities } from './entities';
 import { runIngestion } from './ingest';
 import { locationCandidates, resolveLocation } from './locate';
-import { canonicalizeUrl, dedupeArticles, normalizeGdelt } from './normalize';
+import { canonicalizeUrl, dedupeArticles, normalizeGdelt, normalizeRss } from './normalize';
+import type { RssItem } from '../providers/rss';
 
 const BASE = Date.UTC(2026, 9, 14, 6, 0, 0);
 function seen(minutes: number): string {
@@ -201,5 +202,54 @@ describe('ingestion run', () => {
     expect(ev.confidence).toBeGreaterThan(0.4);
     expect(ev.image?.cachingPermitted).toBe(false);
     expect(health.get('gdelt').state).toBe('ok');
+  });
+});
+
+describe('normalizeRss', () => {
+  const feed = {
+    name: 'BBC News',
+    url: 'https://feeds.bbci.co.uk/news/world/rss.xml',
+    domain: 'bbc.co.uk',
+    country: 'GB',
+    language: 'en',
+    verified: true,
+  };
+  const item = (over: Partial<RssItem> = {}): RssItem => ({
+    title: 'Quake hits Sulawesi, dozens hurt',
+    link: 'https://www.bbc.co.uk/news/world-123?utm_source=rss&utm_medium=feed#top',
+    published: 'Tue, 14 Oct 2026 06:00:00 GMT',
+    summary: '<p>A short <b>lede</b> about the quake.</p>',
+    feed,
+    ...over,
+  });
+
+  it('marks the origin, strips tracking and HTML, keeps the feed publisher', () => {
+    const [a] = normalizeRss([item()], BASE + 3_600_000);
+    expect(a!.origin).toBe('rss');
+    expect(a!.url).toBe('https://www.bbc.co.uk/news/world-123');
+    expect(a!.snippet).toBe('A short lede about the quake.');
+    expect(a!.domain).toBe('bbc.co.uk');
+    expect(a!.source.rating.value).toBe('UNRATED');
+    expect(a!.publishedAtMs).toBe(BASE);
+  });
+
+  it('drops items without a usable date instead of stamping the fetch time', () => {
+    expect(normalizeRss([item({ published: null })], BASE)).toHaveLength(0);
+    expect(normalizeRss([item({ published: 'not a date' })], BASE)).toHaveLength(0);
+  });
+
+  it('drops items dated far in the future', () => {
+    expect(normalizeRss([item({ published: 'Fri, 16 Oct 2026 06:00:00 GMT' })], BASE)).toHaveLength(
+      0,
+    );
+  });
+
+  it('truncates long headlines and snippets', () => {
+    const [a] = normalizeRss(
+      [{ ...item(), title: 'T'.repeat(900), summary: 'S'.repeat(900) }],
+      BASE + 3_600_000,
+    );
+    expect(a!.headline.length).toBeLessThanOrEqual(400);
+    expect(a!.snippet!.length).toBeLessThanOrEqual(300);
   });
 });

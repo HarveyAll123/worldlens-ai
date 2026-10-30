@@ -312,7 +312,7 @@ export class BordersLayer {
       this.labels.add({
         position: Cesium.Cartesian3.fromDegrees(c.lon, c.lat),
         text: c.name,
-        font: '600 11px "Inter", system-ui, sans-serif',
+        font: '400 10.5px "Inter Variable", "Inter", system-ui, sans-serif',
         fillColor: Cesium.Color.fromCssColorString('#f8fafc').withAlpha(0.85),
         outlineColor: Cesium.Color.BLACK.withAlpha(0.7),
         outlineWidth: 3,
@@ -410,7 +410,7 @@ export class FrontlineLayer {
         this.labels.add({
           position: Cesium.Cartesian3.fromDegrees(first[0]!, first[1]!),
           text: f.name,
-          font: '600 12px "Inter", system-ui, sans-serif',
+          font: '400 11.5px "Inter Variable", "Inter", system-ui, sans-serif',
           fillColor: Cesium.Color.WHITE,
           showBackground: true,
           backgroundColor: COLORS.frontline.withAlpha(0.8),

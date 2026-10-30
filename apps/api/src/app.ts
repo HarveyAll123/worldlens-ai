@@ -28,27 +28,68 @@ import type { AppDeps } from './deps';
 import { clientKey, RateLimiter } from './lib/ratelimit';
 import { PaymentError } from './payments/service';
 import { selectBorderSnapshot, type BorderDetail } from './providers/borders';
-import { runIngestion } from './pipeline/ingest';
+import { runCombinedIngestion, type CombinedRun, type IngestionSource } from './pipeline/ingest';
+import { normalizeGdelt, normalizeRss } from './pipeline/normalize';
+import type { RssItem } from './providers/rss';
 
 type Defer = (p: Promise<unknown>) => void;
 type AppEnv = { Variables: { defer: Defer } };
 
 const LIVE_REFRESH_MS = 15 * 60_000;
 
+/** GDELT discovery: several spaced queries, merged into one batch for this source. */
+function gdeltSource(deps: AppDeps): IngestionSource {
+  return {
+    name: 'gdelt',
+    fetch: async () => {
+      const all: unknown[] = [];
+      const failures: Error[] = [];
+      for (const [i, q] of deps.config.gdelt.queries.entries()) {
+        if (i > 0) await new Promise((r) => setTimeout(r, 5500));
+        try {
+          all.push(...(await deps.news!.fetchRecent(q, { timespan: '24h', maxRecords: 75 })));
+        } catch (err) {
+          failures.push(err instanceof Error ? err : new Error(String(err)));
+        }
+      }
+      // Only report the source as failed when every query failed.
+      if (all.length === 0 && failures.length > 0) throw failures[0];
+      return all;
+    },
+    normalize: (raw) => normalizeGdelt(raw as Parameters<typeof normalizeGdelt>[0]),
+  };
+}
+
+/** Named publishers. A total feed failure throws so the source reports as failed. */
+function rssSource(deps: AppDeps): IngestionSource {
+  return {
+    name: 'rss',
+    fetch: async () => {
+      const { items, errors } = await deps.rss!.fetchRecent({ maxItems: 30 });
+      if (items.length === 0 && errors.length > 0) throw new Error(errors[0]);
+      return items;
+    },
+    normalize: (raw, nowMs) => normalizeRss(raw as RssItem[], nowMs),
+  };
+}
+
 /** Refresh live news in the background (never blocks a request). */
-export function refreshLiveNews(deps: AppDeps, force = false): Promise<void> {
-  if (!deps.news) return Promise.resolve();
+export function refreshLiveNews(deps: AppDeps, force = false): Promise<CombinedRun | null> {
+  if (!deps.news && !deps.rss) return Promise.resolve(null);
   const status = deps.repo.liveNewsStatus();
   const stale =
     !status.lastIngestedAt || deps.now() - Date.parse(status.lastIngestedAt) > LIVE_REFRESH_MS;
-  if (!force && !stale) return Promise.resolve();
+  if (!force && !stale) return Promise.resolve(null);
   return deps.ingestFlight.run('live', async () => {
-    const { events, run } = await runIngestion({
-      provider: deps.news!,
-      queries: deps.config.gdelt.queries,
+    const sources: IngestionSource[] = [];
+    if (deps.news) sources.push(gdeltSource(deps));
+    if (deps.rss) sources.push(rssSource(deps));
+    // One run, one merge, one replaceLiveNews: a story covered by both providers is one cluster.
+    const { events, run } = await runCombinedIngestion({
+      sources,
       health: deps.health,
       nowMs: deps.now(),
-      delayMs: 5500,
+      fallback: deps.ingestFallback,
     });
     // Optional cheap-tier summaries for the most-covered clusters (headlines only, cached, budgeted).
     if (deps.ai.available) {
@@ -77,6 +118,7 @@ export function refreshLiveNews(deps: AppDeps, force = false): Promise<void> {
     await deps.repo.replaceLiveNews(events, deps.now());
     const rec = deps.repo as unknown as { recordIngestionRun?: (r: unknown) => Promise<void> };
     await rec.recordIngestionRun?.(run);
+    return run;
   });
 }
 
@@ -462,8 +504,14 @@ export function createApp(deps: AppDeps, defaults: { defer?: Defer } = {}) {
     const token = deps.config.ingestToken;
     const auth = c.req.header('Authorization');
     if (!token || auth !== `Bearer ${token}`) return c.json({ error: 'UNAUTHORIZED' }, 401);
-    await refreshLiveNews(deps, true);
-    return c.json({ ok: true, live: deps.repo.liveNewsStatus(), gdelt: deps.health.get('gdelt') });
+    const run = await refreshLiveNews(deps, true);
+    return c.json({
+      ok: true,
+      live: deps.repo.liveNewsStatus(),
+      sources: run?.sources ?? [],
+      gdelt: deps.health.get('gdelt'),
+      rss: deps.health.get('rss'),
+    });
   });
 
   app.notFound((c) => c.json({ error: 'NOT_FOUND', message: 'No such endpoint' }, 404));

@@ -339,7 +339,7 @@ export class PostgresNewsRepository implements EventRepository {
           [eventId],
           { idempotent: true },
         );
-        return rows.map((a) => ({
+        return rows.map((a): Article => ({
           id: a.id,
           sourceId: a.source_id,
           headline: a.headline,

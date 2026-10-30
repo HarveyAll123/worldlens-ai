@@ -35,8 +35,10 @@ Add keys (see [MANUAL_SETUP.md](MANUAL_SETUP.md)):
 | ---------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Satellite imagery + terrain  | `apps/web/.env.local` | `VITE_MAPTILER_API_KEY`                                                                                                                                   |
 | PayPal sandbox payments      | `apps/api/.dev.vars`  | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID`                                                                                           |
-| AI assistant (Claude)        | `apps/api/.dev.vars`  | `ANTHROPIC_API_KEY`                                                                                                                                       |
+| AI assistant                 | `apps/api/.dev.vars`  | `ANTHROPIC_API_KEY`, or `OPENCODE_API_KEY` + `AI_PROVIDER=openai` (any OpenAI-compatible gateway; see MANUAL_SETUP.md)                                    |
 | Persistence (Neon + PostGIS) | `apps/api/.dev.vars`  | `DATABASE_URL` (a `*.neon.tech` URL; `pnpm dev:node` also takes any PostgreSQL + PostGIS URL); schema via `pnpm db:migrate` with `MIGRATION_DATABASE_URL` |
+
+News comes from **GDELT DOC 2.0** (no key) and, with `RSS_ENABLED=true`, a fixed list of 12 publisher feeds (no key). Both are merged and clustered in one run.
 
 Optional offline border data for development: `pnpm data:fetch-basemaps` then set `HISTORICAL_BASEMAPS_BASE_URL=http://127.0.0.1:5173/vendor/historical-basemaps/`.
 

@@ -51,7 +51,7 @@ export function CountryPanel({
         <button
           type="button"
           onClick={onBack}
-          className="text-[12.5px] text-slate-300 hover:text-white"
+          className="text-[12.5px] text-white/70 hover:text-white"
         >
           ← Events
         </button>
@@ -68,7 +68,7 @@ export function CountryPanel({
             onError={(e) => ((e.target as HTMLElement).style.display = 'none')}
           />
           <figcaption
-            className="pt-1 text-[10.5px] text-slate-500"
+            className="pt-1 text-[10.5px] text-white/35"
             data-testid="country-flag-caption"
           >
             {flag.owner ? `Flag of ${flag.owner}, ` : 'Flag '}
@@ -85,7 +85,7 @@ export function CountryPanel({
           <Spinner label="Loading flag" />
         </div>
       ) : (
-        <p className="px-4 pt-3 text-[11.5px] text-slate-500" data-testid="country-no-flag">
+        <p className="px-4 pt-3 text-[11.5px] text-white/35" data-testid="country-no-flag">
           No flag is recorded for {country.name} on this date.
         </p>
       )}
@@ -95,29 +95,26 @@ export function CountryPanel({
           <Badge tone="history">Country</Badge>
           {!country.end && <Badge>Exists today</Badge>}
         </div>
-        <h2
-          className="text-[18px] font-semibold leading-snug text-white"
-          data-testid="country-name"
-        >
+        <h2 className="text-[18px] font-normal leading-snug text-white" data-testid="country-name">
           {country.name}
         </h2>
         {entry?.description && (
-          <p className="mt-1 text-[12.5px] text-slate-300">{entry.description}</p>
+          <p className="mt-1 text-[12.5px] text-white/70">{entry.description}</p>
         )}
       </div>
 
       <Section title="Borders shown">
-        <p className="text-[13px] text-slate-200" data-testid="country-period">
+        <p className="text-[13px] text-white/85" data-testid="country-period">
           {period(country.start, country.end)}
         </p>
-        <p className="mt-1 text-[11.5px] leading-snug text-slate-400">
+        <p className="mt-1 text-[11.5px] leading-snug text-white/50">
           The borders on the globe are this version of {country.name}; they change on the dates
           OpenHistoricalMap records.
         </p>
         <button
           type="button"
           onClick={() => flyToCountry(country)}
-          className="mt-2 rounded-md border border-white/15 px-2.5 py-1 text-[12px] text-slate-200 hover:bg-white/10"
+          className="mt-2 rounded-md border border-white/15 px-2.5 py-1 text-[12px] text-white/85 hover:bg-white/10"
         >
           Show on globe
         </button>
@@ -125,19 +122,19 @@ export function CountryPanel({
 
       {!!entry?.capitals.length && (
         <Section title={entry.capitals.length > 1 ? 'Capitals' : 'Capital'}>
-          <p className="text-[13px] text-slate-200">{entry.capitals.join(' · ')}</p>
+          <p className="text-[13px] text-white/85">{entry.capitals.join(' · ')}</p>
           {entry.capitals.length > 1 && (
-            <p className="mt-1 text-[11px] text-slate-500">Over the state’s whole history.</p>
+            <p className="mt-1 text-[11px] text-white/35">Over the state’s whole history.</p>
           )}
         </Section>
       )}
 
       <Section title="Learn more">
         {extract && (
-          <blockquote className="mb-2 border-l-2 border-white/15 pl-3 text-[12.5px] leading-relaxed text-slate-300">
+          <blockquote className="mb-2 border-l-2 border-white/15 pl-3 text-[12.5px] leading-relaxed text-white/70">
             {extract.slice(0, 520)}
             {extract.length > 520 ? '…' : ''}
-            <footer className="mt-1 text-[10.5px] text-slate-500">
+            <footer className="mt-1 text-[10.5px] text-white/35">
               From Wikipedia, CC BY-SA 4.0
             </footer>
           </blockquote>
@@ -151,9 +148,9 @@ export function CountryPanel({
           </ExternalLink>
         )}
         {!entry && !flags.isLoading && (
-          <p className="text-[12px] text-slate-400">No Wikidata record is linked to this entry.</p>
+          <p className="text-[12px] text-white/50">No Wikidata record is linked to this entry.</p>
         )}
-        <p className="mt-2 text-[10.5px] text-slate-500">
+        <p className="mt-2 text-[10.5px] text-white/35">
           Borders: OpenHistoricalMap (CC0). Flag dates, capital and description: Wikidata (CC0).
           {country.wikidata && (
             <>

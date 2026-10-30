@@ -6,6 +6,15 @@ PAYPAL_ENVIRONMENT=sandbox
 PAYPAL_WEBHOOK_ID=
 PUBLIC_APP_URL=http://localhost:5173
 ANTHROPIC_API_KEY=
+# Alternative AI provider: any OpenAI-compatible Chat Completions endpoint (e.g. OpenCode Go).
+# Set AI_PROVIDER=openai and provide OPENCODE_API_KEY (or OPENAI_API_KEY). AI_BASE_URL must
+# include the version segment. Defaults: base URL https://opencode.ai/inference/go/openai/v1,
+# models deepseek-v4.1-flash.
+# AI_PROVIDER=openai
+# OPENCODE_API_KEY=
+# AI_BASE_URL=https://opencode.ai/inference/go/openai/v1
+# AI_MODEL_STRONG=deepseek-v4.1-flash
+# AI_MODEL_FAST=deepseek-v4.1-flash
 # Neon → Connect → pooled connection string for the worldlens_app role (see MANUAL_SETUP.md).
 # `wrangler dev` accepts only Neon hosts (*.neon.tech); `pnpm dev:node` also accepts any other
 # PostgreSQL + PostGIS URL (local or remote).
@@ -14,3 +23,6 @@ DATABASE_URL=
 # owner role, direct (unpooled) connection string.
 MIGRATION_DATABASE_URL=
 INGEST_TOKEN=
+
+# Named-publisher RSS feeds (fixed list in src/providers/rss.ts, no key). Default off.
+RSS_ENABLED=false

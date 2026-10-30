@@ -36,8 +36,8 @@ type Phase =
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="grid grid-cols-[7.5rem_1fr] gap-2 py-1.5 text-[13px]">
-      <dt className="text-slate-400">{label}</dt>
-      <dd className="m-0 text-slate-100">{children}</dd>
+      <dt className="text-white/50">{label}</dt>
+      <dd className="m-0 text-white/90">{children}</dd>
     </div>
   );
 }
@@ -201,13 +201,13 @@ export function TakeActionModal() {
         data-testid="take-action-modal"
       >
         <div
-          className="sandbox-banner border-b border-sandbox/40 px-4 py-2 text-center text-[12px] font-extrabold tracking-[0.12em] text-sandbox"
+          className="sandbox-banner border-b border-sandbox/40 px-4 py-2 text-center text-[12px] font-extrabold tracking-[0.12em] text-white/85"
           data-testid="sandbox-banner"
         >
           SANDBOX DEMO — NO REAL MONEY TRANSFERRED
         </div>
         <div className="p-4">
-          <h2 id="take-action-title" className="text-[17px] font-semibold">
+          <h2 id="take-action-title" className="text-[17px] font-normal">
             Review before continuing
           </h2>
           {!option && <Spinner />}
@@ -216,7 +216,7 @@ export function TakeActionModal() {
               <dl className="mt-2 divide-y divide-white/[0.06]">
                 <Row label="Recipient">
                   <span className="font-medium">{option.beneficiary.name}</span>
-                  <span className="block text-[11.5px] text-slate-400">
+                  <span className="block text-[11.5px] text-white/50">
                     {option.beneficiary.disclosure}
                   </span>
                 </Row>
@@ -229,7 +229,7 @@ export function TakeActionModal() {
                         disabled={phase.kind !== 'review'}
                         aria-pressed={Number(amount) === a}
                         onClick={() => setAmount(String(a))}
-                        className={`rounded-md border px-2 py-0.5 text-[12.5px] ${Number(amount) === a ? 'border-sandbox bg-sandbox/15 text-sandbox' : 'border-white/15 text-slate-200 hover:bg-white/10'}`}
+                        className={`rounded-md border px-2 py-0.5 text-[12.5px] ${Number(amount) === a ? 'border-sandbox bg-sandbox/15 text-white/85' : 'border-white/15 text-white/85 hover:bg-white/10'}`}
                       >
                         ${a}
                       </button>
@@ -241,13 +241,13 @@ export function TakeActionModal() {
                         value={amount}
                         disabled={phase.kind !== 'review'}
                         onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
-                        className="w-20 rounded-md border border-white/15 bg-white/5 px-2 py-0.5 text-slate-100"
+                        className="w-20 rounded-md border border-white/15 bg-white/5 px-2 py-0.5 text-white/90 focus:border-white/35 focus:bg-white/[0.09]"
                         data-testid="amount-input"
                       />
                     </label>
                   </div>
                   {!amountOk && (
-                    <span className="mt-1 block text-[11.5px] text-amber-300">
+                    <span className="mt-1 block text-[11.5px] text-white/70">
                       Enter between ${option.minAmount} and ${option.maxAmount}.
                     </span>
                   )}
@@ -257,19 +257,19 @@ export function TakeActionModal() {
                 <Row label="Event">
                   {event.title}
                   {event.isDemo && (
-                    <span className="ml-1 text-[11px] text-violet-200">(DEMO scenario)</span>
+                    <span className="ml-1 text-[11px] text-white/70">(DEMO scenario)</span>
                   )}
                 </Row>
                 <Row label="Environment">
-                  <span className="font-semibold text-sandbox">PayPal SANDBOX</span>{' '}
-                  <span className="text-slate-400">— test accounts only</span>
+                  <span className="font-normal text-white/85">PayPal SANDBOX</span>{' '}
+                  <span className="text-white/50">— test accounts only</span>
                 </Row>
               </dl>
 
               {option.informationalLinks.length > 0 && (
-                <div className="mt-3 rounded-lg border border-white/10 p-3 text-[12px] text-slate-300">
-                  <p className="mb-1 font-medium text-slate-200">Want to help for real?</p>
-                  <p className="mb-1.5 text-slate-400">
+                <div className="mt-3 rounded-lg border border-white/10 p-3 text-[12px] text-white/70">
+                  <p className="mb-1 font-medium text-white/85">Want to help for real?</p>
+                  <p className="mb-1.5 text-white/50">
                     These organisations are listed for information only. WorldLens does not process
                     donations to them and is not affiliated with them.
                   </p>
@@ -279,7 +279,7 @@ export function TakeActionModal() {
                       return href ? (
                         <li key={l.url}>
                           <ExternalLink href={href}>{l.name}</ExternalLink>
-                          <span className="block text-[11px] text-slate-500">{l.note}</span>
+                          <span className="block text-[11px] text-white/35">{l.note}</span>
                         </li>
                       ) : null;
                     })}
@@ -289,19 +289,19 @@ export function TakeActionModal() {
 
               {phase.kind === 'review' && (
                 <>
-                  <label className="mt-4 flex cursor-pointer items-start gap-2 text-[12.5px] text-slate-200">
+                  <label className="mt-4 flex cursor-pointer items-start gap-2 text-[12.5px] text-white/85">
                     <input
                       type="checkbox"
                       checked={ack}
                       onChange={(e) => setAck(e.target.checked)}
-                      className="mt-0.5 accent-yellow-300"
+                      className="mt-0.5 accent-white"
                       data-testid="sandbox-ack"
                     />
                     I understand this is a PayPal sandbox demonstration: no real money is
                     transferred and the recipient is a demo merchant, not a charity.
                   </label>
                   <div className="mt-4 flex flex-col gap-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <span className="text-[11px] font-normal uppercase tracking-[0.14em] text-white/50">
                       Continue with PayPal
                     </span>
                     {!pp?.configured ? (
@@ -309,7 +309,7 @@ export function TakeActionModal() {
                         PayPal sandbox is not configured on this server (see MANUAL_SETUP.md). No
                         payment can be made.
                         {pp?.diagnostics && (
-                          <span className="mt-1 block text-[11px] text-slate-400">
+                          <span className="mt-1 block text-[11px] text-white/50">
                             Missing in .dev.vars:{' '}
                             {[
                               !pp.diagnostics.hasClientId && 'PAYPAL_CLIENT_ID',
@@ -321,7 +321,7 @@ export function TakeActionModal() {
                         )}
                       </Notice>
                     ) : !ack ? (
-                      <p className="text-[12px] text-slate-500">
+                      <p className="text-[12px] text-white/35">
                         Tick the acknowledgement to load PayPal.
                       </p>
                     ) : paypalError ? (
@@ -341,7 +341,7 @@ export function TakeActionModal() {
                     <button
                       type="button"
                       onClick={close}
-                      className="rounded-lg border border-white/15 py-2 text-[13px] font-medium text-slate-100 hover:bg-white/10"
+                      className="rounded-lg border border-white/15 py-2 text-[13px] font-medium text-white/90 hover:bg-white/10"
                       data-testid="cancel-action"
                     >
                       Cancel
