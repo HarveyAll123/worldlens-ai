@@ -106,15 +106,26 @@ function applyStep(step: ClientAction[]): void {
   }
 }
 
+/**
+ * On desktop the context card holds either the chat or the selected event. An answer that
+ * opens an event hands the card to that event (as the mobile sheet does); Ask AI brings the
+ * chat back. Later tour steps leave the card where the user put it.
+ */
+function showOpenedEvent(step: ClientAction[]): void {
+  if (step.some((a) => a.tool === 'open_event')) useAppStore.getState().setAssistantOpen(false);
+}
+
 export function runActions(raw: unknown[]): { applied: number; rejected: string[]; tour: boolean } {
   const { actions, rejected } = validateActions(raw);
   const steps = toSteps(actions);
   if (steps.length > 1) {
     useAppStore.getState().setTour({ steps, index: 0, playing: true });
     applyStep(steps[0]!);
+    showOpenedEvent(steps[0]!);
     return { applied: actions.length, rejected, tour: true };
   }
   applyStep(actions);
+  showOpenedEvent(actions);
   return { applied: actions.length, rejected, tour: false };
 }
 

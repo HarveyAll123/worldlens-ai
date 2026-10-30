@@ -9,16 +9,13 @@ export function trackUnit(view: Resolution, resolution: Resolution): Resolution 
 }
 
 /**
- * Track zoom after the selected resolution changes: the full range in LIVE, and picking a year
- * on the overview keeps the overview (the Y button zooms in explicitly). Zooming in on the first
- * click used to land on a single day of a two-month track.
+ * Track zoom after the selected resolution changes: picking a year on the overview keeps the
+ * overview (the Y button zooms in explicitly; zooming in on the first click used to land on a
+ * single day of a two-month track). Going LIVE shows the full range again — that is decided
+ * when the mode changes, not here: a "day resolution in LIVE means the overview" rule here sent
+ * the D button back to the overview whenever it was pressed in LIVE.
  */
-export function viewAfter(
-  view: Resolution,
-  resolution: Resolution,
-  mode: 'live' | 'historical',
-): Resolution {
-  if (mode === 'live' && resolution === 'day') return 'century';
+export function viewAfter(view: Resolution, resolution: Resolution): Resolution {
   if (view === 'century' && resolution === 'year') return 'century';
   return resolution;
 }

@@ -14,7 +14,7 @@ import {
 import type { QualityPreference, QualityTier } from '../perf/tiers';
 
 export type Mode = 'live' | 'historical';
-export type SheetView = 'events' | 'detail' | 'assistant' | 'search';
+export type SheetView = 'events' | 'detail' | 'assistant' | 'search' | 'layers';
 
 export interface CameraState {
   lat: number;
@@ -63,6 +63,11 @@ interface AppState {
   sheet: SheetView;
   sheetExpanded: boolean;
   assistantOpen: boolean;
+  /**
+   * A question asked outside the chat (an event's "Ask AI" prompts) while the assistant panel
+   * is not mounted; the panel sends it once it is shown.
+   */
+  pendingQuestion: string | null;
   /** Desktop Context Card visibility (mobile uses the bottom sheet). */
   cardOpen: boolean;
   layers: Record<LayerId, boolean>;
@@ -89,8 +94,13 @@ interface AppState {
   selectEvent: (id: string | null) => void;
   selectCountry: (c: CountrySelection | null) => void;
   setSheet: (v: SheetView, expanded?: boolean) => void;
+  /** Phones: a top-bar button opens its tab of the bottom sheet, or closes the sheet again. */
+  toggleSheetTab: (v: SheetView) => void;
   setSheetExpanded: (v: boolean) => void;
   setAssistantOpen: (v: boolean) => void;
+  setPendingQuestion: (q: string | null) => void;
+  /** Returns the pending question and clears it, so it is sent once. */
+  takePendingQuestion: () => string | null;
   setCardOpen: (v: boolean) => void;
   setLayer: (l: LayerId, on: boolean) => void;
   setKindFilter: (k: 'all' | 'news' | 'historical', categories?: EventCategory[] | null) => void;
@@ -134,10 +144,18 @@ function saveFlag(key: string, on: boolean): void {
   }
 }
 
+/** Phones: whether the bottom sheet is open on a tab (event and country details count as Events). */
+export function sheetTabOpen(
+  s: { sheet: SheetView; sheetExpanded: boolean },
+  v: SheetView,
+): boolean {
+  return s.sheetExpanded && (s.sheet === v || (v === 'events' && s.sheet === 'detail'));
+}
+
 let flySeq = 0;
 
 export const useAppStore = create<AppState>()(
-  subscribeWithSelector((set) => ({
+  subscribeWithSelector((set, get) => ({
     mode: 'live',
     timeMs: Date.now(),
     resolution: 'day',
@@ -146,6 +164,7 @@ export const useAppStore = create<AppState>()(
     sheet: 'events',
     sheetExpanded: false,
     assistantOpen: false,
+    pendingQuestion: null,
     cardOpen: true,
     layers: {
       news: true,
@@ -198,8 +217,23 @@ export const useAppStore = create<AppState>()(
       })),
     setSheet: (sheet, expanded) =>
       set((s) => ({ sheet, sheetExpanded: expanded ?? s.sheetExpanded })),
+    // Each button has its own tab, so the panel button no longer reopens whatever tab (e.g.
+    // Layers) was showing last; closing returns the sheet to the events.
+    toggleSheetTab: (v) =>
+      set((s) => {
+        if (sheetTabOpen(s, v))
+          return { sheet: s.sheet === 'detail' ? 'detail' : 'events', sheetExpanded: false };
+        const detail = v === 'events' && (s.selectedEventId || s.selectedCountry);
+        return { sheet: detail ? 'detail' : v, sheetExpanded: true };
+      }),
     setSheetExpanded: (sheetExpanded) => set({ sheetExpanded }),
     setAssistantOpen: (assistantOpen) => set({ assistantOpen }),
+    setPendingQuestion: (pendingQuestion) => set({ pendingQuestion }),
+    takePendingQuestion: () => {
+      const q = get().pendingQuestion;
+      if (q !== null) set({ pendingQuestion: null });
+      return q;
+    },
     setCardOpen: (cardOpen) => set({ cardOpen }),
     setLayer: (l, on) => set((s) => ({ layers: { ...s.layers, [l]: on } })),
     setKindFilter: (kindFilter, categories) =>

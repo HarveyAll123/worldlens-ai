@@ -210,8 +210,9 @@ export function GlobeView({
   const mode = useAppStore((s) => s.mode);
   const timeMs = useAppStore((s) => s.timeMs);
 
+  // No data (a failed request) clears the markers too: the last period's are not this one's.
   useEffect(() => {
-    if (globe && events.data) safely('events', () => globe.setEvents(events.data.events));
+    if (globe) safely('events', () => globe.setEvents(events.data?.events ?? []));
   }, [globe, events.data]);
 
   // Borders. LIVE: today's boundaries from Natural Earth. Historical: OpenHistoricalMap's dated

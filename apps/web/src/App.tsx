@@ -6,6 +6,7 @@ import { EventDetail } from './components/EventDetail';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { EventList } from './components/EventList';
 import { GlobeView } from './components/GlobeView';
+import { LayersPanel } from './components/LayerMenu';
 import { Announcer, DiagnosticsPanel, TourBar } from './components/Overlays';
 import { TakeActionModal } from './components/TakeActionModal';
 import { TemporalNavigator } from './components/TemporalNavigator';
@@ -37,11 +38,13 @@ function MobileSheet() {
       ? 'Ask WorldLens'
       : sheet === 'search'
         ? 'Search'
-        : country
-          ? 'Country'
-          : selected
-            ? 'Event details'
-            : 'Events';
+        : sheet === 'layers'
+          ? 'Layers'
+          : country
+            ? 'Country'
+            : selected
+              ? 'Event details'
+              : 'Events';
   return (
     <section
       id="bottom-sheet"
@@ -67,7 +70,7 @@ function MobileSheet() {
             role="tablist"
             aria-label="Panel"
           >
-            {(['events', 'assistant', 'search'] as const).map((v) => {
+            {(['events', 'assistant', 'search', 'layers'] as const).map((v) => {
               const on = sheet === v || (v === 'events' && sheet === 'detail');
               return (
                 <button
@@ -82,7 +85,13 @@ function MobileSheet() {
                       : 'text-white/55 hover:bg-white/[0.06] hover:text-white/85'
                   }`}
                 >
-                  {v === 'assistant' ? 'Ask AI' : v === 'events' ? 'Events' : 'Search'}
+                  {v === 'assistant'
+                    ? 'Ask AI'
+                    : v === 'events'
+                      ? 'Events'
+                      : v === 'layers'
+                        ? 'Layers'
+                        : 'Search'}
                 </button>
               );
             })}
@@ -94,6 +103,8 @@ function MobileSheet() {
               <div className="px-3 pb-3">
                 <SearchBox autoFocus onDone={() => setSheet('events', false)} />
               </div>
+            ) : sheet === 'layers' ? (
+              <LayersPanel />
             ) : (
               <PanelBody />
             )}

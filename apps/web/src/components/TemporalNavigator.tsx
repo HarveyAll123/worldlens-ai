@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -32,6 +33,7 @@ import {
 import { api } from '../lib/api';
 import { parseDateInput } from '../lib/dateInput';
 import { edgePush, edgeShift, trackUnit, viewAfter } from '../lib/timelineDrag';
+import { timelineTicks } from '../lib/timelineTicks';
 import { useVisibleEvents } from '../hooks/useData';
 import { TIER_SETTINGS } from '../perf/tiers';
 import { useAppStore } from '../state/store';
@@ -52,19 +54,6 @@ const RES_SHORT: Record<Resolution, string> = {
   month: 'M',
   day: 'D',
   hour: 'H',
-};
-
-/** Tick unit and label format for each zoom level. */
-const TICKS: Record<
-  Resolution,
-  { unit: 'century' | 'decade' | 'year' | 'month' | 'day' | 'hour'; step: number; fmt: Resolution }
-> = {
-  century: { unit: 'decade', step: 2, fmt: 'year' },
-  decade: { unit: 'decade', step: 1, fmt: 'year' },
-  year: { unit: 'year', step: 1, fmt: 'year' },
-  month: { unit: 'month', step: 3, fmt: 'month' },
-  day: { unit: 'day', step: 7, fmt: 'day' },
-  hour: { unit: 'hour', step: 12, fmt: 'hour' },
 };
 
 export function TemporalNavigator({ compact }: { compact: boolean }) {
@@ -93,8 +82,13 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
   const [viewRes, setViewRes] = useState<Resolution>('century');
   // The track zoom follows the selected resolution; the overview stays for picked years.
   useEffect(() => {
-    setViewRes((view) => viewAfter(view, resolution, mode));
-  }, [resolution, mode]);
+    setViewRes((view) => viewAfter(view, resolution));
+  }, [resolution]);
+  // Going LIVE (Return to Live, End, dragging to now) shows the full range again. Only on the
+  // switch itself, so the resolution buttons still zoom while LIVE.
+  useEffect(() => {
+    if (mode === 'live') setViewRes('century');
+  }, [mode]);
   const unitRes = trackUnit(viewRes, resolution);
 
   // The visible window stays put while the selected time moves inside it; it only re-centres
@@ -362,23 +356,29 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
     commit(parsed.ms, parsed.resolution);
   };
 
-  const ticks = useMemo(() => {
-    const t = TICKS[viewRes];
-    const out: Array<{ ms: number; label: string }> = [];
-    let ms = floorTo(span.startMs, t.unit);
-    let guard = 0;
-    while (ms <= span.endMs && guard++ < 400) {
-      if (ms >= span.startMs) out.push({ ms, label: formatAt(ms, t.fmt, { upper: false }) });
-      ms = addUnits(ms, t.unit, t.step);
-    }
-    const maxTicks = compact ? 5 : 11;
-    const stride = Math.max(1, Math.ceil(out.length / maxTicks));
-    return out.filter((_, i) => i % stride === 0);
-  }, [span, viewRes, compact]);
+  const showComingSoon = TEMPORAL_CONFIG.comingSoonLabel && span.startMs <= min + 1;
+  // Labels are laid out for the track's real width (a phone's is a third of a desktop's). It is
+  // re-measured before paint when "Before 1800" comes or goes with the zoom, and on resizes.
+  const [trackPx, setTrackPx] = useState(compact ? 260 : 760);
+  useLayoutEffect(() => {
+    if (trackRef.current) setTrackPx(Math.round(trackRef.current.getBoundingClientRect().width));
+  }, [showComingSoon, compact]);
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) setTrackPx(Math.round(entry.contentRect.width));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  const ticks = useMemo(
+    () => timelineTicks(span.startMs, span.endMs, viewRes, trackPx),
+    [span, viewRes, trackPx],
+  );
 
   const counts = density.data?.counts ?? [];
   const maxCount = Math.max(1, ...counts);
-  const showComingSoon = TEMPORAL_CONFIG.comingSoonLabel && span.startMs <= min + 1;
   const shownMs = previewMs ?? timeMs;
   const thumbLeft = `${Math.min(100, Math.max(0, fraction(shownMs) * 100))}%`;
   const valueText =
@@ -526,8 +526,10 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
             aria-label="Go to a date"
           >
             <Icon name="calendar" className="h-3.5 w-3.5 text-white/40" />
-            {!compact && (
-              <span>
+            {/* Phones show the selected date too: nothing else there did (the top bar only
+                has Return to Live). LIVE keeps the icon; the top bar shows the clock. */}
+            {(!compact || mode === 'historical') && (
+              <span data-testid="navigator-date">
                 {mode === 'live'
                   ? 'Jump to date'
                   : formatAt(shownMs, dragging ? unitRes : resolution)}

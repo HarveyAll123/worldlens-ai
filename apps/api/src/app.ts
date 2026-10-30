@@ -11,6 +11,7 @@ import {
   CreatePaymentRequestSchema,
   EventKindSchema,
   IsoInstantSchema,
+  MAX_EVENTS_PER_REQUEST,
   ResolutionSchema,
   TEMPORAL_CONFIG,
   clampToNavigable,
@@ -224,7 +225,7 @@ export function createApp(deps: AppDeps, defaults: { defer?: Defer } = {}) {
     kinds: z.string().optional(),
     demo: z.enum(['0', '1']).default('1'),
     battles: z.enum(['0', '1']).default('1'),
-    limit: z.coerce.number().int().min(1).max(500).default(200),
+    limit: z.coerce.number().int().min(1).max(MAX_EVENTS_PER_REQUEST).default(200),
   });
 
   app.get('/api/events', async (c) => {
