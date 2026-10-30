@@ -5,7 +5,9 @@ import { useEffect, useMemo, useState } from 'react';
 import type { BorderLineLike } from '../globe/GeometryLayers';
 import { parseOhmIndex, type Succession } from '../globe/ohm';
 import { api } from '../lib/api';
+import { eventsAt } from '../lib/timelineEvents';
 import { useAppStore } from '../state/store';
+import { useThrottled } from './useThrottled';
 
 export function useConfig() {
   return useQuery({ queryKey: ['config'], queryFn: api.config, staleTime: 60_000, retry: 1 });
@@ -28,14 +30,20 @@ export function useVisibleEvents(limit: number) {
   const layers = useAppStore((s) => s.layers);
   const kindFilter = useAppStore((s) => s.kindFilter);
   const period = mode === 'live' ? 'live' : toIso(floorTo(timeMs, resolution));
-  // Debounce mode together with the period so a request never mixes "live" and a date.
-  const key = useDebounced({ mode, period, resolution, bbox }, mode === 'live' ? 0 : 180);
+  // Mode travels with the period so a request never mixes "live" and a date. Throttled, not
+  // debounced: a dragged timeline changes the period every ~160 ms, so a debounce only fired
+  // once the drag stopped and the map kept the events of the period the drag started in.
+  const wanted = useMemo(
+    () => ({ mode, period, resolution, bbox }),
+    [mode, period, resolution, bbox],
+  );
+  const key = useThrottled(wanted, mode === 'live' ? 0 : 150);
 
   const kinds = [
     layers.news && kindFilter !== 'historical' ? 'news' : null,
     layers.history && kindFilter !== 'news' && key.mode === 'historical' ? 'historical' : null,
   ].filter(Boolean) as string[];
-  return useQuery({
+  const query = useQuery({
     queryKey: [
       'events',
       key.mode,
@@ -73,6 +81,21 @@ export function useVisibleEvents(limit: number) {
     refetchInterval: key.mode === 'live' ? 60_000 : false,
     staleTime: key.mode === 'live' ? 30_000 : 5 * 60_000,
   });
+  // Only the events of the selected time, even while the response is for an earlier one.
+  const data = useMemo(
+    () => query.data && eventsAt(query.data, mode, timeMs, resolution),
+    [query.data, mode, timeMs, resolution],
+  );
+  // Getters, not a spread: reading every field would re-render callers on any query change.
+  return {
+    data,
+    get isFetching() {
+      return query.isFetching;
+    },
+    get isError() {
+      return query.isError;
+    },
+  };
 }
 
 export function useEventDetail(id: string | null) {
