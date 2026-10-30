@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppStore } from '../state/store';
-import { Icon } from './ui';
+import { Icon, popoverPlacement } from './ui';
 
 const KEYS: Array<{ label: string; keys: string[] }> = [
   { label: 'Search places, events, dates', keys: ['/'] },
@@ -50,12 +50,13 @@ export function HelpSheet() {
 
   useEffect(() => {
     if (!open) return;
-    const close = (e: MouseEvent) => {
+    const close = (e: PointerEvent) => {
       const t = e.target as Node;
       if (!ref.current?.contains(t) && !panelRef.current?.contains(t)) setOpen(false);
     };
-    window.addEventListener('mousedown', close);
-    return () => window.removeEventListener('mousedown', close);
+    // pointerdown: the globe cancels it, which suppresses mousedown (see LayerMenu).
+    window.addEventListener('pointerdown', close);
+    return () => window.removeEventListener('pointerdown', close);
   }, [open]);
 
   return (
@@ -81,7 +82,7 @@ export function HelpSheet() {
           <div
             ref={panelRef}
             data-label-occluder
-            className={`glass scroll-thin fixed top-[68px] z-50 max-h-[calc(100dvh-12rem)] w-[340px] overflow-y-auto rounded-[var(--radius-outer)] p-3.5 ${cardOpen ? 'right-[400px]' : 'right-3'}`}
+            className={`glass scroll-thin w-[340px] overflow-y-auto rounded-[var(--radius-outer)] p-3.5 ${popoverPlacement(cardOpen)}`}
             role="dialog"
             aria-label="Keyboard shortcuts and help"
             data-testid="help-sheet"

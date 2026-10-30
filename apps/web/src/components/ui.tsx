@@ -120,6 +120,16 @@ export function Spinner({ label = 'Loading' }: { label?: string }) {
   );
 }
 
+/**
+ * Placement of the top bar's popovers (Layers, Help): under the bar on the right, left of the
+ * context card when it is open. Phones have no card (the bottom sheet replaces it, and Layers
+ * is one of its tabs there), so Help — opened with "?" — stays under the bar, fits the screen
+ * and ends above the timeline (84 px plus the ~104 px navigator).
+ */
+export function popoverPlacement(cardOpen: boolean): string {
+  return `fixed right-3 top-[68px] z-50 max-h-[max(9rem,calc(100dvh-264px))] max-w-[calc(100vw-1.5rem)] md:max-h-[calc(100dvh-12rem)] ${cardOpen ? 'md:right-[400px]' : ''}`;
+}
+
 export type IconName =
   | 'search'
   | 'sparkle'

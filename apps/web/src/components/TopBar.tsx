@@ -13,7 +13,7 @@ import { useOhmFlags, useOhmIndex } from '../hooks/useData';
 import { useMediaQuery } from '../hooks/useMedia';
 import { api } from '../lib/api';
 import { showCountry } from '../lib/countries';
-import { useAppStore } from '../state/store';
+import { sheetTabOpen, useAppStore } from '../state/store';
 import { HelpSheet } from './HelpSheet';
 import { LayerMenu } from './LayerMenu';
 import { Badge, Icon } from './ui';
@@ -288,13 +288,16 @@ export function SearchBox({
 export function TopBar({ mobile }: { mobile: boolean }) {
   const setAssistantOpen = useAppStore((s) => s.setAssistantOpen);
   const assistantOpen = useAppStore((s) => s.assistantOpen);
-  const setSheet = useAppStore((s) => s.setSheet);
-  const setSheetExpanded = useAppStore((s) => s.setSheetExpanded);
+  // Phones: the buttons are the bottom sheet's tabs (Search, Ask AI, Layers, Events); the one
+  // whose tab is open is highlighted, and tapping it again closes the sheet.
+  const toggleSheetTab = useAppStore((s) => s.toggleSheetTab);
+  const searchOpen = useAppStore((s) => sheetTabOpen(s, 'search'));
+  const aiOpen = useAppStore((s) => sheetTabOpen(s, 'assistant'));
+  const eventsOpen = useAppStore((s) => sheetTabOpen(s, 'events'));
   const cardOpen = useAppStore((s) => s.cardOpen);
   const setCardOpen = useAppStore((s) => s.setCardOpen);
   const selected = useAppStore((s) => s.selectedEventId);
   const country = useAppStore((s) => s.selectedCountry);
-  const sheetExpanded = useAppStore((s) => s.sheetExpanded);
   const wide = useMediaQuery('(min-width: 1024px)');
   const cardLabel = assistantOpen
     ? 'Assistant'
@@ -303,7 +306,8 @@ export function TopBar({ mobile }: { mobile: boolean }) {
       : selected
         ? 'Event'
         : 'Events';
-  const cardShown = mobile ? sheetExpanded : cardOpen;
+  const cardShown = mobile ? eventsOpen : cardOpen;
+  const aiShown = mobile ? aiOpen : assistantOpen;
 
   return (
     <header className="pointer-events-none absolute left-3 right-3 top-3 z-30 flex items-center justify-between gap-2">
@@ -331,8 +335,13 @@ export function TopBar({ mobile }: { mobile: boolean }) {
         {mobile && (
           <button
             type="button"
-            onClick={() => setSheet('search', true)}
-            className="grid h-9 w-9 place-items-center rounded-full text-white/70 transition-colors hover:bg-white/[0.08] hover:text-white"
+            onClick={() => toggleSheetTab('search')}
+            aria-pressed={searchOpen}
+            className={`grid h-9 w-9 place-items-center rounded-full transition-colors ${
+              searchOpen
+                ? 'bg-white/[0.12] text-white'
+                : 'text-white/70 hover:bg-white/[0.08] hover:text-white'
+            }`}
             aria-label="Search"
           >
             <Icon name="search" className="h-[18px] w-[18px]" />
@@ -340,10 +349,11 @@ export function TopBar({ mobile }: { mobile: boolean }) {
         )}
         <button
           type="button"
-          onClick={() => (mobile ? setSheet('assistant', true) : setAssistantOpen(!assistantOpen))}
-          aria-pressed={!mobile ? assistantOpen : undefined}
+          onClick={() => (mobile ? toggleSheetTab('assistant') : setAssistantOpen(!assistantOpen))}
+          aria-pressed={aiShown}
+          aria-label="Ask AI"
           className={`flex h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] transition-colors ${
-            !mobile && assistantOpen
+            aiShown
               ? 'bg-white/[0.12] text-white'
               : 'text-white/70 hover:bg-white/[0.08] hover:text-white'
           }`}
@@ -371,10 +381,7 @@ export function TopBar({ mobile }: { mobile: boolean }) {
         <button
           type="button"
           onClick={() => {
-            if (mobile) {
-              setSheetExpanded(!sheetExpanded);
-              return;
-            }
+            if (mobile) return toggleSheetTab('events');
             // With the assistant open, the first click returns the card to Events instead of
             // merely hiding it; otherwise the card could never leave the chat.
             if (assistantOpen && cardOpen) {
@@ -386,6 +393,7 @@ export function TopBar({ mobile }: { mobile: boolean }) {
           }}
           aria-expanded={cardShown}
           aria-controls={mobile ? 'bottom-sheet' : 'context-card'}
+          aria-label={cardLabel}
           className={`flex h-9 items-center gap-1.5 rounded-full px-2.5 text-[12.5px] transition-colors ${
             cardShown
               ? 'bg-white/[0.12] text-white'

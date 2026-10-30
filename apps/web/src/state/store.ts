@@ -14,7 +14,7 @@ import {
 import type { QualityPreference, QualityTier } from '../perf/tiers';
 
 export type Mode = 'live' | 'historical';
-export type SheetView = 'events' | 'detail' | 'assistant' | 'search';
+export type SheetView = 'events' | 'detail' | 'assistant' | 'search' | 'layers';
 
 export interface CameraState {
   lat: number;
@@ -89,6 +89,8 @@ interface AppState {
   selectEvent: (id: string | null) => void;
   selectCountry: (c: CountrySelection | null) => void;
   setSheet: (v: SheetView, expanded?: boolean) => void;
+  /** Phones: a top-bar button opens its tab of the bottom sheet, or closes the sheet again. */
+  toggleSheetTab: (v: SheetView) => void;
   setSheetExpanded: (v: boolean) => void;
   setAssistantOpen: (v: boolean) => void;
   setCardOpen: (v: boolean) => void;
@@ -132,6 +134,14 @@ function saveFlag(key: string, on: boolean): void {
   } catch {
     /* storage unavailable */
   }
+}
+
+/** Phones: whether the bottom sheet is open on a tab (event and country details count as Events). */
+export function sheetTabOpen(
+  s: { sheet: SheetView; sheetExpanded: boolean },
+  v: SheetView,
+): boolean {
+  return s.sheetExpanded && (s.sheet === v || (v === 'events' && s.sheet === 'detail'));
 }
 
 let flySeq = 0;
@@ -198,6 +208,15 @@ export const useAppStore = create<AppState>()(
       })),
     setSheet: (sheet, expanded) =>
       set((s) => ({ sheet, sheetExpanded: expanded ?? s.sheetExpanded })),
+    // Each button has its own tab, so the panel button no longer reopens whatever tab (e.g.
+    // Layers) was showing last; closing returns the sheet to the events.
+    toggleSheetTab: (v) =>
+      set((s) => {
+        if (sheetTabOpen(s, v))
+          return { sheet: s.sheet === 'detail' ? 'detail' : 'events', sheetExpanded: false };
+        const detail = v === 'events' && (s.selectedEventId || s.selectedCountry);
+        return { sheet: detail ? 'detail' : v, sheetExpanded: true };
+      }),
     setSheetExpanded: (sheetExpanded) => set({ sheetExpanded }),
     setAssistantOpen: (assistantOpen) => set({ assistantOpen }),
     setCardOpen: (cardOpen) => set({ cardOpen }),
