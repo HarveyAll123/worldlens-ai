@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { utcMs } from '@worldlens/shared';
 import { useAppStore } from '../state/store';
-import { resolutionForIso, runActions, toSteps, validateActions } from './actionExecutor';
+import {
+  goToTourStep,
+  resolutionForIso,
+  runActions,
+  toSteps,
+  validateActions,
+} from './actionExecutor';
 
 describe('AI action executor', () => {
   beforeEach(() => {
@@ -42,6 +48,25 @@ describe('AI action executor', () => {
     const tour = useAppStore.getState().tour!;
     expect(tour.steps).toHaveLength(2);
     expect(useAppStore.getState().selectedEventId).toBe('hist-saar-referendum-1935');
+  });
+
+  it('hands the context card to an event the answer opens, not to later tour steps', () => {
+    const s = useAppStore.getState();
+    s.setAssistantOpen(true);
+    runActions([{ tool: 'return_to_live', args: {} }]);
+    expect(useAppStore.getState().assistantOpen).toBe(true);
+    runActions([{ tool: 'open_event', args: { event_id: 'hist-anschluss' } }]);
+    expect(useAppStore.getState().assistantOpen).toBe(false);
+
+    s.setAssistantOpen(true);
+    runActions([
+      { tool: 'set_time', args: { date: '1933' } },
+      { tool: 'set_time', args: { date: '1938-03-12' } },
+      { tool: 'open_event', args: { event_id: 'hist-saar-referendum-1935' } },
+    ]);
+    goToTourStep(1);
+    expect(useAppStore.getState().selectedEventId).toBe('hist-saar-referendum-1935');
+    expect(useAppStore.getState().assistantOpen).toBe(true);
   });
 
   it('opens Take Action review only (never pays)', () => {

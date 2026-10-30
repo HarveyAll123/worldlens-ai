@@ -20,7 +20,7 @@ test.describe('globe, time and events', () => {
     const slider = page.getByTestId('timeline-track');
     await slider.focus();
     await page.keyboard.press('Home');
-    await expect(page.getByTestId('historical-status')).toContainText('HISTORICAL MODE');
+    await expect(page.getByTestId('historical-status')).toContainText('Historical');
     await expect(page.getByTestId('historical-time')).toHaveText('1800');
     await page.keyboard.press('ArrowLeft');
     await page.keyboard.press('ArrowLeft');
@@ -106,9 +106,11 @@ test.describe('AI assistant (offline fallback — no API key in CI)', () => {
     await page.getByTestId('open-assistant').click();
     await page.getByTestId('assistant-input').fill('What is happening near Taiwan?');
     await page.getByTestId('assistant-send').click();
-    await expect(page.getByTestId('assistant-reply')).toContainText('LIVE');
-    await expect(page.getByTestId('live-status')).toBeVisible();
     await expect(page.getByTestId('event-title')).toContainText('Taiwan');
+    await expect(page.getByTestId('live-status')).toBeVisible();
+    // The opened event takes over the context card; Ask AI brings the conversation back.
+    await page.getByTestId('open-assistant').click();
+    await expect(page.getByTestId('assistant-reply')).toContainText('LIVE');
   });
 
   test('AI failure path still answers (offline assistant notice)', async ({ page }) => {
