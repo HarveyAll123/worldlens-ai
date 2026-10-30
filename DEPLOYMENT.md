@@ -17,9 +17,9 @@ npx wrangler secret put INGEST_TOKEN
 npx wrangler deploy
 ```
 
-Smoke test: `curl https://<worker>/api/health`. The dry-run bundle is 2257 KiB raw / 446 KiB gzip (the Neon driver adds ~218 KB).
+Smoke test: `curl https://<worker>/api/health`. The dry-run bundle measured on 2026-10-30 is **3529 KiB raw / 715 KiB gzip**; before the RSS provider it was 3516 KiB raw / 712 KiB gzip, so RSS adds **13.1 KiB raw / 3.7 KiB gzip** (no new dependency). The Neon driver adds ~218 KB. The older 2257 / 446 figures in this file no longer match the dependency tree; re-measure after dependency changes.
 
-Manual ingestion: `curl -X POST -H "Authorization: Bearer $INGEST_TOKEN" https://<worker>/api/ingest/run`.
+Manual ingestion: `curl -X POST -H "Authorization: Bearer $INGEST_TOKEN" https://<worker>/api/ingest/run` — covers GDELT and RSS and returns per-source counts (fetched, kept, failed, usedFallback). The `*/15` cron runs both in one ingestion; the last-good batch per source (12 h, isolate memory) is best-effort and resets when the isolate is recycled.
 
 ## 2. Web (Pages)
 

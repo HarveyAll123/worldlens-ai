@@ -6,10 +6,12 @@ import { AnthropicProvider } from './ai/anthropic';
 import { OpenAiCompatibleProvider } from './ai/openai';
 import { AiBudget } from './ai/budget';
 import { NullAiProvider, type AiProvider } from './ai/provider';
+import type { CombinedRun, FallbackStore } from './pipeline/ingest';
 import type { FetchLike } from './lib/http';
 import { SingleFlight } from './lib/cache';
 import { HistoricalBordersProvider } from './providers/borders';
 import { GdeltProvider, type NewsProvider } from './providers/gdelt';
+import { RssProvider } from './providers/rss';
 import { ProviderHealth } from './providers/health';
 import { WikipediaProvider } from './providers/wikipedia';
 import { PayPalClient } from './payments/paypal-client';
@@ -25,11 +27,14 @@ export interface AppDeps {
   wikipedia: WikipediaProvider;
   borders: HistoricalBordersProvider;
   news: NewsProvider | null;
+  rss: RssProvider | null;
+  /** Last good normalised batch per provider (isolate memory; best-effort on the Worker). */
+  ingestFallback: FallbackStore;
   ai: AiProvider;
   budget: AiBudget;
   payments: PaymentService;
   paymentStore: PaymentStore;
-  ingestFlight: SingleFlight<void>;
+  ingestFlight: SingleFlight<CombinedRun | null>;
   now: () => number;
 }
 
@@ -71,6 +76,7 @@ export function createDeps(env: Env, o: DepOverrides = {}): AppDeps {
         : 'DATABASE_URL must be a Neon connection string (host *.neon.tech) in the Worker; other PostgreSQL servers work only with the Node dev server (pnpm dev:node).'
       : null;
   health.register('gdelt', config.gdelt.enabled);
+  health.register('rss', config.rss.enabled);
   health.register('wikipedia', true);
   health.register('wikimedia-commons', true);
   health.register('historical-basemaps', true);
@@ -136,11 +142,13 @@ export function createDeps(env: Env, o: DepOverrides = {}): AppDeps {
       env.GEO_CACHE,
     ),
     news: config.gdelt.enabled ? new GdeltProvider(fetchImpl) : null,
+    rss: config.rss.enabled ? new RssProvider({ fetchImpl }) : null,
+    ingestFallback: new Map(),
     ai,
     budget,
     payments,
     paymentStore,
-    ingestFlight: new SingleFlight<void>(),
+    ingestFlight: new SingleFlight<CombinedRun | null>(),
     now,
   };
 }

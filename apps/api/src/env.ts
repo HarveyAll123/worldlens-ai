@@ -27,6 +27,8 @@ export interface Env {
   DATABASE_URL?: string;
   GDELT_ENABLED?: string;
   GDELT_QUERIES?: string;
+  /** Named-publisher RSS ingestion. Default off; set "true" to enable. */
+  RSS_ENABLED?: string;
   HISTORICAL_BASEMAPS_BASE_URL?: string;
   WIKIPEDIA_USER_AGENT?: string;
   ALLOWED_ORIGINS?: string;
@@ -57,6 +59,7 @@ const ConfigSchema = z.object({
   }),
   database: z.object({ url: z.string().nullable() }),
   gdelt: z.object({ enabled: z.boolean(), queries: z.array(z.string()) }),
+  rss: z.object({ enabled: z.boolean() }),
   basemapsBaseUrl: z.string(),
   wikipediaUserAgent: z.string(),
   allowedOrigins: z.array(z.string()),
@@ -105,6 +108,7 @@ export function loadConfig(env: Env): Config {
       requestsPerMinute: Math.max(1, Math.floor(Number(blank(env.AI_REQUESTS_PER_MINUTE) ?? '8'))),
     },
     database: { url: blank(env.DATABASE_URL) },
+    rss: { enabled: (blank(env.RSS_ENABLED) ?? 'false').toLowerCase() === 'true' },
     gdelt: {
       enabled: (blank(env.GDELT_ENABLED) ?? 'true') !== 'false',
       queries:

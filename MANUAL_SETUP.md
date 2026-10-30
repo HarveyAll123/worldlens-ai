@@ -65,7 +65,7 @@ Local check of the migrations without Neon: `pnpm test:db` (needs PostgreSQL + P
 2. Optional R2 border cache: `npx wrangler r2 bucket create worldlens-geo`, then uncomment the `[[r2_buckets]]` block in `apps/api/wrangler.toml`.
 3. Set secrets: `cd apps/api && npx wrangler secret put PAYPAL_CLIENT_SECRET` (repeat for `PAYPAL_CLIENT_ID`, `PAYPAL_WEBHOOK_ID`, `ANTHROPIC_API_KEY`, `DATABASE_URL`, `INGEST_TOKEN`).
 4. Edit `[vars]` in `wrangler.toml`: `ALLOWED_ORIGINS`, `PUBLIC_APP_URL`.
-5. `npx wrangler deploy`. The cron trigger (`*/30 * * * *`) runs news ingestion.
+5. `npx wrangler deploy`. The cron trigger (`*/15 * * * *`) runs GDELT and RSS in one ingestion.
 6. Recommended: add a Cloudflare WAF rate-limiting rule for `/api/ai/*` and `/api/payments/*` (the in-Worker limiter is per isolate).
 
 ## Anthropic
@@ -94,6 +94,15 @@ key is present; set it explicitly to override. `AI_BASE_URL` must include the ve
 defaults to the OpenCode Go URL. `x-opencode-session` is sent automatically (`AI_SESSION_ID`
 overrides the per-process id). Check: `GET /api/health` shows `ai.available: true`, models
 `deepseek-v4.1-flash`, and provider `opencode`. Without any key the offline assistant is used.
+
+## RSS news (no key required)
+
+Off by default. Set `RSS_ENABLED=true` in `apps/api/.dev.vars` (or the Worker `[vars]`) to ingest
+the fixed publisher list in `apps/api/src/providers/rss.ts`. No credentials are needed and no
+URL is configurable at runtime. The twelve feeds were fetched successfully from this environment
+on 2026-10-29; CBC and NHK were tried and rejected (no response / HTML response). GDELT and RSS
+run together every 15 minutes, and `POST /api/ingest/run` covers both and reports per-source
+counts.
 
 ## PayPal Developer Dashboard and Sandbox
 

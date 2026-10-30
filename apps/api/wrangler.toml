@@ -17,9 +17,9 @@ GDELT_ENABLED = "true"
 ALLOWED_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 PUBLIC_APP_URL = "http://localhost:5173"
 
-# News ingestion every 30 minutes (writes to Neon when DATABASE_URL is set).
+# News ingestion every 15 minutes (GDELT + RSS in one run; writes to Neon when DATABASE_URL is set).
 [triggers]
-crons = ["*/30 * * * *"]
+crons = ["*/15 * * * *"]
 
 # Optional R2 bucket for cached, simplified border geometry. Create it first:
 #   wrangler r2 bucket create worldlens-geo

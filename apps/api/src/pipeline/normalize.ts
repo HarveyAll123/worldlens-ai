@@ -8,9 +8,12 @@ import {
 import { sourceForDomain } from '@worldlens/shared/data';
 import { fnv1a64 } from '../lib/cache';
 import { parseSeenDate, type GdeltArticle } from '../providers/gdelt';
+import type { RssItem } from '../providers/rss';
 
 export interface NormalizedArticle {
   id: string;
+  /** Which provider supplied the record: GDELT discovery or a named RSS publisher. */
+  origin: 'gdelt' | 'rss';
   url: string;
   headline: string;
   publishedAtMs: number;
@@ -21,6 +24,8 @@ export interface NormalizedArticle {
   imageUrl: string | null;
   source: NewsSource;
   duplicates: number;
+  /** Short provider excerpt (RSS only); GDELT gives none. */
+  snippet?: string;
 }
 
 const TRACKING_PARAMS = /^(utm_|fbclid|gclid|mc_|ref$|ref_src|cmpid|ncid|ocid|smid|ito)/i;
@@ -42,7 +47,7 @@ export function canonicalizeUrl(raw: string): string | null {
   return u.toString();
 }
 
-function unknownSource(domain: string, country: string | null): NewsSource {
+export function unknownSource(domain: string, country: string | null): NewsSource {
   return {
     id: `src-auto-${fnv1a64(domain).slice(0, 10)}`,
     name: domain,
@@ -77,6 +82,7 @@ export function normalizeGdelt(raw: GdeltArticle[]): NormalizedArticle[] {
       a.socialimage && SafeUrlSchema.safeParse(a.socialimage).success ? a.socialimage : null;
     out.push({
       id: `art-${fnv1a64(url)}`,
+      origin: 'gdelt',
       url,
       headline,
       publishedAtMs,
@@ -86,6 +92,39 @@ export function normalizeGdelt(raw: GdeltArticle[]): NormalizedArticle[] {
       imageUrl: image,
       source: sourceForDomain(domain) ?? unknownSource(domain, country),
       duplicates: 0,
+    });
+  }
+  return out;
+}
+
+/** RSS items carry no coordinates; the pipeline locates them from the headline later. */
+export function normalizeRss(items: RssItem[], nowMs: number): NormalizedArticle[] {
+  const out: NormalizedArticle[] = [];
+  for (const item of items) {
+    const url = canonicalizeUrl(item.link);
+    const headline = sanitizeText(item.title, 400);
+    if (!url || !headline) continue;
+    const publishedAtMs = item.published ? Date.parse(item.published) : Number.NaN;
+    // Never substitute the fetch time: an item without a usable date is dropped.
+    if (!Number.isFinite(publishedAtMs)) continue;
+    if (publishedAtMs > nowMs + 86_400_000) continue;
+    const snippet = item.summary
+      ? sanitizeText(item.summary.replace(/<[^>]*>/g, ' '), 300) || undefined
+      : undefined;
+    const domain = item.feed.domain.toLowerCase();
+    out.push({
+      id: `art-${fnv1a64(url)}`,
+      origin: 'rss',
+      url,
+      headline,
+      publishedAtMs,
+      domain,
+      language: item.feed.language || null,
+      sourceCountry: item.feed.country || null,
+      imageUrl: null,
+      source: sourceForDomain(domain) ?? unknownSource(domain, item.feed.country),
+      duplicates: 0,
+      ...(snippet ? { snippet } : {}),
     });
   }
   return out;

@@ -154,6 +154,12 @@ function SourceCoverage({ data }: { data: SourcesResponse }) {
                   {src?.name ?? a.sourceId}
                   {src?.nationalPerspective && (
                     <span className="text-white/35"> · {src.nationalPerspective}</span>
+                  )}
+                  {a.origin && (
+                    <span className="text-white/35">
+                      {' '}
+                      · via {a.origin === 'rss' ? 'RSS' : 'GDELT'}
+                    </span>
                   )}{' '}
                   · {relativeTime(a.publishedAt)}
                 </span>

@@ -8,6 +8,7 @@ The WorldLens **code** is MIT-licensed. Data, text and media come from third par
 - Summaries are short and **derived** (written by WorldLens's AI tier from headlines, labelled as AI-generated), not copied.
 - Publisher images (`og:image`/GDELT `socialimage`) are **hotlinked, never cached** (`cachingPermitted: false`), credited to the publisher, and link back to the article. Remove them if a publisher objects.
 - GDELT is used as a discovery index under its open-data terms; it is not treated as ground truth.
+- RSS: WorldLens fetches a fixed list of publisher feeds and stores only the headline, a ≤300-character snippet, the canonical URL, the publisher and the publication time. Links point to the publisher; nothing is republished, no images are copied from RSS, and no feed content is rendered as HTML. Each feed remains the publisher's content under its own terms; those terms were **not** reviewed individually for this build, and a feed can be removed on request.
 
 ## DEMO dataset
 

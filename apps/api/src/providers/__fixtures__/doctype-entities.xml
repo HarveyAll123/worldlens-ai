@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<!DOCTYPE rss [
+  <!ENTITY xxe SYSTEM "file:///etc/passwd">
+  <!ENTITY hello "EXPANDED">
+]>
+<rss version="2.0"><channel>
+  <item>
+    <title>Report &xxe; and &hello; stays literal</title>
+    <link>https://entities.example.org/a</link>
+    <pubDate>Tue, 14 Oct 2026 09:00:00 GMT</pubDate>
+  </item>
+</channel></rss>

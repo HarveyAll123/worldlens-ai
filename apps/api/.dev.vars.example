@@ -23,3 +23,6 @@ DATABASE_URL=
 # owner role, direct (unpooled) connection string.
 MIGRATION_DATABASE_URL=
 INGEST_TOKEN=
+
+# Named-publisher RSS feeds (fixed list in src/providers/rss.ts, no key). Default off.
+RSS_ENABLED=false

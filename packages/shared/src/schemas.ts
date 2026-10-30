@@ -252,6 +252,8 @@ export const ArticleSchema = z.object({
   /** Short lede/snippet the provider gave us (never the full article). */
   snippet: z.string().max(600).optional(),
   imageUrl: SafeUrlSchema.optional(),
+  /** Which provider supplied the record. Absent for rows read back without it. */
+  origin: z.enum(['gdelt', 'rss']).optional(),
   isDemo: z.boolean().default(false),
 });
 export type Article = z.infer<typeof ArticleSchema>;
