@@ -28,14 +28,16 @@ describe('timeline overview', () => {
   });
 
   it('keeps the overview when a year is picked on it', () => {
-    expect(viewAfter('century', 'year', 'historical')).toBe('century');
-    expect(viewAfter('century', 'day', 'live')).toBe('century');
+    expect(viewAfter('century', 'year')).toBe('century');
   });
 
   it('follows other resolution changes (buttons, search, AI)', () => {
-    expect(viewAfter('century', 'day', 'historical')).toBe('day');
-    expect(viewAfter('century', 'month', 'historical')).toBe('month');
-    expect(viewAfter('year', 'year', 'historical')).toBe('year');
-    expect(viewAfter('day', 'year', 'historical')).toBe('year');
+    expect(viewAfter('century', 'day')).toBe('day');
+    expect(viewAfter('century', 'month')).toBe('month');
+    expect(viewAfter('year', 'year')).toBe('year');
+    expect(viewAfter('day', 'year')).toBe('year');
+    // The D button in LIVE used to land back on the overview.
+    expect(viewAfter('hour', 'day')).toBe('day');
+    expect(viewAfter('month', 'day')).toBe('day');
   });
 });
