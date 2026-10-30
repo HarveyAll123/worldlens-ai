@@ -160,6 +160,12 @@ export const EventSummarySchema = EventSchema.pick({
 });
 export type EventSummary = z.infer<typeof EventSummarySchema>;
 
+/**
+ * Most events one list request may ask for. Every globe quality tier must stay within it
+ * (HIGH draws 800); the database's events_in_window caps at the same number.
+ */
+export const MAX_EVENTS_PER_REQUEST = 1000;
+
 /* ------------------------------------------------------------------ sources & perspectives */
 
 export const POLITICAL_RATINGS = [

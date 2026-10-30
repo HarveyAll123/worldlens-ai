@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type Anthropic from '@anthropic-ai/sdk';
-import { utcMs, type ClientAction } from '@worldlens/shared';
+import { MAX_EVENTS_PER_REQUEST, utcMs, type ClientAction } from '@worldlens/shared';
 import { createApp } from './app';
 import { createDeps } from './deps';
 import type { Env } from './env';
@@ -157,6 +157,15 @@ describe('events', () => {
     const ids = body.events.map((e) => e.id);
     expect(ids).toContain('hist-german-surrender-1945');
     expect(ids).not.toContain('hist-hiroshima-nagasaki');
+  });
+  it('serves as many events as the highest quality tier asks for, and no more', async () => {
+    const { json } = setup();
+    const url = '/api/events?mode=historical&t=1916&res=year&limit=';
+    // HIGH asked for 800 while the API stopped at 500: every request failed on fast machines.
+    const most = await json<{ events: unknown[] }>(`${url}${MAX_EVENTS_PER_REQUEST}`);
+    expect(most.status).toBe(200);
+    expect(most.body.events.length).toBeGreaterThan(0);
+    expect((await json(`${url}${MAX_EVENTS_PER_REQUEST + 1}`)).status).toBe(400);
   });
   it('returns sources with perspectives; real ratings stay UNRATED', async () => {
     const { json } = setup();
