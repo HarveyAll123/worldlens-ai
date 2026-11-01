@@ -4,13 +4,115 @@
  * reliable about where it happened. Unresolvable stories stay unlocated (not on the globe).
  */
 import type { EventLocation } from '@worldlens/shared';
-import { countryByIso3, normalizeName } from '@worldlens/shared/geo-data';
+import { COUNTRIES, countryByIso3, normalizeName } from '@worldlens/shared/geo-data';
+import type { PlaceHint } from '../providers/gdelt';
 import { INSTITUTION_PLACES, type Entities } from './entities';
 
 export interface LocationCandidate {
   key: string;
   location: EventLocation;
   score: number;
+}
+
+/** Rough distance in km (equirectangular; fine for "is this the same place"). */
+function distanceKm(a: { lat: number; lon: number }, b: { lat: number; lon: number }): number {
+  const x = (b.lon - a.lon) * Math.cos(((a.lat + b.lat) / 2) * (Math.PI / 180));
+  return Math.hypot(x, b.lat - a.lat) * 111.2;
+}
+
+/** The country whose box contains a point, nearest label first (no outlines are bundled). */
+function countryNear(lat: number, lon: number) {
+  let best: (typeof COUNTRIES)[number] | null = null;
+  let bestD = Infinity;
+  for (const c of COUNTRIES) {
+    const [w, s, e, n] = c.bbox;
+    if (lon < w || lon > e || lat < s || lat > n) continue;
+    const [lx, ly] = c.label ?? [(w + e) / 2, (s + n) / 2];
+    const d = distanceKm({ lat, lon }, { lat: ly, lon: lx });
+    if (d < bestD) [best, bestD] = [c, d];
+  }
+  return best;
+}
+
+/**
+ * "Place, Country" from GDELT's "Place, Province, Country": its provinces outside the US are
+ * sometimes wrong ("Turbat, Punjab, Pakistan" — Turbat is in Balochistan), US states are
+ * reliable ("Kasilof, Alaska"). Repeats and "(General)" parts are dropped.
+ */
+function cleanName(name: string): string {
+  const parts = [...new Set(name.split(',').map((p) => p.trim()))].filter(
+    (p) => p && !p.endsWith('(General)'),
+  );
+  if (parts.length <= 2) return parts.join(', ');
+  const country = parts[parts.length - 1]!;
+  return country === 'United States' ? `${parts[0]}, ${parts[1]}` : `${parts[0]}, ${country}`;
+}
+
+/**
+ * Candidates from places the provider geocoded and the headline names (GDELT GKG), next to
+ * those recognised in the headline (`known`). Towns and regions the headline lookup already
+ * found keep its (curated) naming; others score just above them, so "New Mexico" beats the
+ * country "Mexico". A country hint ("German" → Germany) votes for our own country entry.
+ */
+export function hintCandidates(
+  hints: PlaceHint[] | undefined,
+  known: LocationCandidate[],
+): LocationCandidate[] {
+  const out: LocationCandidate[] = [];
+  for (const h of hints ?? []) {
+    if (h.precision === 'country') {
+      const c = countryNear(h.lat, h.lon);
+      if (!c) continue;
+      const [lon, lat] = c.label ?? [(c.bbox[0] + c.bbox[2]) / 2, (c.bbox[1] + c.bbox[3]) / 2];
+      out.push({
+        key: `country:${c.iso3}`,
+        score: 0.6,
+        location: {
+          name: c.name,
+          lat,
+          lon,
+          precision: 'country',
+          countryCode: c.iso3,
+          confidence: 0.6,
+        },
+      });
+      continue;
+    }
+    const same = known.some(
+      (k) => k.location.precision !== 'country' && distanceKm(k.location, h) < 75,
+    );
+    if (same) continue;
+    const name = cleanName(h.name);
+    out.push({
+      key: `${h.precision === 'city' ? 'place' : 'region'}:${normalizeName(name.split(',')[0]!)}`,
+      score: 0.85,
+      location: {
+        name,
+        lat: h.lat,
+        lon: h.lon,
+        precision: h.precision,
+        countryCode: countryNear(h.lat, h.lon)?.iso3,
+        confidence: 0.8,
+      },
+    });
+  }
+  return out;
+}
+
+/**
+ * Headline candidates plus hint candidates, without headline matches that are only part of a
+ * longer hinted name ("Mexico" in "New Mexico", "Guinea" in "Papua New Guinea").
+ */
+export function withHints(
+  hints: PlaceHint[] | undefined,
+  fromHeadline: LocationCandidate[],
+): LocationCandidate[] {
+  const longer = (hints ?? []).map((h) => ` ${normalizeName(h.name.split(',')[0]!)} `);
+  const kept = fromHeadline.filter((c) => {
+    const own = normalizeName(c.location.name.split(',')[0]!);
+    return !longer.some((l) => l !== ` ${own} ` && l.includes(` ${own} `));
+  });
+  return [...hintCandidates(hints, kept), ...kept];
 }
 
 export function locationCandidates(e: Entities): LocationCandidate[] {

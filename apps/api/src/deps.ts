@@ -11,6 +11,7 @@ import type { FetchLike } from './lib/http';
 import { SingleFlight } from './lib/cache';
 import { HistoricalBordersProvider } from './providers/borders';
 import { GdeltProvider, type NewsProvider } from './providers/gdelt';
+import { GdeltFilesProvider } from './providers/gdelt-files';
 import { RssProvider } from './providers/rss';
 import { ProviderHealth } from './providers/health';
 import { WikipediaProvider } from './providers/wikipedia';
@@ -26,7 +27,10 @@ export interface AppDeps {
   health: ProviderHealth;
   wikipedia: WikipediaProvider;
   borders: HistoricalBordersProvider;
+  /** GDELT DOC API (GDELT_SOURCE=api). */
   news: NewsProvider | null;
+  /** GDELT 15-minute GKG files (GDELT_SOURCE=files, the default). */
+  gdeltFiles: GdeltFilesProvider | null;
   rss: RssProvider | null;
   /** Last good normalised batch per provider (isolate memory; best-effort on the Worker). */
   ingestFallback: FallbackStore;
@@ -141,7 +145,12 @@ export function createDeps(env: Env, o: DepOverrides = {}): AppDeps {
       fetchImpl,
       env.GEO_CACHE,
     ),
-    news: config.gdelt.enabled ? new GdeltProvider(fetchImpl) : null,
+    news:
+      config.gdelt.enabled && config.gdelt.source === 'api' ? new GdeltProvider(fetchImpl) : null,
+    gdeltFiles:
+      config.gdelt.enabled && config.gdelt.source === 'files'
+        ? new GdeltFilesProvider(fetchImpl)
+        : null,
     rss: config.rss.enabled ? new RssProvider({ fetchImpl }) : null,
     ingestFallback: new Map(),
     ai,

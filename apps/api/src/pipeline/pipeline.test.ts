@@ -5,7 +5,7 @@ import { categorize } from './categorize';
 import { clusterArticles } from './cluster';
 import { extractEntities } from './entities';
 import { runIngestion } from './ingest';
-import { locationCandidates, resolveLocation } from './locate';
+import { locationCandidates, resolveLocation, withHints } from './locate';
 import { canonicalizeUrl, dedupeArticles, normalizeGdelt, normalizeRss } from './normalize';
 import type { RssItem } from '../providers/rss';
 
@@ -251,5 +251,44 @@ describe('normalizeRss', () => {
     );
     expect(a!.headline.length).toBeLessThanOrEqual(400);
     expect(a!.snippet!.length).toBeLessThanOrEqual(300);
+  });
+});
+
+describe('place hints from GDELT files', () => {
+  const locate = (headline: string, hints: Parameters<typeof withHints>[0]) =>
+    resolveLocation([withHints(hints, locationCandidates(extractEntities(headline)))]);
+
+  it('prefers a hinted place over a country inside its name', () => {
+    const where = locate('Competitive New Mexico House races draw big spending', [
+      { name: 'New Mexico, United States', lat: 34.84, lon: -106.24, precision: 'region' },
+    ]);
+    expect(where?.name).toBe('New Mexico, United States');
+  });
+
+  it('names country hints from our own country list', () => {
+    const where = locate('Bulgarians vote in presidential runoff election', [
+      { name: 'Bulgarians', lat: 43, lon: 25, precision: 'country' },
+    ]);
+    expect(where).toMatchObject({ name: 'Bulgaria', countryCode: 'BGR', precision: 'country' });
+  });
+
+  it('names hinted towns "Town, Country" (US: "Town, State")', () => {
+    expect(
+      locate('Balochistan students protest in Turbat', [
+        { name: 'Turbat, Punjab, Pakistan', lat: 26.0, lon: 63.05, precision: 'city' },
+      ])?.name,
+    ).toBe('Turbat, Pakistan');
+    expect(
+      locate('M4.3 earthquake strikes near Kasilof', [
+        { name: 'Kasilof, Alaska, United States', lat: 60.34, lon: -151.27, precision: 'city' },
+      ])?.name,
+    ).toBe('Kasilof, Alaska');
+  });
+
+  it('keeps the headline lookup and its naming for a place it already knows', () => {
+    const where = locate('Israeli airstrikes in Gaza kill eight', [
+      { name: 'Gaza, Israel (General), Israel', lat: 31.42, lon: 34.33, precision: 'city' },
+    ]);
+    expect(where?.name).not.toMatch(/General/);
   });
 });

@@ -22,7 +22,18 @@ const GdeltArticleSchema = z.object({
   language: z.string().optional().nullable(),
   sourcecountry: z.string().optional().nullable(),
 });
-export type GdeltArticle = z.infer<typeof GdeltArticleSchema>;
+/** A place the article names, with coordinates, as GDELT's knowledge graph geocoded it. */
+export interface PlaceHint {
+  name: string;
+  lat: number;
+  lon: number;
+  precision: 'country' | 'region' | 'city';
+}
+
+export type GdeltArticle = z.infer<typeof GdeltArticleSchema> & {
+  /** GKG files only: places in the article that the headline also names. */
+  places?: PlaceHint[];
+};
 
 const GdeltResponseSchema = z.object({ articles: z.array(z.unknown()).optional() });
 
