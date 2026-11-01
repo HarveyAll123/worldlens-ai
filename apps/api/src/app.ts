@@ -38,11 +38,15 @@ type AppEnv = { Variables: { defer: Defer } };
 
 const LIVE_REFRESH_MS = 15 * 60_000;
 
-/** GDELT discovery: several spaced queries, merged into one batch for this source. */
+/**
+ * GDELT discovery. Default: the 15-minute GKG files (headlines matching the query terms);
+ * with GDELT_SOURCE=api, several spaced DOC API queries merged into one batch.
+ */
 function gdeltSource(deps: AppDeps): IngestionSource {
   return {
     name: 'gdelt',
     fetch: async () => {
+      if (deps.gdeltFiles) return deps.gdeltFiles.fetchLatest(deps.config.gdelt.queries);
       const all: unknown[] = [];
       const failures: Error[] = [];
       for (const [i, q] of deps.config.gdelt.queries.entries()) {
@@ -76,14 +80,14 @@ function rssSource(deps: AppDeps): IngestionSource {
 
 /** Refresh live news in the background (never blocks a request). */
 export function refreshLiveNews(deps: AppDeps, force = false): Promise<CombinedRun | null> {
-  if (!deps.news && !deps.rss) return Promise.resolve(null);
+  if (!deps.news && !deps.gdeltFiles && !deps.rss) return Promise.resolve(null);
   const status = deps.repo.liveNewsStatus();
   const stale =
     !status.lastIngestedAt || deps.now() - Date.parse(status.lastIngestedAt) > LIVE_REFRESH_MS;
   if (!force && !stale) return Promise.resolve(null);
   return deps.ingestFlight.run('live', async () => {
     const sources: IngestionSource[] = [];
-    if (deps.news) sources.push(gdeltSource(deps));
+    if (deps.news || deps.gdeltFiles) sources.push(gdeltSource(deps));
     if (deps.rss) sources.push(rssSource(deps));
     // One run, one merge, one replaceLiveNews: a story covered by both providers is one cluster.
     const { events, run } = await runCombinedIngestion({
@@ -211,7 +215,7 @@ export function createApp(deps: AppDeps, defaults: { defer?: Defer } = {}) {
       },
       ai: { available: deps.ai.available && !deps.budget.status().exhausted },
       paypal: deps.payments.publicConfig(),
-      news: { liveProvider: deps.news ? 'gdelt' : null },
+      news: { liveProvider: deps.news || deps.gdeltFiles ? 'gdelt' : null },
     });
   });
 
@@ -261,7 +265,7 @@ export function createApp(deps: AppDeps, defaults: { defer?: Defer } = {}) {
         q.mode === 'live'
           ? {
               ...deps.repo.liveNewsStatus(),
-              provider: deps.news ? 'gdelt' : null,
+              provider: deps.news || deps.gdeltFiles ? 'gdelt' : null,
               state: deps.health.get('gdelt').state,
             }
           : undefined,

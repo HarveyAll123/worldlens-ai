@@ -7,7 +7,7 @@ import {
 } from '@worldlens/shared';
 import { sourceForDomain } from '@worldlens/shared/data';
 import { fnv1a64 } from '../lib/cache';
-import { parseSeenDate, type GdeltArticle } from '../providers/gdelt';
+import { parseSeenDate, type GdeltArticle, type PlaceHint } from '../providers/gdelt';
 import type { RssItem } from '../providers/rss';
 
 export interface NormalizedArticle {
@@ -26,6 +26,8 @@ export interface NormalizedArticle {
   duplicates: number;
   /** Short provider excerpt (RSS only); GDELT gives none. */
   snippet?: string;
+  /** Geocoded places the headline names (GDELT GKG files); preferred when locating. */
+  placeHints?: PlaceHint[];
 }
 
 const TRACKING_PARAMS = /^(utm_|fbclid|gclid|mc_|ref$|ref_src|cmpid|ncid|ocid|smid|ito)/i;
@@ -92,6 +94,7 @@ export function normalizeGdelt(raw: GdeltArticle[]): NormalizedArticle[] {
       imageUrl: image,
       source: sourceForDomain(domain) ?? unknownSource(domain, country),
       duplicates: 0,
+      ...(a.places?.length ? { placeHints: a.places } : {}),
     });
   }
   return out;

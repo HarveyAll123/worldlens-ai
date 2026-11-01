@@ -27,6 +27,11 @@ export interface Env {
   DATABASE_URL?: string;
   GDELT_ENABLED?: string;
   GDELT_QUERIES?: string;
+  /**
+   * "files" (default): the 15-minute GKG files on data.gdeltproject.org, no rate limit.
+   * "api": the DOC 2.0 search API (rate-limited per IP; often HTTP 429 from shared addresses).
+   */
+  GDELT_SOURCE?: string;
   /** Named-publisher RSS ingestion. Default off; set "true" to enable. */
   RSS_ENABLED?: string;
   HISTORICAL_BASEMAPS_BASE_URL?: string;
@@ -58,7 +63,11 @@ const ConfigSchema = z.object({
     requestsPerMinute: z.number().int().positive(),
   }),
   database: z.object({ url: z.string().nullable() }),
-  gdelt: z.object({ enabled: z.boolean(), queries: z.array(z.string()) }),
+  gdelt: z.object({
+    enabled: z.boolean(),
+    queries: z.array(z.string()),
+    source: z.enum(['files', 'api']),
+  }),
   rss: z.object({ enabled: z.boolean() }),
   basemapsBaseUrl: z.string(),
   wikipediaUserAgent: z.string(),
@@ -116,6 +125,7 @@ export function loadConfig(env: Env): Config {
           ?.split('||')
           .map((q) => q.trim())
           .filter(Boolean) ?? DEFAULT_GDELT_QUERIES,
+      source: blank(env.GDELT_SOURCE)?.toLowerCase() === 'api' ? 'api' : 'files',
     },
     basemapsBaseUrl:
       blank(env.HISTORICAL_BASEMAPS_BASE_URL) ??

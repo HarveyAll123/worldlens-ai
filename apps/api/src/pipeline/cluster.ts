@@ -26,7 +26,7 @@ import {
 } from '@worldlens/shared';
 import { categorize, categoryAffinity } from './categorize';
 import { entityKeys, extractEntities, type Entities } from './entities';
-import { locationCandidates, resolveLocation, type LocationCandidate } from './locate';
+import { locationCandidates, resolveLocation, withHints, type LocationCandidate } from './locate';
 import type { NormalizedArticle } from './normalize';
 
 const SYNONYMS: Record<string, string> = {
@@ -105,7 +105,7 @@ export function buildFeatures(articles: NormalizedArticle[]): ArticleFeatures[] 
     const tokens = tokenLists[i]!;
     const entities = extractEntities(article.headline);
     const { specific, broad } = entityKeys(entities);
-    const candidates = locationCandidates(entities);
+    const candidates = withHints(article.placeHints, locationCandidates(entities));
     const { category, confidence } = categorize(article.headline);
     return {
       article,

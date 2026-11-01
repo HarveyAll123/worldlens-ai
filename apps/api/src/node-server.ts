@@ -76,6 +76,6 @@ serve({ fetch: app.fetch, port, hostname: '127.0.0.1' }, (info) => {
     ? pp.environment
     : `not configured (missing: ${missing.join(', ') || 'credentials'})`;
   console.info(
-    `[worldlens-api] http://127.0.0.1:${info.port}  ai=${deps.ai.available ? 'on' : 'offline'}  paypal=${ppStatus}  repo=${deps.repo.name}  gdelt=${deps.news ? 'on' : 'off'}`,
+    `[worldlens-api] http://127.0.0.1:${info.port}  ai=${deps.ai.available ? 'on' : 'offline'}  paypal=${ppStatus}  repo=${deps.repo.name}  gdelt=${deps.gdeltFiles ? 'files' : deps.news ? 'api' : 'off'}`,
   );
 });
