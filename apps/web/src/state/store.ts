@@ -54,12 +54,21 @@ export interface CountrySelection {
   ways: number[];
 }
 
+/** Events pinned to one spot, listed next to the marker that was clicked (PlacePicker). */
+export interface PlacePickerState {
+  ids: string[];
+  /** Click position in CSS pixels from the globe's top-left corner. */
+  x: number;
+  y: number;
+}
+
 interface AppState {
   mode: Mode;
   timeMs: number;
   resolution: Resolution;
   selectedEventId: string | null;
   selectedCountry: CountrySelection | null;
+  placePicker: PlacePickerState | null;
   sheet: SheetView;
   sheetExpanded: boolean;
   assistantOpen: boolean;
@@ -93,6 +102,7 @@ interface AppState {
   returnToLive: () => void;
   selectEvent: (id: string | null) => void;
   selectCountry: (c: CountrySelection | null) => void;
+  setPlacePicker: (p: PlacePickerState | null) => void;
   setSheet: (v: SheetView, expanded?: boolean) => void;
   /** Phones: a top-bar button opens its tab of the bottom sheet, or closes the sheet again. */
   toggleSheetTab: (v: SheetView) => void;
@@ -161,6 +171,7 @@ export const useAppStore = create<AppState>()(
     resolution: 'day',
     selectedEventId: null,
     selectedCountry: null,
+    placePicker: null,
     sheet: 'events',
     sheetExpanded: false,
     assistantOpen: false,
@@ -209,6 +220,7 @@ export const useAppStore = create<AppState>()(
         selectedCountry: id ? null : s.selectedCountry,
         sheet: id ? 'detail' : s.sheet === 'detail' && !s.selectedCountry ? 'events' : s.sheet,
       })),
+    setPlacePicker: (placePicker) => set({ placePicker }),
     selectCountry: (c) =>
       set((s) => ({
         selectedCountry: c,

@@ -16,6 +16,44 @@ export function selectAndFly(e: EventSummary): void {
   });
 }
 
+/**
+ * The text of an event row: a dim line (kind · date · Demo · Take action), the bright title,
+ * and a dim line with the place and source count — `place={false}` where a header names it.
+ */
+export function EventRowLines({ e, place = true }: { e: EventSummary; place?: boolean }) {
+  const t = temporalWithPrecision(e.time);
+  const sources =
+    e.kind === 'news' && e.sourceCount > 0
+      ? `${e.sourceCount} source${e.sourceCount === 1 ? '' : 's'}`
+      : null;
+  const footer = [place ? e.location.name : null, sources].filter(Boolean).join(' · ');
+  return (
+    <>
+      <span className="flex min-w-0 items-center gap-1.5 text-[10.5px] text-white/35">
+        <span className="text-white/55">{e.kind === 'news' ? 'News' : 'History'}</span>
+        <span aria-hidden>·</span>
+        <span className="tabular truncate">{t.label}</span>
+        {e.isDemo && (
+          <>
+            <span aria-hidden>·</span>
+            <span>Demo</span>
+          </>
+        )}
+        {e.hasTakeAction && (
+          <>
+            <span aria-hidden>·</span>
+            <span className="text-white/70">Take action</span>
+          </>
+        )}
+      </span>
+      <span className="mt-1 block text-[12.5px] leading-snug text-white/90">{e.title}</span>
+      {footer && (
+        <span className="mt-0.5 block truncate text-[10.5px] text-white/40">{footer}</span>
+      )}
+    </>
+  );
+}
+
 export function EventList() {
   const tier = useAppStore((s) => s.qualityTier);
   const mode = useAppStore((s) => s.mode);
@@ -91,7 +129,6 @@ export function EventList() {
       </div>
       <ul className="scroll-thin min-h-0 flex-1 overflow-y-auto px-1.5 pb-3">
         {events.map((e) => {
-          const t = temporalWithPrecision(e.time);
           const selected = selectedId === e.id;
           return (
             <li key={e.id} className="border-b border-white/[0.05] last:border-0">
@@ -104,32 +141,7 @@ export function EventList() {
                 }`}
                 data-testid="event-list-item"
               >
-                <span className="flex min-w-0 items-center gap-1.5 text-[10.5px] text-white/35">
-                  <span className="text-white/55">{e.kind === 'news' ? 'News' : 'History'}</span>
-                  <span aria-hidden>·</span>
-                  <span className="tabular truncate">{t.label}</span>
-                  {e.isDemo && (
-                    <>
-                      <span aria-hidden>·</span>
-                      <span>Demo</span>
-                    </>
-                  )}
-                  {e.hasTakeAction && (
-                    <>
-                      <span aria-hidden>·</span>
-                      <span className="text-white/70">Take action</span>
-                    </>
-                  )}
-                </span>
-                <span className="mt-1 block text-[12.5px] leading-snug text-white/90">
-                  {e.title}
-                </span>
-                <span className="mt-0.5 block truncate text-[10.5px] text-white/40">
-                  {e.location.name}
-                  {e.kind === 'news' &&
-                    e.sourceCount > 0 &&
-                    ` · ${e.sourceCount} source${e.sourceCount === 1 ? '' : 's'}`}
-                </span>
+                <EventRowLines e={e} />
               </button>
             </li>
           );

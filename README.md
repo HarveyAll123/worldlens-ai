@@ -8,7 +8,7 @@ WorldLens puts a realistic 3D Earth (CesiumJS) at the centre and lets you move t
 
 ## What you can do
 
-- Rotate/zoom a 3D Earth; click events or clusters; use the text **Events** list (keyboard/screen-reader route).
+- Rotate/zoom a 3D Earth; click events or clusters (a cluster of events at one place — or one clicked from as close as a cluster click flies — opens a list beside it to choose from); use the text **Events** list (keyboard/screen-reader route).
 - Drag the **temporal navigator** from 1800 to now (century → hour, limited to the precision the data supports). _Before 1800 — Coming Soon._
 - **LIVE** mode with a real UTC clock; **HISTORICAL MODE** shows the selected timestamp; **Return to Live** everywhere.
 - Open an event: summary, why it matters, participants, **source coverage**, **coverage perspectives** (national perspective, publisher type, political orientation — publishers only, mostly `UNRATED`), **how sources frame this event** (fact / claim / allegation / assessment), and **Historical context · Then ↔ Now**.
@@ -38,7 +38,7 @@ Add keys (see [MANUAL_SETUP.md](MANUAL_SETUP.md)):
 | AI assistant                 | `apps/api/.dev.vars`  | `ANTHROPIC_API_KEY`, or `OPENCODE_API_KEY` + `AI_PROVIDER=openai` (any OpenAI-compatible gateway; see MANUAL_SETUP.md)                                    |
 | Persistence (Neon + PostGIS) | `apps/api/.dev.vars`  | `DATABASE_URL` (a `*.neon.tech` URL; `pnpm dev:node` also takes any PostgreSQL + PostGIS URL); schema via `pnpm db:migrate` with `MIGRATION_DATABASE_URL` |
 
-News comes from **GDELT DOC 2.0** (no key) and, with `RSS_ENABLED=true`, a fixed list of 12 publisher feeds (no key). Both are merged and clustered in one run.
+News comes from **GDELT** (no key: its 15-minute knowledge-graph files by default, or the DOC 2.0 API with `GDELT_SOURCE=api`) and, with `RSS_ENABLED=true`, a fixed list of 12 publisher feeds (no key). Both are merged and clustered in one run.
 
 Optional offline border data for development: `pnpm data:fetch-basemaps` then set `HISTORICAL_BASEMAPS_BASE_URL=http://127.0.0.1:5173/vendor/historical-basemaps/`.
 

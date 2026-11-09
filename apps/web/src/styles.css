@@ -182,3 +182,22 @@ textarea:focus-visible {
     scroll-behavior: auto !important;
   }
 }
+
+/* Floating cards appear with a subtle 160 ms lift (DESIGN.md: motion 120–200 ms ease-out). */
+.pop-in {
+  animation: pop-in 160ms ease-out;
+  transform-origin: top left;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pop-in {
+    animation: none;
+  }
+}

@@ -72,6 +72,18 @@ export interface LabelCandidate {
  * Most important labels first, skipping any that would overlap one already placed, up to
  * `budget`. Run when the camera settles — not while it moves — so labels do not churn.
  */
+/**
+ * True when every point lies within `km` of the first: events pinned to one place ("Germany",
+ * "Delhi, India") that no zoom can pull apart — the finest cluster cell (BASE_CELL_DEG) is
+ * about 1 km. Such a cluster opens a list to choose from instead of zooming in.
+ */
+export function atOnePlace(points: Array<{ lat: number; lon: number }>, km = 1): boolean {
+  const [first, ...rest] = points;
+  if (!first || rest.length === 0) return false;
+  const cos = Math.cos(first.lat * (Math.PI / 180));
+  return rest.every((p) => Math.hypot((p.lon - first.lon) * cos, p.lat - first.lat) * 111.2 <= km);
+}
+
 export function placeLabels(items: LabelCandidate[], budget: number): Set<string> {
   const placed: LabelCandidate[] = [];
   const out = new Set<string>();
