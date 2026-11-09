@@ -13,6 +13,7 @@ import {
   MAX_HISTORY,
   StoredChatSchema,
 } from '../data/account-store';
+import type { PersonalUser } from '../ai/personal';
 import type { AppDeps } from '../deps';
 import { normalizeUsername, USERNAME_COOLDOWN_MS, USERNAME_PATTERN, type Auth } from './auth';
 
@@ -117,13 +118,20 @@ export async function signedInUser(
   deps: AppDeps,
   headers: Headers,
   defer: Defer,
-): Promise<{ id: string; aiMemory?: boolean | null; aiReadsHistory?: boolean | null } | null> {
+): Promise<PersonalUser | null> {
   const { auth, release } = deps.auth.get();
   defer(release());
   try {
     const user = (await auth.api.getSession({ headers }))?.user as AccountUser | undefined;
     return user
-      ? { id: user.id, aiMemory: user.aiMemory, aiReadsHistory: user.aiReadsHistory }
+      ? {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          username: user.displayUsername ?? user.username,
+          aiMemory: user.aiMemory,
+          aiReadsHistory: user.aiReadsHistory,
+        }
       : null;
   } catch {
     return null;
