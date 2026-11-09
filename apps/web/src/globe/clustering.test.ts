@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cellDegForLevel, clusterGeo, clusterLevel, placeLabels } from './clustering';
+import { atOnePlace, cellDegForLevel, clusterGeo, clusterLevel, placeLabels } from './clustering';
 
 describe('map-anchored clustering', () => {
   it('groups points in the same map cell and keeps distant ones apart', () => {
@@ -49,5 +49,15 @@ describe('map-anchored clustering', () => {
     );
     expect([...chosen].sort()).toEqual(['apart', 'high']);
     expect(placeLabels([{ id: 'x', x: 0, y: 0, width: 1, height: 1, weight: 1 }], 0).size).toBe(0);
+  });
+});
+
+describe('events at one place', () => {
+  it('recognises events pinned to the same spot (within ~1 km)', () => {
+    const berlin = { lat: 52.52, lon: 13.405 };
+    expect(atOnePlace([berlin, berlin, berlin])).toBe(true);
+    expect(atOnePlace([berlin, { lat: 52.525, lon: 13.41 }])).toBe(true); // ~650 m
+    expect(atOnePlace([berlin, { lat: 52.6, lon: 13.405 }])).toBe(false); // ~9 km
+    expect(atOnePlace([berlin])).toBe(false); // one event is not a choice
   });
 });

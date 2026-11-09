@@ -51,7 +51,7 @@ WorldLens is a small TypeScript monorepo: a static web app, one Cloudflare Worke
 
 ### News ingestion
 
-`refreshLiveNews` (cron every 30 min, or lazily on LIVE requests via `waitUntil`) queries GDELT DOC 2.0, then runs the deterministic pipeline (`apps/api/src/pipeline`). Clustering combines TF-IDF cosine, headline shingles, weighted entity overlap, geographic and temporal distance and category affinity, with hard blocks (distinct places >150 km apart, >72 h apart, incompatible categories). Optional cheap-tier AI summaries are added for the most-covered clusters. Results go to memory and, if a database is configured, to Neon in one transaction (rows shaped to the table constraints and sorted by key, see [Persistence](#persistence)), followed by an `ingestion_runs` record.
+`refreshLiveNews` (cron every 30 min, or lazily on LIVE requests via `waitUntil`) reads GDELT's newest 15-minute GKG files (or the DOC 2.0 API with `GDELT_SOURCE=api`), then runs the deterministic pipeline (`apps/api/src/pipeline`). Clustering combines TF-IDF cosine, headline shingles, weighted entity overlap, geographic and temporal distance and category affinity, with hard blocks (distinct places >150 km apart, >72 h apart, incompatible categories). Optional cheap-tier AI summaries are added for the most-covered clusters. Results go to memory and, if a database is configured, to Neon in one transaction (rows shaped to the table constraints and sorted by key, see [Persistence](#persistence)), followed by an `ingestion_runs` record.
 
 ### AI assistant
 

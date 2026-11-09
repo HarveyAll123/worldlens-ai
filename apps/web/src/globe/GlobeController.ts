@@ -27,7 +27,10 @@ import {
 } from './providers';
 
 export interface GlobeCallbacks {
-  onPick: (pick: PickId | null) => void;
+  /** A marker click; `at` is the click in CSS pixels from the globe's top-left corner. */
+  onPick: (pick: PickId | null, at: { x: number; y: number }) => void;
+  /** The camera started moving (drag, zoom, fly) — anchored popups close. */
+  onCameraMoveStart?: () => void;
   /** A click on the globe surface that hit no marker. */
   onGlobeClick?: (lon: number, lat: number) => void;
   onCamera: (c: { lat: number; lon: number; altitudeKm: number; bbox: string | null }) => void;
@@ -217,13 +220,16 @@ export class GlobeController {
       }),
     );
     this.removeListeners.push(scene.camera.moveEnd.addEventListener(() => this.reportCamera()));
+    this.removeListeners.push(
+      scene.camera.moveStart.addEventListener(() => cb.onCameraMoveStart?.()),
+    );
 
     const handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
     handler.setInputAction((e: { position: Cesium.Cartesian2 }) => {
       const picked = scene.pick(e.position) as { id?: PickId } | undefined;
       const id =
         picked?.id && typeof picked.id === 'object' && 'kind' in picked.id ? picked.id : null;
-      cb.onPick(id);
+      cb.onPick(id, { x: e.position.x, y: e.position.y });
       if (id) return;
       const hit = scene.camera.pickEllipsoid(e.position, scene.globe.ellipsoid);
       if (!hit) return;

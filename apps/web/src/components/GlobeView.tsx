@@ -26,6 +26,10 @@ import {
 import { useReducedMotion } from '../hooks/useMedia';
 import { identifyCountry } from '../lib/countries';
 import { useAppStore } from '../state/store';
+import { PlacePicker } from './PlacePicker';
+
+/** A cluster click flies three times closer, but no lower than this (km). */
+const CLUSTER_FLY_MIN_KM = 200;
 
 const DAY_MS = 86_400_000;
 
@@ -109,16 +113,26 @@ export function GlobeView({
           containerRef.current!,
           creditsRef.current!,
           {
-            onPick: (p) => {
+            onPick: (p, at) => {
               const s = useAppStore.getState();
               if (!p) return;
               if (p.kind === 'event') {
+                s.setPlacePicker(null);
                 s.selectEvent(p.id);
                 s.setSheet('detail', true);
+              } else if (p.samePlace || s.camera.altitudeKm <= CLUSTER_FLY_MIN_KM * 1.25) {
+                // One spot, or already as close as a cluster click flies: zooming would not
+                // separate them, so list them to choose from.
+                s.setPlacePicker({ ids: p.ids, x: at.x, y: at.y });
               } else {
-                const alt = Math.max(200, s.camera.altitudeKm / 3);
+                s.setPlacePicker(null);
+                const alt = Math.max(CLUSTER_FLY_MIN_KM, s.camera.altitudeKm / 3);
                 s.flyTo({ lat: p.lat, lon: p.lon, altitudeKm: alt });
               }
+            },
+            onCameraMoveStart: () => {
+              const s = useAppStore.getState();
+              if (s.placePicker) s.setPlacePicker(null);
             },
             onGlobeClick: (lon, lat) => void identifyCountry(queryClient, lon, lat),
             onCamera: (c) => useAppStore.getState().setCamera(c),
@@ -356,6 +370,7 @@ export function GlobeView({
           <p className="glass max-w-md rounded-xl p-4">{error}</p>
         </div>
       )}
+      <PlacePicker events={events.data?.events ?? []} />
       <div
         ref={creditsRef}
         className="credits pointer-events-auto absolute bottom-[132px] left-3 max-w-[60vw] md:bottom-[118px]"

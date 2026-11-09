@@ -11,11 +11,19 @@
  */
 import * as Cesium from 'cesium';
 import type { EventSummary } from '@worldlens/shared';
-import { clusterGeo, clusterLevel, placeLabels } from './clustering';
+import { atOnePlace, clusterGeo, clusterLevel, placeLabels } from './clustering';
 import { COLORS, eventColor } from './styles';
 
 export type PickId =
-  { kind: 'event'; id: string } | { kind: 'cluster'; ids: string[]; lat: number; lon: number };
+  | { kind: 'event'; id: string }
+  | {
+      kind: 'cluster';
+      ids: string[];
+      lat: number;
+      lon: number;
+      /** All members at one spot: zooming cannot separate them, so a click lists them. */
+      samePlace: boolean;
+    };
 
 export interface EventLayerSettings {
   maxEvents: number;
@@ -193,7 +201,13 @@ export class EventLayer {
     const members = ids.map((id) => this.byId.get(id)!);
     const lat = members.reduce((s, e) => s + e.location.lat, 0) / members.length;
     const lon = members.reduce((s, e) => s + e.location.lon, 0) / members.length;
-    const id: PickId = { kind: 'cluster', ids, lat, lon };
+    const id: PickId = {
+      kind: 'cluster',
+      ids,
+      lat,
+      lon,
+      samePlace: atOnePlace(members.map((e) => e.location)),
+    };
     const point = this.points.add({
       position,
       pixelSize: Math.min(34, 14 + Math.log2(ids.length) * 5),
