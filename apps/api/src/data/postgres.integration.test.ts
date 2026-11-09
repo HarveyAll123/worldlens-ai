@@ -9,6 +9,7 @@ import type { PaymentRecord } from '@worldlens/shared';
 import type { GdeltArticle, NewsProvider } from '../providers/gdelt';
 import { ProviderHealth } from '../providers/health';
 import { runIngestion } from '../pipeline/ingest';
+import { copy, ingestWindow, NOW as STORY_NOW } from '../testing/stories';
 import type { BuiltEvent } from '../pipeline/build-events';
 import { MemoryRepository } from './memory-repository';
 import { PostgresNewsRepository, PostgresPaymentStore } from './postgres';
@@ -149,6 +150,46 @@ describe.skipIf(!url)('PostgreSQL repository (integration)', () => {
     expect(Number(rows[0]!.n)).toBe(2);
     const e = await freshReader().repo.getEvent(quakeId, NOW);
     expect(e!.importance).toBe(5);
+  });
+
+  it('a story ingested again under another first article stays one event; old copies lead to it', async () => {
+    const reworded = 'Congress returns to a changed Washington after election wipeout for GOP';
+    // Each run in a fresh isolate: only the database knows what earlier runs stored.
+    const store = async (events: BuiltEvent[]) => {
+      const health = new ProviderHealth();
+      health.register('database', true);
+      await new PostgresNewsRepository(new MemoryRepository(), sql, health).replaceLiveNews(
+        events,
+        STORY_NOW,
+      );
+      expect(health.get('database').state).toBe('ok');
+    };
+    const [first] = await ingestWindow([copy('wtop.com', 90), copy('kare11.com', 60)]);
+    await store([first!]);
+    // Another wording, no article in common: stored as a second copy of the story.
+    const [second] = await ingestWindow([copy('kxan.com', 40, reworded)]);
+    await store([second!]);
+    expect(second!.event.id).not.toBe(first!.event.id);
+    // A run that sees both clusters them together.
+    const [both] = await ingestWindow([
+      copy('wtop.com', 90),
+      copy('kare11.com', 60),
+      copy('kxan.com', 40, reworded),
+    ]);
+    await store([both!]);
+
+    const { repo, health } = freshReader();
+    const listed = await repo.listEvents({ ...liveQuery(), timeMs: STORY_NOW, nowMs: STORY_NOW });
+    const ids = listed.events.map((e) => e.id);
+    expect(ids).toContain(first!.event.id);
+    expect(ids).not.toContain(second!.event.id);
+    expect((await repo.getEvent(second!.event.id, STORY_NOW))?.id).toBe(first!.event.id);
+    expect(await repo.getEvent(first!.event.id, STORY_NOW)).toMatchObject({
+      articleCount: 3,
+      sourceCount: 3,
+    });
+    expect(await repo.getArticles(first!.event.id, STORY_NOW)).toHaveLength(3);
+    expect(health.get('database').state).toBe('ok');
   });
 
   it('records ingestion runs', async () => {

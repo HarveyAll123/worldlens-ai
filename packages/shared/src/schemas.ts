@@ -111,6 +111,11 @@ export const ProvenanceSchema = z.object({
   provider: z.enum(['demo', 'curated', 'gdelt', 'wikipedia', 'wikidata', 'manual', 'database']),
   note: z.string().max(400).optional(),
   retrievedAt: z.string().optional(),
+  /**
+   * Stored live news only: a later ingestion found this event to be the same story as another
+   * and merged it into that one (this id). Merged events are not listed; their ids lead there.
+   */
+  mergedInto: z.string().optional(),
 });
 
 export const EventSchema = z.object({

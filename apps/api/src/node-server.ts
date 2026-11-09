@@ -33,7 +33,11 @@ function loadDevVars(): Record<string, string> {
 const nonBlankProcessEnv = Object.fromEntries(
   Object.entries(process.env).filter(([_, v]) => v !== undefined && v.trim() !== ''),
 );
-const env = { ...loadDevVars(), ...nonBlankProcessEnv } as unknown as Env;
+// Playwright starts this server with WORLDLENS_E2E=1: only the variables it passes count, as
+// in CI. Its blank values (DATABASE_URL: '' …) are dropped above, so .dev.vars would otherwise
+// hand the tests this machine's real database, AI key and PayPal credentials.
+const devVars = process.env.WORLDLENS_E2E === '1' ? {} : loadDevVars();
+const env = { ...devVars, ...nonBlankProcessEnv } as unknown as Env;
 
 // TEST-ONLY: route PayPal REST calls to an in-process fake (used by Playwright). Never used
 // by the Worker. Orders are auto-approved because the browser-side SDK is faked too.

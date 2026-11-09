@@ -152,7 +152,8 @@ export type IconName =
   | 'pin'
   | 'pencil'
   | 'trash'
-  | 'dots';
+  | 'dots'
+  | 'forward';
 
 const PATHS: Record<IconName, ReactNode> = {
   search: (
@@ -188,6 +189,8 @@ const PATHS: Record<IconName, ReactNode> = {
     </>
   ),
   'arrow-left': <path d="M19.5 12H5M11 6l-6 6 6 6" />,
+  // A forwarded message: an arrow curving onward from where it came from.
+  forward: <path d="M14 6.5 19.5 12 14 17.5M19.5 12H11a6.5 6.5 0 0 0-6.5 6.5v.5" />,
   check: <path d="M4.5 12.5 9.5 17.5 20 6.5" />,
   globe: (
     <>

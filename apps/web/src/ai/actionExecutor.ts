@@ -43,6 +43,42 @@ export function toSteps(actions: ClientAction[]): ClientAction[][] {
   return steps;
 }
 
+const COMPASS = {
+  north: [1, 0],
+  south: [-1, 0],
+  east: [0, 1],
+  west: [0, -1],
+  northeast: [Math.SQRT1_2, Math.SQRT1_2],
+  northwest: [Math.SQRT1_2, -Math.SQRT1_2],
+  southeast: [-Math.SQRT1_2, Math.SQRT1_2],
+  southwest: [-Math.SQRT1_2, -Math.SQRT1_2],
+} as const;
+
+/** Where a zoom from the current view lands: same centre, altitude ÷ or × factor. */
+export function zoomedView(
+  camera: { lat: number; lon: number; altitudeKm: number },
+  direction: 'in' | 'out',
+  factor = 2.5,
+): { lat: number; lon: number; altitudeKm: number } {
+  const alt = direction === 'in' ? camera.altitudeKm / factor : camera.altitudeKm * factor;
+  return { lat: camera.lat, lon: camera.lon, altitudeKm: Math.min(40_000, Math.max(1, alt)) };
+}
+
+/** Where a pan from the current view lands; default distance about half the visible width. */
+export function pannedView(
+  camera: { lat: number; lon: number; altitudeKm: number },
+  direction: keyof typeof COMPASS,
+  distanceKm = camera.altitudeKm * 0.6,
+): { lat: number; lon: number; altitudeKm: number } {
+  const [north, east] = COMPASS[direction];
+  const lat = Math.min(85, Math.max(-85, camera.lat + (north * distanceKm) / 111.2));
+  const cos = Math.max(0.05, Math.cos((camera.lat * Math.PI) / 180));
+  let lon = camera.lon + (east * distanceKm) / (111.2 * cos);
+  if (lon > 180) lon -= 360;
+  if (lon < -180) lon += 360;
+  return { lat, lon, altitudeKm: camera.altitudeKm };
+}
+
 export function applyAction(a: ClientAction): void {
   const s = useAppStore.getState();
   switch (a.tool) {
@@ -55,6 +91,12 @@ export function applyAction(a: ClientAction): void {
           ...(a.args.label ? { label: a.args.label } : {}),
         });
       }
+      break;
+    case 'zoom':
+      s.flyTo(zoomedView(s.camera, a.args.direction, a.args.factor));
+      break;
+    case 'pan':
+      s.flyTo(pannedView(s.camera, a.args.direction, a.args.distance_km));
       break;
     case 'set_time':
       s.setTime(parseIso(a.args.date), a.args.resolution ?? resolutionForIso(a.args.date));
@@ -107,12 +149,14 @@ function applyStep(step: ClientAction[]): void {
 }
 
 /**
- * On desktop the context card holds either the chat or the selected event. An answer that
+ * Narrower desktops share one card between the chat and the selected event: an answer that
  * opens an event hands the card to that event (as the mobile sheet does); Ask AI brings the
- * chat back. Later tour steps leave the card where the user put it.
+ * chat back. Later tour steps leave the card where the user put it. On wide screens the chat
+ * has its own panel, so the event simply opens in the card beside it.
  */
 function showOpenedEvent(step: ClientAction[]): void {
-  if (step.some((a) => a.tool === 'open_event')) useAppStore.getState().setAssistantOpen(false);
+  const s = useAppStore.getState();
+  if (!s.chatDocked && step.some((a) => a.tool === 'open_event')) s.setAssistantOpen(false);
 }
 
 export function runActions(raw: unknown[]): { applied: number; rejected: string[]; tour: boolean } {

@@ -7,6 +7,7 @@ import {
 } from '@worldlens/shared';
 import { sourceForDomain } from '@worldlens/shared/data';
 import { fnv1a64 } from '../lib/cache';
+import { stripOutletSuffix } from '../lib/headline';
 import { parseSeenDate, type GdeltArticle, type PlaceHint } from '../providers/gdelt';
 import type { RssItem } from '../providers/rss';
 
@@ -75,7 +76,7 @@ export function normalizeGdelt(raw: GdeltArticle[]): NormalizedArticle[] {
   const out: NormalizedArticle[] = [];
   for (const a of raw) {
     const url = canonicalizeUrl(a.url);
-    const headline = sanitizeText(a.title, 400);
+    const headline = sanitizeText(stripOutletSuffix(a.title, a.domain), 400);
     const publishedAtMs = parseSeenDate(a.seendate);
     if (!url || !headline || publishedAtMs === null) continue;
     const domain = sanitizeText(a.domain, 160).toLowerCase() || new URL(url).hostname;

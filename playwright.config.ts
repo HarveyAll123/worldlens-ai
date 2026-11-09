@@ -47,6 +47,8 @@ export default defineConfig({
       // If port 8787 is busy, stop `pnpm dev` first.
       reuseExistingServer: false,
       env: {
+        // Ignore apps/api/.dev.vars (real database, AI key, PayPal credentials).
+        WORLDLENS_E2E: '1',
         GDELT_ENABLED: 'false',
         WORLDLENS_TEST_PAYPAL_MOCK: '1',
         HISTORICAL_BASEMAPS_BASE_URL: 'http://127.0.0.1:5173/vendor/historical-basemaps/',

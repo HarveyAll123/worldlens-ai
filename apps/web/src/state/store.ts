@@ -54,6 +54,12 @@ export interface CountrySelection {
   ways: number[];
 }
 
+/** A question for the assistant from outside the chat, and the event it was asked from. */
+export interface PendingQuestion {
+  text: string;
+  about?: { eventId: string; title: string };
+}
+
 /** Events pinned to one spot, listed next to the marker that was clicked (PlacePicker). */
 export interface PlacePickerState {
   ids: string[];
@@ -73,10 +79,16 @@ interface AppState {
   sheetExpanded: boolean;
   assistantOpen: boolean;
   /**
-   * A question asked outside the chat (an event's "Ask AI" prompts) while the assistant panel
-   * is not mounted; the panel sends it once it is shown.
+   * Wide desktop screens: the chat has its own panel on the left, beside the context card, so
+   * events and countries open next to it. Narrower desktops share one card between the two.
+   * Set by the layout (App) from the window width.
    */
-  pendingQuestion: string | null;
+  chatDocked: boolean;
+  /**
+   * A question asked outside the chat (an event's "Ask AI" prompts) while the assistant panel
+   * is not mounted; the panel sends it once it is shown, with the event it was asked about.
+   */
+  pendingQuestion: PendingQuestion | null;
   /** Desktop Context Card visibility (mobile uses the bottom sheet). */
   cardOpen: boolean;
   layers: Record<LayerId, boolean>;
@@ -92,6 +104,11 @@ interface AppState {
   dayNight: boolean;
   /** City lights on the night side (only with dayNight). */
   nightLights: boolean;
+  /**
+   * The assistant may operate the globe (fly, zoom, highlight, set the date, open events…).
+   * Off: a plain chatbot that only answers.
+   */
+  aiAgent: boolean;
   diagnosticsOpen: boolean;
   camera: CameraState;
   flyRequest: FlyRequest | null;
@@ -102,15 +119,24 @@ interface AppState {
   returnToLive: () => void;
   selectEvent: (id: string | null) => void;
   selectCountry: (c: CountrySelection | null) => void;
+  /**
+   * The user picked an event or a country (globe, list, search, a link in the chat): show it.
+   * Wide screens show it in the card beside the docked chat; narrower desktops turn the shared
+   * card from the chat to it (it used to stay on the chat until Ask AI was closed); phones open
+   * the sheet on it. AI answers use selectEvent (tours keep the card where the user put it).
+   */
+  openEvent: (id: string) => void;
+  openCountry: (c: CountrySelection) => void;
+  setChatDocked: (v: boolean) => void;
   setPlacePicker: (p: PlacePickerState | null) => void;
   setSheet: (v: SheetView, expanded?: boolean) => void;
   /** Phones: a top-bar button opens its tab of the bottom sheet, or closes the sheet again. */
   toggleSheetTab: (v: SheetView) => void;
   setSheetExpanded: (v: boolean) => void;
   setAssistantOpen: (v: boolean) => void;
-  setPendingQuestion: (q: string | null) => void;
+  setPendingQuestion: (q: PendingQuestion | null) => void;
   /** Returns the pending question and clears it, so it is sent once. */
-  takePendingQuestion: () => string | null;
+  takePendingQuestion: () => PendingQuestion | null;
   setCardOpen: (v: boolean) => void;
   setLayer: (l: LayerId, on: boolean) => void;
   setKindFilter: (k: 'all' | 'news' | 'historical', categories?: EventCategory[] | null) => void;
@@ -120,6 +146,7 @@ interface AppState {
   setQuality: (q: QualityPreference) => void;
   setDayNight: (on: boolean) => void;
   setNightLights: (on: boolean) => void;
+  setAiAgent: (on: boolean) => void;
   setDiagnostics: (open: boolean) => void;
   setCamera: (c: CameraState) => void;
   flyTo: (req: Omit<FlyRequest, 'seq'>) => void;
@@ -175,6 +202,7 @@ export const useAppStore = create<AppState>()(
     sheet: 'events',
     sheetExpanded: false,
     assistantOpen: false,
+    chatDocked: false,
     pendingQuestion: null,
     cardOpen: true,
     layers: {
@@ -195,6 +223,7 @@ export const useAppStore = create<AppState>()(
     qualityTier: 'MEDIUM',
     dayNight: readFlag('worldlens.dayNight', true),
     nightLights: readFlag('worldlens.nightLights', true),
+    aiAgent: readFlag('worldlens.aiAgent', true),
     diagnosticsOpen: false,
     camera: { lat: 20, lon: 30, altitudeKm: 18000, bbox: null },
     flyRequest: null,
@@ -227,6 +256,23 @@ export const useAppStore = create<AppState>()(
         selectedEventId: c ? null : s.selectedEventId,
         sheet: c ? 'detail' : s.sheet === 'detail' && !s.selectedEventId ? 'events' : s.sheet,
       })),
+    openEvent: (id) =>
+      set((s) => ({
+        selectedEventId: id,
+        selectedCountry: null,
+        sheet: 'detail',
+        sheetExpanded: true,
+        assistantOpen: s.chatDocked && s.assistantOpen,
+      })),
+    openCountry: (c) =>
+      set((s) => ({
+        selectedCountry: c,
+        selectedEventId: null,
+        sheet: 'detail',
+        sheetExpanded: true,
+        assistantOpen: s.chatDocked && s.assistantOpen,
+      })),
+    setChatDocked: (chatDocked) => set({ chatDocked }),
     setSheet: (sheet, expanded) =>
       set((s) => ({ sheet, sheetExpanded: expanded ?? s.sheetExpanded })),
     // Each button has its own tab, so the panel button no longer reopens whatever tab (e.g.
@@ -264,6 +310,10 @@ export const useAppStore = create<AppState>()(
     setDayNight: (dayNight) => {
       saveFlag('worldlens.dayNight', dayNight);
       set({ dayNight });
+    },
+    setAiAgent: (aiAgent) => {
+      saveFlag('worldlens.aiAgent', aiAgent);
+      set({ aiAgent });
     },
     setNightLights: (nightLights) => {
       saveFlag('worldlens.nightLights', nightLights);

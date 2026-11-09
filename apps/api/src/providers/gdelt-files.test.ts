@@ -143,6 +143,38 @@ describe('GDELT GKG files', () => {
     ]);
   });
 
+  it('a town abroad in a country the article never names is a namesake; its one country stands in', () => {
+    // GKG record of a Massachusetts radio story (wnaw.com, 9 Nov 2026).
+    const berkshire = [
+      '4#Salisbury, Mashonaland East, Zimbabwe#ZI#ZI04#40197#-17.8178#31.0447#-2312291#2146',
+      '4#Berkshire, Zimbabwe (General), Zimbabwe#ZI#ZI00#40197#-19.4#29.7#-2307394#289',
+      '4#Berkshire, Zimbabwe (General), Zimbabwe#ZI#ZI00#40197#-19.4#29.7#-2307394#422',
+      '1#America#US#US##39.828175#-98.5795#US#2034',
+    ].join(';');
+    const title = 'Three Berkshire Restaurants Serving Free Meals to the Military';
+    expect(placesInHeadline(berkshire, title)).toEqual([
+      { name: 'America', lat: 39.828175, lon: -98.5795, precision: 'country' },
+    ]);
+    // Two countries named: no stand-in, and still not Zimbabwe.
+    expect(placesInHeadline(`${berkshire};1#United Kingdom#UK#UK##54#-2#UK#9`, title)).toEqual([]);
+  });
+
+  it('keeps a town abroad when the article names its country or none, and US towns always', () => {
+    const selangor = '5#Selangor, Selangor, Malaysia#MY#MY12##3.33#101.5#MY12#40';
+    const floods = 'Floods hit Selangor as thousands are evacuated overnight';
+    expect(placesInHeadline(`${selangor};1#Malaysia#MY#MY##2.5#112.5#MY#90`, floods)).toHaveLength(
+      1,
+    );
+    expect(placesInHeadline(selangor, floods)).toHaveLength(1);
+    const paris = '3#Paris, Texas, United States#US#USTX#TX277#33.66#-95.555#1#20';
+    expect(
+      placesInHeadline(
+        `${paris};1#France#FR#FR##46#2#FR#300`,
+        'Paris council approves new budget',
+      ).map((p) => p.name),
+    ).toEqual(['Paris, Texas, United States']);
+  });
+
   it('downloads only new 15-minute files on each run and keeps a rolling window', async () => {
     const requested: string[] = [];
     let latest = '20261101134500';

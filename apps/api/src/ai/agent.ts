@@ -20,7 +20,7 @@ import {
   type ClientAction,
 } from '@worldlens/shared';
 import type { AiBudget } from './budget';
-import { AGENT_SYSTEM_PROMPT } from './prompts';
+import { AGENT_SYSTEM_PROMPT, CHAT_SYSTEM_PROMPT } from './prompts';
 import type { AiProvider, ToolDefinition } from './provider';
 import {
   prepareClientAction,
@@ -29,9 +29,21 @@ import {
   type ToolContext,
 } from './tools-impl';
 
+/** The event a question was asked from (an event card's "Ask AI" prompts). */
+const AboutSchema = z.object({
+  eventId: z.string().min(1).max(160),
+  title: z.string().min(1).max(300),
+});
+
 export const ChatRequestSchema = z.object({
   messages: z
-    .array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().min(1).max(4000) }))
+    .array(
+      z.object({
+        role: z.enum(['user', 'assistant']),
+        content: z.string().min(1).max(4000),
+        about: AboutSchema.optional(),
+      }),
+    )
     .min(1)
     .max(20)
     .refine((m) => m[m.length - 1]?.role === 'user', 'Last message must be from the user'),
@@ -48,6 +60,11 @@ export const ChatRequestSchema = z.object({
       })
       .nullable(),
     layers: z.record(LayerSchema, z.boolean()).optional(),
+    /**
+     * Agent mode (default): the assistant may operate the globe. false: a plain chatbot — it
+     * only reads WorldLens data and answers; no globe tools are offered and no actions return.
+     */
+    agent: z.boolean().optional(),
   }),
 });
 export type ChatRequest = z.infer<typeof ChatRequestSchema>;
@@ -70,16 +87,28 @@ export interface ChatResponse {
   notice?: string;
 }
 
+const toolDefinition = (
+  name: (typeof SERVER_TOOL_NAMES)[number] | (typeof CLIENT_TOOL_NAMES)[number],
+) => ({
+  name,
+  description: TOOL_DESCRIPTIONS[name],
+  input_schema: toolInputJsonSchema(name),
+});
 let cachedTools: ToolDefinition[] | null = null;
+let cachedChatTools: ToolDefinition[] | null = null;
 /** Deterministic, stable tool list (order never changes) so the cached prefix stays valid. */
 export function agentTools(): ToolDefinition[] {
-  cachedTools ??= [...SERVER_TOOL_NAMES, ...CLIENT_TOOL_NAMES].map((name) => ({
-    name,
-    description: TOOL_DESCRIPTIONS[name],
-    input_schema: toolInputJsonSchema(name),
-  }));
+  cachedTools ??= [...SERVER_TOOL_NAMES, ...CLIENT_TOOL_NAMES].map(toolDefinition);
   return cachedTools;
 }
+/** Chat mode: only the tools that read WorldLens data — nothing that changes the globe. */
+export function chatTools(): ToolDefinition[] {
+  cachedChatTools ??= SERVER_TOOL_NAMES.map(toolDefinition);
+  return cachedChatTools;
+}
+
+/** Whether the request lets the assistant operate the globe (agent mode, the default). */
+export const isAgentMode = (req: ChatRequest) => req.context.agent !== false;
 
 function stateBlock(req: ChatRequest): string {
   const c = req.context;
@@ -92,6 +121,25 @@ function stateBlock(req: ChatRequest): string {
       ? `camera=${c.camera.lat.toFixed(2)},${c.camera.lon.toFixed(2)} alt=${Math.round(c.camera.altitudeKm)}km`
       : 'camera=unknown',
   ].join('\n');
+}
+
+/**
+ * A question asked from an event card ("What led to this?") names its event, so the model knows
+ * what "this" is in this turn and in later ones, whatever is selected by then.
+ */
+function withAbout(m: ChatRequest['messages'][number]): string {
+  return m.about
+    ? `[Asked from the event “${m.about.title}” (event_id ${m.about.eventId})]\n${m.content}`
+    : m.content;
+}
+
+/**
+ * The event a forwarded question is about counts as the selected one for this request, for the
+ * agent and the offline assistant alike (the card may have closed when the chat opened).
+ */
+export function withForwardedEvent(req: ChatRequest): ChatRequest {
+  const about = req.messages[req.messages.length - 1]?.about;
+  return about ? { ...req, context: { ...req.context, selectedEventId: about.eventId } } : req;
 }
 
 function summarize(value: unknown): string {
@@ -108,16 +156,17 @@ export async function runAgent(
 ): Promise<ChatResponse> {
   const messages: Anthropic.Beta.BetaMessageParam[] = req.messages
     .slice(0, -1)
-    .map((m) => ({ role: m.role, content: m.content }));
+    .map((m) => ({ role: m.role, content: withAbout(m) }));
   const last = req.messages[req.messages.length - 1]!;
   messages.push({
     role: 'user',
     content: [
-      { type: 'text', text: last.content },
+      { type: 'text', text: withAbout(last) },
       { type: 'text', text: stateBlock(req) },
     ],
   });
 
+  const agent = isAgentMode(req);
   const actions: ClientAction[] = [];
   const citations: CitationOut[] = [];
   const trace: ToolTraceEntry[] = [];
@@ -135,12 +184,12 @@ export async function runAgent(
     }
     const res = await deps.provider.turn({
       tier: 'strong',
-      purpose: 'agent',
-      system: AGENT_SYSTEM_PROMPT,
+      purpose: agent ? 'agent' : 'chat',
+      system: agent ? AGENT_SYSTEM_PROMPT : CHAT_SYSTEM_PROMPT,
       messages,
-      tools: agentTools(),
-      maxTokens: 8000,
-      effort: 'medium',
+      tools: agent ? agentTools() : chatTools(),
+      maxTokens: 4096,
+      effort: 'low',
     });
     model = res.model;
     const rec = deps.budget.record('agent', res.model, res.usage);
@@ -174,9 +223,17 @@ export async function runAgent(
     );
     const results: Anthropic.Beta.BetaToolResultBlockParam[] = [];
     for (const tu of toolUses) {
+      // Chat mode offers no globe tools; a model that calls one anyway gets an error, not an action.
       const outcome = isServerTool(tu.name)
         ? await runServerTool(tu.name, tu.input, deps.tools)
-        : await prepareClientAction(tu.name, tu.input, deps.tools);
+        : agent
+          ? await prepareClientAction(tu.name, tu.input, deps.tools)
+          : {
+              ok: false,
+              result: { error: 'Chat mode: the globe cannot be changed. Answer in text.' },
+              citations: [],
+              action: undefined,
+            };
       if (outcome.action) actions.push(outcome.action);
       citations.push(...outcome.citations);
       trace.push({
@@ -206,7 +263,7 @@ export async function runAgent(
   return {
     mode: 'ai',
     reply: reply || 'Done.',
-    actions: actions.slice(0, 24),
+    actions: agent ? actions.slice(0, 24) : [],
     citations: uniqueCitations,
     toolTrace: trace,
     model,

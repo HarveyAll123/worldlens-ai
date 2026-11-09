@@ -10,6 +10,7 @@ import {
   type WorldEvent,
 } from '@worldlens/shared';
 import { api, type SourcesResponse } from '../lib/api';
+import { eventPrompts } from '../lib/askPrompts';
 import { relativeTime, safeExternalUrl, temporalWithPrecision } from '../lib/format';
 import { useEventDetail, useRelated, useSources, useWikipedia } from '../hooks/useData';
 import { useAppStore } from '../state/store';
@@ -36,10 +37,12 @@ const RATING_ORDER: PoliticalRatingValue[] = [
   'UNRATED',
 ];
 
-// The assistant is not mounted while the event is shown, so it sends the question once it is.
-function askAi(text: string) {
+// The question waits in the store with its event (shown above the question in the chat, and
+// told to the model): the chat sends it once shown — at once when docked beside the card,
+// otherwise after it takes over the shared card or the phone sheet.
+function askAi(text: string, e: WorldEvent) {
   const s = useAppStore.getState();
-  s.setPendingQuestion(text);
+  s.setPendingQuestion({ text, about: { eventId: e.id, title: e.title } });
   if (window.matchMedia('(max-width: 767px)').matches) s.setSheet('assistant', true);
   else s.setAssistantOpen(true);
 }
@@ -458,29 +461,90 @@ function TakeActionSection({ e, actions }: { e: WorldEvent; actions: ActionOptio
   );
 }
 
+/** Three prompts fitted to this event (lib/askPrompts.ts), each sent with the event. */
+/**
+ * The three suggested questions, then "Custom question": the user's own, about this event.
+ * Rendered with key={e.id}, so another event in the card starts with the button again.
+ */
 function AskAi({ e }: { e: WorldEvent }) {
-  const prompts =
-    e.kind === 'news'
-      ? [
-          'Why does this matter historically?',
-          'How are different sources covering this?',
-          e.hasTakeAction ? 'I have $20. How can I help?' : null,
-        ]
-      : ['Why did this matter?', 'What happened next?', 'Show me what led up to this'];
+  const [writing, setWriting] = useState(false);
+  const [text, setText] = useState('');
+  const canAsk = text.trim().length > 0;
+  const close = () => {
+    setWriting(false);
+    setText('');
+  };
   return (
     <Section id="sec-ask" title="Ask AI">
       <div className="flex flex-wrap gap-1.5">
-        {prompts.filter(Boolean).map((p) => (
+        {eventPrompts(e).map((p) => (
           <button
             key={p}
             type="button"
-            onClick={() => askAi(p!)}
-            className="rounded-full border border-white/12 px-2.5 py-1 text-[12px] text-white/85 hover:bg-white/[0.06]"
+            onClick={() => askAi(p, e)}
+            className="rounded-full border border-white/12 px-2.5 py-1 text-[12px] text-white/85 transition-colors hover:bg-white/[0.06]"
+            data-testid="ask-ai-prompt"
           >
             {p}
           </button>
         ))}
       </div>
+      {writing ? (
+        <form
+          className="mt-2 flex items-center gap-1.5 rounded-full bg-white/[0.05] py-1 pl-3 pr-1 transition-colors focus-within:bg-white/[0.09]"
+          onSubmit={(ev) => {
+            ev.preventDefault();
+            if (!canAsk) return;
+            askAi(text.trim(), e);
+            close();
+          }}
+          data-testid="ask-ai-custom-form"
+        >
+          <input
+            autoFocus
+            value={text}
+            maxLength={1000}
+            onChange={(ev) => setText(ev.target.value)}
+            onKeyDown={(ev) => {
+              if (ev.key === 'Escape') {
+                ev.stopPropagation();
+                close();
+              }
+            }}
+            // Leaving it empty puts the button back.
+            onBlur={() => {
+              if (!canAsk) close();
+            }}
+            placeholder="Your question about this event"
+            aria-label={`Your question about “${e.title}”`}
+            className="min-w-0 flex-1 bg-transparent text-[12.5px] text-white/90 placeholder:text-white/35"
+            data-testid="ask-ai-custom-input"
+          />
+          <button
+            type="submit"
+            disabled={!canAsk}
+            className={`grid h-7 w-7 shrink-0 place-items-center rounded-full transition-colors ${
+              canAsk
+                ? 'bg-[var(--active-bg)] text-[var(--active-fg)] hover:bg-white'
+                : 'text-white/30'
+            }`}
+            aria-label="Ask"
+            data-testid="ask-ai-custom-send"
+          >
+            <Icon name="chevron-right" className="h-4 w-4" />
+          </button>
+        </form>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setWriting(true)}
+          className="mt-2 flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] text-white/55 transition-colors hover:bg-white/[0.06] hover:text-white/85"
+          data-testid="ask-ai-custom"
+        >
+          <Icon name="pencil" className="h-3.5 w-3.5" />
+          Custom question
+        </button>
+      )}
     </Section>
   );
 }
@@ -516,7 +580,7 @@ function NewsBody({ e, actions }: { e: WorldEvent; actions: ActionOption[] }) {
       )}
       {sources.data && <SourceFraming eventId={e.id} sources={sources.data.sources} />}
       <HistoricalContext id={e.id} />
-      <AskAi e={e} />
+      <AskAi key={e.id} e={e} />
       <TakeActionSection e={e} actions={actions} />
     </>
   );
@@ -560,7 +624,7 @@ function HistoryBody({ e }: { e: WorldEvent }) {
           further reading.
         </p>
       </Section>
-      <AskAi e={e} />
+      <AskAi key={e.id} e={e} />
     </>
   );
 }
@@ -589,6 +653,13 @@ export function EventDetail({ id, onBack }: { id: string; onBack: () => void }) 
     headingRef.current?.focus();
   }, [id]);
   const e = q.data?.event;
+  // A live story that a later ingestion merged into another event answers with that event: go
+  // on under its id, so the globe marks it and its sources load (an open card, a "From" link).
+  const servedId = e?.id;
+  useEffect(() => {
+    if (servedId && servedId !== id && useAppStore.getState().selectedEventId === id)
+      useAppStore.getState().selectEvent(servedId);
+  }, [servedId, id]);
   const image = e?.image ?? wiki.data?.summary?.image ?? null;
   // The index reflects what is actually rendered (sections mount as data resolves).
   useEffect(() => {

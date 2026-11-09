@@ -95,7 +95,7 @@ export function applySearchResult(r: SearchResult): void {
       altitudeKm: (r.altitude ?? 1_000_000) / 1000,
       label: r.title,
     });
-  if (r.eventId) s.selectEvent(r.eventId);
+  if (r.eventId) s.openEvent(r.eventId);
   s.announce(`Showing ${r.title}`);
 }
 
@@ -299,13 +299,10 @@ export function TopBar({ mobile }: { mobile: boolean }) {
   const selected = useAppStore((s) => s.selectedEventId);
   const country = useAppStore((s) => s.selectedCountry);
   const wide = useMediaQuery('(min-width: 1024px)');
-  const cardLabel = assistantOpen
-    ? 'Assistant'
-    : country
-      ? 'Country'
-      : selected
-        ? 'Event'
-        : 'Events';
+  // With the chat docked on the left, the card on the right only ever holds events/countries.
+  const docked = useAppStore((s) => s.chatDocked);
+  const sharesCard = assistantOpen && !docked;
+  const cardLabel = sharesCard ? 'Assistant' : country ? 'Country' : selected ? 'Event' : 'Events';
   const cardShown = mobile ? eventsOpen : cardOpen;
   const aiShown = mobile ? aiOpen : assistantOpen;
 
@@ -382,9 +379,9 @@ export function TopBar({ mobile }: { mobile: boolean }) {
           type="button"
           onClick={() => {
             if (mobile) return toggleSheetTab('events');
-            // With the assistant open, the first click returns the card to Events instead of
-            // merely hiding it; otherwise the card could never leave the chat.
-            if (assistantOpen && cardOpen) {
+            // With the assistant in the card, the first click returns the card to Events instead
+            // of merely hiding it; otherwise the card could never leave the chat.
+            if (sharesCard && cardOpen) {
               setAssistantOpen(false);
               setCardOpen(true);
               return;

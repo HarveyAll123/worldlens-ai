@@ -115,9 +115,17 @@ function MobileSheet() {
   );
 }
 
+/**
+ * From this width the chat gets its own panel on the left (380px each side leaves the globe
+ * ~470px or more in the middle); below it, chat and events share the one card on the right.
+ */
+const DOCK_CHAT_QUERY = '(min-width: 1280px)';
+
 export function App() {
   const mobile = useIsMobile();
   const wide = useMediaQuery('(min-width: 1024px)');
+  const docked = useMediaQuery(DOCK_CHAT_QUERY);
+  const setChatDocked = useAppStore((s) => s.setChatDocked);
   const assistantOpen = useAppStore((s) => s.assistantOpen);
   const cardOpen = useAppStore((s) => s.cardOpen);
   const setCardOpen = useAppStore((s) => s.setCardOpen);
@@ -127,15 +135,18 @@ export function App() {
   const config = useConfig();
   const [notice, setNotice] = useState<string | null>(null);
   const queryClient = useQueryClient();
+  const chatAside = docked && assistantOpen;
+  useEffect(() => setChatDocked(docked), [docked, setChatDocked]);
   // A selected country follows the timeline (its borders of the day, successor, or closes).
   useEffect(() => followCountriesInTime(queryClient), [queryClient]);
-  // Opening an event, a country or the assistant brings the card back if it was closed.
+  // Opening an event or a country brings the card back if it was closed, and so does the
+  // assistant while it shares the card.
   useEffect(() => {
-    if (selectedId || country || assistantOpen) setCardOpen(true);
-  }, [selectedId, country, assistantOpen, setCardOpen]);
+    if (selectedId || country || (assistantOpen && !docked)) setCardOpen(true);
+  }, [selectedId, country, assistantOpen, docked, setCardOpen]);
   useEffect(() => {
     window.dispatchEvent(new Event('worldlens:chrome'));
-  }, [cardOpen, sheetExpanded, mobile, assistantOpen]);
+  }, [cardOpen, sheetExpanded, mobile, assistantOpen, docked]);
 
   return (
     <div className="relative h-full w-full overflow-hidden">
@@ -150,7 +161,11 @@ export function App() {
       </ErrorBoundary>
       <TopBar mobile={mobile} />
 
-      <div className="pointer-events-none absolute left-3 right-3 top-[68px] z-20 flex flex-col items-center gap-2 md:right-[404px]">
+      <div
+        className={`pointer-events-none absolute right-3 top-[68px] z-20 flex flex-col items-center gap-2 md:right-[404px] ${
+          chatAside ? 'left-[404px]' : 'left-3'
+        }`}
+      >
         {config.isError && (
           <div className="pointer-events-auto">
             <Notice tone="danger">
@@ -177,16 +192,32 @@ export function App() {
         )}
       </div>
 
+      {/* Both panels clip (overflow-clip) instead of hiding: an overflow-hidden panel can still
+          be scrolled by scrollIntoView/focus (screen-reader-only text reaches past it), and the
+          card kept that offset when it switched between the chat and an event. */}
+      {!mobile && chatAside && (
+        <aside
+          id="assistant-dock"
+          className="glass pointer-events-auto absolute bottom-[124px] left-3 top-[68px] z-20 flex w-[380px] flex-col overflow-clip rounded-[var(--radius-outer)]"
+          aria-label="AI chat"
+          data-label-occluder
+          data-testid="assistant-dock"
+        >
+          <ErrorBoundary label="The assistant">
+            <AssistantPanel />
+          </ErrorBoundary>
+        </aside>
+      )}
       {!mobile && cardOpen && (
         <aside
           id="context-card"
-          className="glass pointer-events-auto absolute bottom-[124px] right-3 top-[68px] z-20 flex w-[380px] flex-col overflow-hidden rounded-[var(--radius-outer)]"
+          className="glass pointer-events-auto absolute bottom-[124px] right-3 top-[68px] z-20 flex w-[380px] flex-col overflow-clip rounded-[var(--radius-outer)]"
           aria-label="Context card"
           data-label-occluder
           data-testid="context-panel"
         >
           <ErrorBoundary label="The context card">
-            {assistantOpen ? <AssistantPanel /> : <PanelBody />}
+            {assistantOpen && !docked ? <AssistantPanel /> : <PanelBody />}
           </ErrorBoundary>
         </aside>
       )}

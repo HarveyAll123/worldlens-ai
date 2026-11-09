@@ -10,10 +10,15 @@ export interface Env {
   PAYPAL_ENVIRONMENT?: string;
   PAYPAL_WEBHOOK_ID?: string;
   ANTHROPIC_API_KEY?: string;
+  /** Google Gemini (free tier from aistudio.google.com). Chosen automatically when set. */
+  GEMINI_API_KEY?: string;
   /** OpenAI-compatible gateways (e.g. OpenCode Go). Ignored when AI_PROVIDER=anthropic. */
   OPENCODE_API_KEY?: string;
   OPENAI_API_KEY?: string;
-  /** `anthropic` (default) or `openai` for an OpenAI-compatible Chat Completions endpoint. */
+  /**
+   * `gemini`, `openai` (any OpenAI-compatible Chat Completions endpoint: Groq, Cerebras,
+   * OpenRouter, OpenCode…) or `anthropic`. Default: the first of these whose key is set.
+   */
   AI_PROVIDER?: string;
   /** Base URL including the version segment, e.g. https://opencode.ai/inference/go/openai/v1 */
   AI_BASE_URL?: string;
@@ -53,7 +58,7 @@ const ConfigSchema = z.object({
     webhookId: z.string().nullable(),
   }),
   ai: z.object({
-    provider: z.enum(['anthropic', 'openai']),
+    provider: z.enum(['gemini', 'anthropic', 'openai']),
     apiKey: z.string().nullable(),
     baseUrl: z.string().nullable(),
     sessionId: z.string().nullable(),
@@ -85,18 +90,81 @@ export const DEFAULT_GDELT_QUERIES = [
   '(summit OR election OR protest OR sanctions OR treaty) sourcelang:english',
 ];
 
+/** Google's OpenAI-compatible endpoint for Gemini (Chat Completions with tools). */
+export const GEMINI_OPENAI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai';
+
+/**
+ * Default models per provider. Gemini: free-tier models chosen for agent use (tool calling)
+ * and speed — measured 2026-11-09, see PROVIDERS.md.
+ */
+export const DEFAULT_MODELS = {
+  gemini: { strong: 'gemini-flash-lite-latest', fast: 'gemini-flash-lite-latest' },
+  openai: { strong: 'deepseek-v4.1-flash', fast: 'deepseek-v4.1-flash' },
+  anthropic: { strong: 'claude-opus-5-5', fast: 'claude-haiku-5-5' },
+} as const;
+
+/**
+ * Tried in order when a Gemini model is busy (503 "high demand"), rate-limited (429), gone
+ * (404) or too slow — free-tier capacity and speed change by the minute, and each model has
+ * its own quota. Measured 2026-11-09 with the agent's real tools ("Show me Berlin and
+ * highlight Germany"):
+ *  - gemini-flash-lite-latest (the default; Google's current Flash-Lite): ~1.4–1.7 s, right
+ *    parallel tool calls; the alias also survives retirements like 2.5's.
+ *  - 3.1 Flash-Lite ~1.4 s (7 s at busy moments), right calls; 3.5 Flash-Lite ~1.3 s but
+ *    missed the highlight.
+ *  - 3.6 Flash ~4 s and 3.5 Flash ~5 s: smarter, but 20 requests a day each on the free tier
+ *    (an agent question takes 3–6), so they come last.
+ *  - 3.7/3.8 Flash and gemini-flash-latest were busy or timing out; 2.5 models are closed to
+ *    new users.
+ */
+export const GEMINI_FALLBACKS = [
+  'gemini-3.1-flash-lite',
+  'gemini-3.5-flash-lite',
+  'gemini-3.6-flash',
+  'gemini-3.5-flash',
+];
+
 export function loadConfig(env: Env): Config {
   const environment = (blank(env.PAYPAL_ENVIRONMENT) ?? 'sandbox').toLowerCase();
   // Provider selection: explicit AI_PROVIDER wins; otherwise an OpenAI-compatible key (OpenCode /
   // OpenAI) selects that path, and a bare ANTHROPIC_API_KEY keeps the original Anthropic path.
   const explicitProvider = blank(env.AI_PROVIDER)?.toLowerCase();
+  const geminiKey = blank(env.GEMINI_API_KEY);
   const openAiKey = blank(env.OPENCODE_API_KEY) ?? blank(env.OPENAI_API_KEY);
-  const useOpenAi = explicitProvider === 'openai' || (!explicitProvider && !!openAiKey);
-  const aiApiKey = useOpenAi
-    ? (openAiKey ?? blank(env.ANTHROPIC_API_KEY))
-    : blank(env.ANTHROPIC_API_KEY);
+  const anthropicKey = blank(env.ANTHROPIC_API_KEY);
+  const provider: 'gemini' | 'openai' | 'anthropic' =
+    explicitProvider === 'gemini' ||
+    explicitProvider === 'openai' ||
+    explicitProvider === 'anthropic'
+      ? explicitProvider
+      : geminiKey
+        ? 'gemini'
+        : openAiKey
+          ? 'openai'
+          : 'anthropic';
+  const aiApiKey =
+    provider === 'gemini'
+      ? geminiKey
+      : provider === 'openai'
+        ? (openAiKey ?? anthropicKey)
+        : anthropicKey;
   const aiBaseUrl =
-    blank(env.AI_BASE_URL) ?? (useOpenAi ? 'https://opencode.ai/inference/go/openai/v1' : null);
+    blank(env.AI_BASE_URL) ??
+    (provider === 'gemini'
+      ? GEMINI_OPENAI_BASE_URL
+      : provider === 'openai'
+        ? 'https://opencode.ai/inference/go/openai/v1'
+        : null);
+  // A model named for another provider (e.g. claude-… left over with a Gemini key) is ignored.
+  const model = (value: string | undefined, fallback: string) => {
+    const v = blank(value);
+    const foreign =
+      v &&
+      ((provider !== 'anthropic' && v.startsWith('claude-')) ||
+        (provider !== 'gemini' && v.startsWith('gemini-')));
+    return v && !foreign ? v : fallback;
+  };
+  const defaults = DEFAULT_MODELS[provider];
   return ConfigSchema.parse({
     paypal: {
       clientId: blank(env.PAYPAL_CLIENT_ID),
@@ -105,14 +173,12 @@ export function loadConfig(env: Env): Config {
       webhookId: blank(env.PAYPAL_WEBHOOK_ID),
     },
     ai: {
-      provider: useOpenAi ? 'openai' : 'anthropic',
+      provider,
       apiKey: aiApiKey,
       baseUrl: aiBaseUrl,
       sessionId: blank(env.AI_SESSION_ID),
-      strongModel:
-        blank(env.AI_MODEL_STRONG) ?? (useOpenAi ? 'deepseek-v4.1-flash' : 'claude-opus-5-5'),
-      fastModel:
-        blank(env.AI_MODEL_FAST) ?? (useOpenAi ? 'deepseek-v4.1-flash' : 'claude-haiku-5-5'),
+      strongModel: model(env.AI_MODEL_STRONG, defaults.strong),
+      fastModel: model(env.AI_MODEL_FAST, defaults.fast),
       dailyBudgetUsd: Number(blank(env.AI_DAILY_BUDGET_USD) ?? '5'),
       requestsPerMinute: Math.max(1, Math.floor(Number(blank(env.AI_REQUESTS_PER_MINUTE) ?? '8'))),
     },

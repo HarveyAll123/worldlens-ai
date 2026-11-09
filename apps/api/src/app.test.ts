@@ -67,7 +67,11 @@ function setup(
 
 const chat = (
   text: string,
-  extra: Partial<{ selectedEventId: string | null; mode: 'live' | 'historical' }> = {},
+  extra: Partial<{
+    selectedEventId: string | null;
+    mode: 'live' | 'historical';
+    agent: boolean;
+  }> = {},
 ) => ({
   messages: [{ role: 'user', content: text }],
   context: {
@@ -76,6 +80,7 @@ const chat = (
     resolution: 'day',
     selectedEventId: extra.selectedEventId ?? null,
     camera: { lat: 20, lon: 100, altitudeKm: 12000 },
+    ...(extra.agent === undefined ? {} : { agent: extra.agent }),
   },
 });
 
@@ -387,6 +392,68 @@ describe('AI agent tool layer', () => {
     }>;
     expect(results.filter((b) => b.type === 'tool_result')).toHaveLength(5);
     expect(results.filter((b) => b.is_error)).toHaveLength(3);
+  });
+
+  it('a question asked from an event names that event to the model and selects it', async () => {
+    const ai = new ScriptedAi([[textBlock('It ended the war in Europe.')]]);
+    const { post } = setup({ ai });
+    const body = chat('What did this change?');
+    const about = {
+      eventId: 'hist-berlin-1945-surrender',
+      title: 'German Instrument of Surrender',
+    };
+    (body.messages[0] as Record<string, unknown>).about = about;
+    await post('/api/ai/chat', body);
+    const sent = ai.requests[0]!.messages[0]!.content as Array<{ type: string; text: string }>;
+    expect(sent[0]!.text).toContain('German Instrument of Surrender');
+    expect(sent[0]!.text).toContain('event_id hist-berlin-1945-surrender');
+    expect(sent[1]!.text).toContain('selected_event=hist-berlin-1945-surrender');
+  });
+
+  it('chat mode offers only data tools and never returns globe actions', async () => {
+    const ai = new ScriptedAi([
+      [
+        toolUse('t1', 'fly_to', { place: 'Taiwan' }),
+        toolUse('t2', 'search_events', { query: 'Taiwan Strait' }),
+      ],
+      [textBlock('The Taiwan Strait is between Taiwan and mainland China.')],
+    ]);
+    const { post } = setup({ ai });
+    const { body } = await post('/api/ai/chat', chat('Take me to Taiwan', { agent: false }));
+    const r = body as { actions: ClientAction[]; toolTrace: Array<{ tool: string; ok: boolean }> };
+    expect(r.actions).toEqual([]);
+    expect(Object.fromEntries(r.toolTrace.map((t) => [t.tool, t.ok]))).toEqual({
+      fly_to: false,
+      search_events: true,
+    });
+    const offered = (ai.requests[0]!.tools ?? []).map((t) => t.name);
+    expect(offered).toContain('search_events');
+    expect(offered).not.toContain('fly_to');
+    expect(offered).not.toContain('zoom');
+    expect(ai.requests[0]!.system).toContain('Chat (not Agent)');
+  });
+
+  it('chat mode keeps the offline assistant from moving the globe too', async () => {
+    const ai = new ScriptedAi([new AiUnavailableError('AI provider unreachable')]);
+    const { post } = setup({ ai });
+    const { body } = await post('/api/ai/chat', chat('Return to live', { agent: false }));
+    expect((body as { actions: ClientAction[] }).actions).toEqual([]);
+  });
+
+  it('agent mode offers zoom and pan, relative to the current view', async () => {
+    const ai = new ScriptedAi([
+      [toolUse('t1', 'zoom', { direction: 'in' }), toolUse('t2', 'pan', { direction: 'east' })],
+      [textBlock('Zoomed in and moved east.')],
+    ]);
+    const { post } = setup({ ai });
+    const { body } = await post('/api/ai/chat', chat('Closer, and a bit east'));
+    expect((body as { actions: ClientAction[] }).actions).toEqual([
+      { tool: 'zoom', args: { direction: 'in' } },
+      { tool: 'pan', args: { direction: 'east' } },
+    ]);
+    expect((ai.requests[0]!.tools ?? []).map((t) => t.name)).toEqual(
+      expect.arrayContaining(['zoom', 'pan', 'fly_to', 'highlight_region']),
+    );
   });
 
   it('falls back to the offline assistant when the AI provider fails', async () => {

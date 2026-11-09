@@ -8,7 +8,7 @@ import { Notice, Spinner } from './ui';
 
 export function selectAndFly(e: EventSummary): void {
   const s = useAppStore.getState();
-  s.selectEvent(e.id);
+  s.openEvent(e.id);
   s.flyTo({
     lat: e.location.lat,
     lon: e.location.lon,

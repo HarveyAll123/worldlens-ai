@@ -104,6 +104,33 @@ export const clientToolSchemas = {
     .refine((v) => v.place !== undefined || (v.lat !== undefined && v.lon !== undefined), {
       message: 'Provide either place or both lat and lon',
     }),
+  zoom: z.object({
+    direction: z.enum(['in', 'out']),
+    factor: z
+      .number()
+      .min(1.2)
+      .max(20)
+      .optional()
+      .describe('How much closer/farther; default 2.5 ("a lot" ≈ 6)'),
+  }),
+  pan: z.object({
+    direction: z.enum([
+      'north',
+      'south',
+      'east',
+      'west',
+      'northeast',
+      'northwest',
+      'southeast',
+      'southwest',
+    ]),
+    distance_km: z
+      .number()
+      .min(1)
+      .max(10_000)
+      .optional()
+      .describe('Default: about half the visible width'),
+  }),
   set_time: z.object({ date: DateArg, resolution: ResolutionSchema.optional() }),
   return_to_live: z.object({}),
   highlight_region: z.object({
@@ -152,6 +179,8 @@ export const TOOL_DESCRIPTIONS: Record<ToolName, string> = {
   get_payment_status:
     'Read the server-verified state of a sandbox payment (from PayPal Orders API). Never claim success unless this returns CAPTURED.',
   fly_to: 'Move the globe camera to a place or coordinates.',
+  zoom: 'Zoom the camera in or out from where the user is looking now (keeps the centre).',
+  pan: 'Move the camera sideways from where the user is looking now (keeps the altitude).',
   set_time:
     'Move the temporal navigator to a date (enters HISTORICAL MODE). Dates before 1800 are not available yet.',
   return_to_live: 'Return the navigator to LIVE (present time).',

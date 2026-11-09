@@ -22,6 +22,13 @@ const PRICES: Record<string, Price> = {
   'deepseek-v4.1-flash': { input: 0.15, output: 0.6, cacheRead: 0.003 },
 };
 const FALLBACK_PRICE: Price = { input: 10, output: 50, cacheRead: 1 };
+/**
+ * Gemini on the free tier (a key without billing): nothing is charged — requests beyond the
+ * quota are refused (HTTP 429), never billed. A billed key would need real prices here.
+ */
+const FREE: Price = { input: 0, output: 0, cacheRead: 0 };
+const priceOf = (model: string): Price =>
+  PRICES[model] ?? (model.startsWith('gemini-') ? FREE : FALLBACK_PRICE);
 
 export interface Usage {
   input_tokens: number;
@@ -31,7 +38,7 @@ export interface Usage {
 }
 
 export function costUsd(model: string, u: Usage): number {
-  const p = PRICES[model] ?? FALLBACK_PRICE;
+  const p = priceOf(model);
   const cacheRead = u.cache_read_input_tokens ?? 0;
   const cacheWrite = u.cache_creation_input_tokens ?? 0;
   return (

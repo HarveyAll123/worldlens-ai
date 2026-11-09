@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { OpenAiCompatibleProvider } from './openai';
+import { OpenAiCompatibleProvider, retryAfterMs } from './openai';
 import { AiUnavailableError, type AiTurnRequest } from './provider';
 
 function provider(fetchImpl: typeof fetch): OpenAiCompatibleProvider {
@@ -154,5 +154,85 @@ describe('OpenAiCompatibleProvider', () => {
     ) as unknown as typeof fetch;
     await expect(provider(fetchImpl).turn(request)).rejects.toBeInstanceOf(AiUnavailableError);
     await expect(provider(fetchImpl).turn(request)).rejects.toThrow('authentication failed');
+  });
+});
+
+describe('Gemini through the OpenAI-compatible endpoint', () => {
+  const ok = (message: Record<string, unknown>) =>
+    new Response(JSON.stringify({ choices: [{ message, finish_reason: 'stop' }] }), {
+      status: 200,
+    });
+  const modelOf = (init?: RequestInit) =>
+    (JSON.parse(String(init?.body)) as { model: string }).model;
+
+  it('falls back to the next model when one is busy, and starts there next time', async () => {
+    const tried: string[] = [];
+    const fetchImpl = vi.fn(async (_url: string | Request, init?: RequestInit) => {
+      tried.push(modelOf(init));
+      return modelOf(init) === 'busy-model'
+        ? new Response('{"error":{"code":503,"status":"UNAVAILABLE"}}', { status: 503 })
+        : ok({ content: 'hi' });
+    });
+    const p = new OpenAiCompatibleProvider({
+      apiKey: 'k',
+      baseUrl: 'https://example.test/v1',
+      models: { fast: 'busy-model', strong: 'busy-model' },
+      fallbacks: ['spare-model'],
+      fetchImpl,
+    });
+    expect((await p.turn(request)).model).toBe('spare-model');
+    await p.turn(request);
+    expect(tried).toEqual(['busy-model', 'spare-model', 'spare-model']);
+  });
+
+  it('skips a model whose free daily quota is spent until Google says it resets', () => {
+    const body =
+      '{"error":{"code":429,"details":[{"@type":"type.googleapis.com/google.rpc.RetryInfo","retryDelay":"68508s"}]}}';
+    expect(retryAfterMs(body)).toBe(68_508_000);
+    expect(retryAfterMs('{"error":{"code":429}}')).toBe(60_000);
+  });
+
+  it('sends reasoning_effort and echoes thought signatures back with tool calls', async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+    const signature = { google: { thought_signature: 'sig-123' } };
+    const fetchImpl = vi.fn(async (_url: string | Request, init?: RequestInit) => {
+      bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      return ok({
+        content: null,
+        tool_calls: [
+          {
+            id: 'call_1',
+            type: 'function',
+            function: { name: 'search_events', arguments: '{"q":"Berlin"}' },
+            extra_content: signature,
+          },
+        ],
+      });
+    });
+    const p = new OpenAiCompatibleProvider({
+      apiKey: 'k',
+      baseUrl: 'https://example.test/v1',
+      models: { fast: 'm', strong: 'm' },
+      reasoningEffort: { strong: 'low' },
+      fetchImpl,
+    });
+    const first = await p.turn(request);
+    expect(bodies[0]!.reasoning_effort).toBe('low');
+    // The agent sends the assistant turn back with the tool results.
+    await p.turn({
+      ...request,
+      messages: [
+        ...request.messages,
+        { role: 'assistant', content: first.content },
+        {
+          role: 'user',
+          content: [{ type: 'tool_result', tool_use_id: 'call_1', content: '[]' }],
+        },
+      ],
+    });
+    const sent = (bodies[1]!.messages as Array<{ role: string; tool_calls?: unknown[] }>).find(
+      (m) => m.role === 'assistant',
+    );
+    expect(sent?.tool_calls?.[0]).toMatchObject({ id: 'call_1', extra_content: signature });
   });
 });

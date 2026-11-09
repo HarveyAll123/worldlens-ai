@@ -20,12 +20,18 @@ import {
   parseIso,
   toIso,
 } from '@worldlens/shared';
-import { runAgent, ChatRequestSchema, type ChatResponse } from './ai/agent';
+import {
+  runAgent,
+  ChatRequestSchema,
+  isAgentMode,
+  withForwardedEvent,
+  type ChatResponse,
+} from './ai/agent';
 import { aiClusterSummary, aiFraming, heuristicFraming } from './ai/framing';
 import { runOfflineAssistant } from './ai/offline';
 import { AiUnavailableError } from './ai/provider';
 import type { ToolContext } from './ai/tools-impl';
-import type { AppDeps } from './deps';
+import { AI_HEALTH_NAME, type AppDeps } from './deps';
 import { clientKey, RateLimiter } from './lib/ratelimit';
 import { PaymentError } from './payments/service';
 import { selectBorderSnapshot, type BorderDetail } from './providers/borders';
@@ -115,7 +121,7 @@ export function refreshLiveNews(deps: AppDeps, force = false): Promise<CombinedR
             };
           }
         } catch (err) {
-          deps.health.fail('anthropic', err);
+          deps.health.fail(AI_HEALTH_NAME[deps.config.ai.provider], err);
           break;
         }
       }
@@ -213,7 +219,11 @@ export function createApp(deps: AppDeps, defaults: { defer?: Defer } = {}) {
         minNavigableYear: TEMPORAL_CONFIG.minNavigableYear,
         comingSoonLabel: TEMPORAL_CONFIG.comingSoonLabel,
       },
-      ai: { available: deps.ai.available && !deps.budget.status().exhausted },
+      ai: {
+        available: deps.ai.available && !deps.budget.status().exhausted,
+        // Shown on the assistant's badge ("Gemini"); no keys or quotas.
+        provider: deps.ai.available ? deps.ai.name : null,
+      },
       paypal: deps.payments.publicConfig(),
       news: { liveProvider: deps.news || deps.gdeltFiles ? 'gdelt' : null },
     });
@@ -336,7 +346,7 @@ export function createApp(deps: AppDeps, defaults: { defer?: Defer } = {}) {
           }),
         });
       } catch (err) {
-        deps.health.fail('anthropic', err);
+        deps.health.fail(AI_HEALTH_NAME[deps.config.ai.provider], err);
       }
     }
     return c.json({ framing: heuristicFraming(id, articles, sources, e.isDemo) });
@@ -424,7 +434,7 @@ export function createApp(deps: AppDeps, defaults: { defer?: Defer } = {}) {
 
   app.post('/api/ai/chat', bodyLimit({ maxSize: 64 * 1024 }), async (c) => {
     c.header('Cache-Control', 'no-store');
-    const req = ChatRequestSchema.parse(await c.req.json());
+    const req = withForwardedEvent(ChatRequestSchema.parse(await c.req.json()));
     const key = clientKey(c.req.raw.headers);
     let fallbackReason: string | null = null;
     if (!deps.ai.available) fallbackReason = 'AI is not configured on this server.';
@@ -438,16 +448,21 @@ export function createApp(deps: AppDeps, defaults: { defer?: Defer } = {}) {
           budget: deps.budget,
           tools: toolContext(),
         });
-        deps.health.ok('anthropic');
+        deps.health.ok(AI_HEALTH_NAME[deps.config.ai.provider]);
         return c.json(res);
       } catch (err) {
-        deps.health.fail('anthropic', err);
+        deps.health.fail(AI_HEALTH_NAME[deps.config.ai.provider], err);
         fallbackReason = err instanceof AiUnavailableError ? err.message : 'AI request failed.';
         if (!(err instanceof AiUnavailableError)) console.error('[ai] agent error', err);
       }
     }
     const offline = await runOfflineAssistant(req, toolContext());
-    return c.json({ ...offline, notice: `${fallbackReason} ${offline.notice ?? ''}`.trim() });
+    return c.json({
+      ...offline,
+      // Chat mode: the offline assistant answers too, but never operates the globe.
+      actions: isAgentMode(req) ? offline.actions : [],
+      notice: `${fallbackReason} ${offline.notice ?? ''}`.trim(),
+    });
   });
 
   app.get('/api/ai/usage', (c) => {

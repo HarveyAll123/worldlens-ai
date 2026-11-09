@@ -11,6 +11,7 @@
  * query terms; they are handed on in the DOC API's shape, so normalisation, clustering and
  * locating (from the headline) are unchanged. Discovery input only, never ground truth.
  */
+import { stripOutletSuffix } from '../lib/headline';
 import { unzipFirst } from '../lib/unzip';
 import { fetchWithTimeout, UpstreamError, type FetchLike } from '../lib/http';
 import type { GdeltArticle, PlaceHint } from './gdelt';
@@ -39,15 +40,49 @@ const PRECISION: Record<string, PlaceHint['precision']> = {
 };
 
 /**
+ * The countries an article names itself (GKG type 1), and the United States when it has US
+ * states or towns (types 2 and 3), each with a point inside it. FIPS codes, as GKG gives them.
+ */
+function countriesNamed(entries: string[][]): Map<string, PlaceHint> {
+  const out = new Map<string, PlaceHint>();
+  for (const f of entries) {
+    const code = f[2] ?? '';
+    const lat = Number(f[5]);
+    const lon = Number(f[6]);
+    if (!code || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+    if (f[0] === '1' && !out.has(code))
+      out.set(code, { name: (f[1] ?? code).trim(), lat, lon, precision: 'country' });
+  }
+  if (!out.has('US') && entries.some((f) => f[0] === '2' || f[0] === '3')) {
+    const us = entries.find((f) => (f[0] === '2' || f[0] === '3') && Number.isFinite(Number(f[5])));
+    if (us)
+      out.set('US', {
+        name: 'United States',
+        lat: Number(us[5]),
+        lon: Number(us[6]),
+        precision: 'country',
+      });
+  }
+  return out;
+}
+
+/**
  * Places GDELT found in the article (V2 enhanced locations: type#name#country#adm1#adm2#lat#lon#
  * feature#offset) that the headline names too, most specific first — "New Mexico, United States"
  * for "New Mexico House races", where the headline alone suggests the country Mexico.
+ *
+ * A town or region abroad (types 4, 5) in a country the article never names, while it names
+ * others, is a namesake: a Massachusetts radio station's "Three Berkshire Restaurants…" had
+ * Berkshire geocoded to Zimbabwe, and the article names only America. When the headline's
+ * place is such a namesake, the one country the article names stands in for it.
  */
 export function placesInHeadline(field: string, headline: string): PlaceHint[] {
   const lower = ` ${headline.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ')} `;
+  const entries = field.split(';').map((entry) => entry.split('#'));
+  const countries = countriesNamed(entries);
   const out = new Map<string, PlaceHint>();
-  for (const entry of field.split(';')) {
-    const f = entry.split('#');
+  let namesake = false;
+  for (const f of entries) {
     const precision = PRECISION[f[0] ?? ''];
     const lat = Number(f[5]);
     const lon = Number(f[6]);
@@ -57,9 +92,22 @@ export function placesInHeadline(field: string, headline: string): PlaceHint[] {
       .toLowerCase()
       .replace(/[^\p{L}\p{N}]+/gu, ' ')
       .trim();
-    if (!words || !lower.includes(` ${words} `) || out.has(words)) continue;
+    // A country also counts when the headline uses its adjective: "Yemeni capital" → Yemen,
+    // "Israeli strike" → Israel (the word starts with the name; short names would overmatch).
+    const named =
+      lower.includes(` ${words} `) ||
+      (precision === 'country' &&
+        words.length >= 4 &&
+        !words.includes(' ') &&
+        lower.includes(` ${words}`));
+    if (!words || !named || out.has(words)) continue;
+    if ((f[0] === '4' || f[0] === '5') && countries.size > 0 && !countries.has(f[2] ?? '')) {
+      namesake = true;
+      continue;
+    }
     out.set(words, { name: (f[1] ?? name).trim(), lat, lon, precision });
   }
+  if (out.size === 0 && namesake && countries.size === 1) return [...countries.values()];
   // "Mexico" inside "New Mexico" is not a second place.
   const keys = [...out.keys()];
   for (const k of keys)
@@ -120,7 +168,7 @@ export function parseGkg(text: string, match: RegExp): GdeltArticle[] {
     if (c.length <= COL.extras || c[COL.collection] !== '1') continue; // 1 = web article
     const title = /<PAGE_TITLE>([^<]*)<\/PAGE_TITLE>/.exec(c[COL.extras]!)?.[1];
     if (!title) continue;
-    const headline = decodeEntities(title).trim();
+    const headline = stripOutletSuffix(decodeEntities(title).trim(), c[COL.source]);
     const url = c[COL.url]!;
     if (!match.test(headline) || seen.has(url)) continue;
     seen.add(url);

@@ -21,6 +21,7 @@
     "test:watch": "vitest",
     "test:db": "bash scripts/test-migrations.sh",
     "db:migrate": "tsx scripts/db-migrate.ts",
+    "db:merge-duplicates": "tsx scripts/merge-duplicate-news.ts",
     "test:e2e": "playwright test",
     "verify:paypal": "tsx scripts/verify-paypal-oauth.ts",
     "data:build": "tsx scripts/build-geodata.ts",
