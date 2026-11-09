@@ -48,3 +48,53 @@ describe('phone top-bar buttons and the bottom sheet', () => {
     expect(sheet()).toEqual({ view: 'detail', open: false });
   });
 });
+
+describe('opening an event or a country the user picked', () => {
+  const weimar = {
+    name: 'Weimar Republic',
+    start: '1918-11-09',
+    end: '1933-03-23',
+    wikidata: 'Q41304',
+    label: [10, 51] as [number, number],
+    bbox: [5.9, 47.3, 22.9, 55.1] as [number, number, number, number],
+    ways: [1],
+  };
+  beforeEach(() =>
+    useAppStore.setState({
+      sheet: 'assistant',
+      sheetExpanded: false,
+      selectedEventId: null,
+      selectedCountry: null,
+      assistantOpen: true,
+      chatDocked: false,
+    }),
+  );
+
+  it('turns the shared card from the chat to it (it used to stay on the chat)', () => {
+    useAppStore.getState().openEvent('hist-battle-of-waterloo');
+    expect(useAppStore.getState().selectedEventId).toBe('hist-battle-of-waterloo');
+    expect(useAppStore.getState().assistantOpen).toBe(false);
+    // Phones: the sheet opens on it.
+    expect(sheet()).toEqual({ view: 'detail', open: true });
+
+    useAppStore.setState({ assistantOpen: true, sheet: 'assistant' });
+    useAppStore.getState().openCountry(weimar);
+    expect(useAppStore.getState().selectedCountry).toEqual(weimar);
+    expect(useAppStore.getState().selectedEventId).toBeNull();
+    expect(useAppStore.getState().assistantOpen).toBe(false);
+    expect(sheet()).toEqual({ view: 'detail', open: true });
+  });
+
+  it('keeps the docked chat open beside the card on wide screens', () => {
+    useAppStore.setState({ chatDocked: true });
+    useAppStore.getState().openCountry(weimar);
+    expect(useAppStore.getState().assistantOpen).toBe(true);
+    useAppStore.getState().openEvent('hist-battle-of-waterloo');
+    expect(useAppStore.getState().selectedCountry).toBeNull();
+    expect(useAppStore.getState().assistantOpen).toBe(true);
+    // A closed chat stays closed.
+    useAppStore.setState({ assistantOpen: false });
+    useAppStore.getState().openEvent('hist-anschluss');
+    expect(useAppStore.getState().assistantOpen).toBe(false);
+  });
+});

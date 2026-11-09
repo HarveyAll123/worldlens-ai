@@ -57,8 +57,7 @@ export async function identifyCountry(qc: QueryClient, lon: number, lat: number)
     if (s.selectedCountry) s.selectCountry(null);
     return;
   }
-  s.selectCountry(toSelection(p));
-  s.setSheet('detail', true);
+  s.openCountry(toSelection(p));
   s.announce(`${p.name}`);
 }
 
@@ -72,8 +71,7 @@ export function showCountry(m: PolityMatch): void {
   }
   const c = toSelection(m.polity);
   s.setLayer('borders', true);
-  s.selectCountry(c);
-  s.setSheet('detail', true);
+  s.openCountry(c);
   flyToCountry(c);
   s.announce(`Showing ${c.name}`);
 }

@@ -1,5 +1,6 @@
 /** Dependency container — one per isolate (Worker) or process (Node dev server/tests). */
-import { loadConfig, type Config, type Env } from './env';
+import { GEMINI_FALLBACKS, GEMINI_OPENAI_BASE_URL, loadConfig, type Config, type Env } from './env';
+import type { ProviderName } from './providers/health';
 import { MemoryRepository } from './data/memory-repository';
 import type { EventRepository } from './data/repository';
 import { AnthropicProvider } from './ai/anthropic';
@@ -20,6 +21,13 @@ import { PaymentService } from './payments/service';
 import { MemoryPaymentStore, type PaymentStore } from './payments/store';
 import { PostgresNewsRepository, PostgresPaymentStore } from './data/postgres';
 import { classifyDatabaseUrl, neonHttpClient, type SqlClient } from './data/sql';
+
+/** The name each AI provider reports under in /api/health. */
+export const AI_HEALTH_NAME: Record<Config['ai']['provider'], ProviderName> = {
+  gemini: 'gemini',
+  openai: 'opencode',
+  anthropic: 'anthropic',
+};
 
 export interface AppDeps {
   config: Config;
@@ -84,7 +92,7 @@ export function createDeps(env: Env, o: DepOverrides = {}): AppDeps {
   health.register('wikipedia', true);
   health.register('wikimedia-commons', true);
   health.register('historical-basemaps', true);
-  const aiProviderName = config.ai.provider === 'openai' ? 'opencode' : 'anthropic';
+  const aiProviderName = AI_HEALTH_NAME[config.ai.provider];
   health.register(aiProviderName, !!config.ai.apiKey);
   health.register('paypal', !!(config.paypal.clientId && config.paypal.clientSecret));
   health.register('database', !!sql || !!databaseProblem);
@@ -100,19 +108,33 @@ export function createDeps(env: Env, o: DepOverrides = {}): AppDeps {
   const ai =
     o.ai ??
     (config.ai.apiKey
-      ? config.ai.provider === 'openai'
+      ? config.ai.provider === 'gemini'
         ? new OpenAiCompatibleProvider({
             apiKey: config.ai.apiKey,
-            baseUrl: config.ai.baseUrl ?? 'https://opencode.ai/inference/go/openai/v1',
+            baseUrl: config.ai.baseUrl ?? GEMINI_OPENAI_BASE_URL,
             models: { fast: config.ai.fastModel, strong: config.ai.strongModel },
-            providerName: 'opencode',
-            sessionId: config.ai.sessionId ?? `worldlens-${crypto.randomUUID()}`,
+            providerName: 'gemini',
+            // Free-tier capacity comes and goes ("high demand" 503s, 429s, stalls): the next
+            // model answers instead of the assistant failing.
+            fallbacks: GEMINI_FALLBACKS,
+            // Little thinking: answers in a few seconds; the tools carry the facts.
+            reasoningEffort: { fast: 'low', strong: 'low' },
+            timeoutMs: 12_000,
             ...(o.fetchImpl ? { fetchImpl: o.fetchImpl } : {}),
           })
-        : new AnthropicProvider(config.ai.apiKey, {
-            fast: config.ai.fastModel,
-            strong: config.ai.strongModel,
-          })
+        : config.ai.provider === 'openai'
+          ? new OpenAiCompatibleProvider({
+              apiKey: config.ai.apiKey,
+              baseUrl: config.ai.baseUrl ?? 'https://opencode.ai/inference/go/openai/v1',
+              models: { fast: config.ai.fastModel, strong: config.ai.strongModel },
+              providerName: 'opencode',
+              sessionId: config.ai.sessionId ?? `worldlens-${crypto.randomUUID()}`,
+              ...(o.fetchImpl ? { fetchImpl: o.fetchImpl } : {}),
+            })
+          : new AnthropicProvider(config.ai.apiKey, {
+              fast: config.ai.fastModel,
+              strong: config.ai.strongModel,
+            })
       : new NullAiProvider());
   const budget = new AiBudget(config.ai.dailyBudgetUsd, now);
   const client =

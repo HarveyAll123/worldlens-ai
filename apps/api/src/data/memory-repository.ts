@@ -33,6 +33,7 @@ import {
   type DemoNews,
 } from '@worldlens/shared/data';
 import type { BuiltEvent } from '../pipeline/build-events';
+import { continueStories, priorOf, type Continuity, type PriorEvent } from '../pipeline/continuity';
 import {
   minImportanceFor,
   type EventRepository,
@@ -65,6 +66,8 @@ export class MemoryRepository implements EventRepository {
   readonly name: string = 'memory';
   private demo: { builtAtHour: number; data: DemoNews } | null = null;
   private live = new Map<string, BuiltEvent>();
+  /** Ids of live events merged into another (the same story), and where they went. */
+  private mergedLive = new Map<string, { into: string; atMs: number }>();
   private lastIngestedAt: string | null = null;
   private sources = new Map<string, NewsSource>(NEWS_SOURCES.map((s) => [s.id, s]));
   private index = new SearchIndex();
@@ -127,7 +130,7 @@ export class MemoryRepository implements EventRepository {
   }
 
   async getEvent(id: string, nowMs: number): Promise<WorldEvent | null> {
-    const live = this.live.get(id)?.event;
+    const live = this.live.get(this.resolveLiveId(id))?.event;
     if (live) return this.withActions(live);
     const e = this.allEvents(nowMs).find((x) => x.id === id) ?? null;
     return e ? this.withActions(e) : null;
@@ -138,7 +141,7 @@ export class MemoryRepository implements EventRepository {
   }
 
   async getArticles(eventId: string, nowMs: number): Promise<Article[]> {
-    const live = this.live.get(eventId);
+    const live = this.live.get(this.resolveLiveId(eventId));
     if (live) return live.articles;
     return this.demoData(nowMs).articles.get(eventId) ?? [];
   }
@@ -225,16 +228,51 @@ export class MemoryRepository implements EventRepository {
   }
 
   async replaceLiveNews(events: BuiltEvent[], nowMs: number): Promise<void> {
-    // Keep only events inside the live window; newest ingestion wins for an id.
-    const cutoff = nowMs - TEMPORAL_CONFIG.liveWindowHours * HOUR;
-    for (const [id, b] of this.live)
-      if (parseIso(b.event.updatedAt ?? b.event.time.start) < cutoff) this.live.delete(id);
-    for (const b of events) {
+    this.applyLiveNews(continueStories(events, this.livePriors(nowMs)), nowMs);
+  }
+
+  /** Live events of earlier runs, inside the live window: what a new run may continue. */
+  livePriors(nowMs: number): PriorEvent[] {
+    this.pruneLive(nowMs);
+    return [...this.live.values()].map(priorOf);
+  }
+
+  /**
+   * Stores a run's events once matched to earlier ones (continueStories): newest ingestion wins
+   * for an id, and an event merged into another leaves while its id leads on to that one.
+   */
+  applyLiveNews(run: Continuity, nowMs: number): void {
+    this.pruneLive(nowMs);
+    for (const [id, into] of run.mergedInto) {
+      this.live.delete(id);
+      this.mergedLive.set(id, { into, atMs: nowMs });
+    }
+    for (const b of run.events) {
+      this.mergedLive.delete(b.event.id);
       this.live.set(b.event.id, b);
       for (const s of b.sources) if (!this.sources.has(s.id)) this.sources.set(s.id, s);
     }
     this.lastIngestedAt = new Date(nowMs).toISOString();
     this.liveVersion++;
+  }
+
+  /** The id a live event goes by now: a merged event's id leads to the event it joined. */
+  resolveLiveId(id: string): string {
+    let current = id;
+    for (let hop = 0; hop < 8; hop++) {
+      const next = this.mergedLive.get(current)?.into;
+      if (!next) break;
+      current = next;
+    }
+    return current;
+  }
+
+  /** Keep only events (and merged ids) inside the live window. */
+  private pruneLive(nowMs: number): void {
+    const cutoff = nowMs - TEMPORAL_CONFIG.liveWindowHours * HOUR;
+    for (const [id, b] of this.live)
+      if (parseIso(b.event.updatedAt ?? b.event.time.start) < cutoff) this.live.delete(id);
+    for (const [id, m] of this.mergedLive) if (m.atMs < cutoff) this.mergedLive.delete(id);
   }
 
   liveNewsStatus(): { count: number; lastIngestedAt: string | null } {

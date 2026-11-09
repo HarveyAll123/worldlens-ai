@@ -504,6 +504,11 @@ export async function prepareClientAction(
     }
     case 'return_to_live':
       return queued({ tool: 'return_to_live', args: {} });
+    // Relative to the user's current view, applied in the browser (camera state lives there).
+    case 'zoom':
+      return queued({ tool: 'zoom', args: parsed.data as { direction: 'in' | 'out' } });
+    case 'pan':
+      return queued({ tool: 'pan', args: parsed.data as { direction: 'north' } });
     case 'highlight_region': {
       const a = parsed.data as { country: string };
       if (normalizeText(a.country) === 'none')

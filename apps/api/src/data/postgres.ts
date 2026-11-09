@@ -21,6 +21,15 @@ import {
   type WorldEvent,
 } from '@worldlens/shared';
 import type { BuiltEvent } from '../pipeline/build-events';
+import { importanceFor } from '../pipeline/build-events';
+import {
+  continueStories,
+  duplicateCopies,
+  headlineKey,
+  mergePriors,
+  SAME_STORY_MS,
+  type PriorEvent,
+} from '../pipeline/continuity';
 import type { IngestionRun } from '../pipeline/ingest';
 import type { ProviderHealth } from '../providers/health';
 import {
@@ -233,6 +242,84 @@ insert into event_articles (event_id, article_id)
 select event_id, article_id from jsonb_to_recordset($1::jsonb) as x(event_id text, article_id text)
 on conflict do nothing`;
 
+/** A stored news event with all its articles and their publishers (see PriorRow). */
+const PRIOR_COLUMNS = `e.id, e.title, e.time_start, e.time_end, st_y(e.geom::geometry) as lat,
+  st_x(e.geom::geometry) as lon, e.location_precision, e.country_code,
+  coalesce((select array_agg(ea.article_id order by ea.article_id) from event_articles ea
+            where ea.event_id = e.id), '{}') as article_ids,
+  coalesce((select array_agg(distinct a.source_id) from event_articles ea
+            join articles a on a.id = ea.article_id where ea.event_id = e.id), '{}') as source_ids`;
+
+/** Stored news events no ingestion merged into another. */
+const LIVE_STORED = `e.kind = 'news' and not e.is_demo and (e.provenance->>'mergedInto') is null`;
+
+/**
+ * Earlier news events that share an article or the headline with a run ($1 its article ids,
+ * $2 its headlines in lower case, $3 the earliest start worth looking at). Events already
+ * merged into another are not continued again.
+ */
+const PRIOR_NEWS = `
+select ${PRIOR_COLUMNS}
+from events e
+where ${LIVE_STORED} and e.period && tstzrange($3::timestamptz, null)
+  and (lower(e.title) = any($2::text[])
+       or exists (select 1 from event_articles ea
+                  where ea.event_id = e.id and ea.article_id = any($1::text[])))
+order by e.id`;
+
+/** Every stored news event, for the one-off tidy-up of earlier copies (mergeStoredCopies). */
+const STORED_NEWS = `select ${PRIOR_COLUMNS} from events e where ${LIVE_STORED} order by e.id`;
+
+/** The event a story is kept in takes on its copies' coverage and time span ($1 rows). */
+const ADD_UP_KEPT = `
+update events e set article_count = greatest(e.article_count, x.article_count),
+  source_count = greatest(e.source_count, x.source_count),
+  importance = greatest(e.importance, x.importance),
+  time_start = least(e.time_start, x.time_start),
+  time_end = case when x.time_end is null then e.time_end
+                  else greatest(coalesce(e.time_end, e.time_start), x.time_end) end
+from jsonb_to_recordset($1::jsonb) as x(id text, article_count integer, source_count integer,
+  importance smallint, time_start timestamptz, time_end timestamptz)
+where e.id = x.id and e.kind = 'news'`;
+
+/**
+ * Marks news events as merged into the event that now carries their story ($1 [{id, into_id}]).
+ * Nothing is deleted: listings skip them and event_by_id callers follow the mark.
+ */
+const MARK_MERGED = `
+update events e set provenance = e.provenance || jsonb_build_object('mergedInto', x.into_id)
+from jsonb_to_recordset($1::jsonb) as x(id text, into_id text)
+where e.id = x.id and e.kind = 'news'`;
+
+interface PriorRow {
+  id: string;
+  title: string;
+  time_start: Ts;
+  time_end: Ts | null;
+  lat: number;
+  lon: number;
+  location_precision: WorldEvent['location']['precision'];
+  country_code: string | null;
+  article_ids: string[] | null;
+  source_ids: string[] | null;
+}
+
+/** The event a merged one now lives on in (see MARK_MERGED), if any. */
+const mergedInto = (r: EventRow): string | null => r.provenance?.mergedInto ?? null;
+
+const priorFromRow = (r: PriorRow): PriorEvent => ({
+  id: r.id,
+  title: r.title,
+  startMs: parseIso(tsToIso(r.time_start)),
+  endMs: parseIso(tsToIso(r.time_end ?? r.time_start)),
+  lat: r.lat,
+  lon: r.lon,
+  precision: r.location_precision,
+  countryCode: r.country_code?.trim() || null,
+  articleIds: new Set(r.article_ids ?? []),
+  sourceIds: new Set(r.source_ids ?? []),
+});
+
 export class PostgresNewsRepository implements EventRepository {
   readonly name: string;
   private lastIngestedAt: string | null = null;
@@ -275,11 +362,14 @@ export class PostgresNewsRepository implements EventRepository {
             q.bbox?.south ?? null,
             q.bbox?.east ?? null,
             q.bbox?.north ?? null,
-            q.limit,
+            // A little extra: events merged into another are skipped below.
+            Math.min(1000, q.limit + Math.ceil(q.limit / 4)),
           ],
           { idempotent: true },
         );
-        const dbEvents: EventSummary[] = rows.map((r) => toSummary(rowToEvent(r)));
+        const dbEvents: EventSummary[] = rows
+          .filter((r) => !mergedInto(r))
+          .map((r) => toSummary(rowToEvent(r)));
         const fresh = dbEvents.filter((e) => !base.events.some((b) => b.id === e.id));
         const merged = [...base.events, ...fresh];
         merged.sort(
@@ -302,21 +392,33 @@ export class PostgresNewsRepository implements EventRepository {
     if (local || !id.startsWith('news-')) return local;
     return this.guard(
       async () => {
-        const rows = await this.db.query<EventRow>(
-          `select ${EVENT_COLUMNS} from event_by_id($1::text)`,
-          [id],
-          { idempotent: true },
-        );
-        if (!rows[0]) return null;
-        const e = rowToEvent(rows[0]);
-        return { ...e, hasTakeAction: this.memory.actionOptions(e).length > 0 };
+        // An event merged into another (the same story, found by a later run) leads to it.
+        let current = id;
+        for (let hop = 0; hop < 5; hop++) {
+          const rows = await this.db.query<EventRow>(
+            `select ${EVENT_COLUMNS} from event_by_id($1::text)`,
+            [current],
+            { idempotent: true },
+          );
+          if (!rows[0]) return null;
+          const next = mergedInto(rows[0]);
+          if (!next) {
+            const e = rowToEvent(rows[0]);
+            return { ...e, hasTakeAction: this.memory.actionOptions(e).length > 0 };
+          }
+          const local = await this.memory.getEvent(next, nowMs);
+          if (local) return local;
+          current = next;
+        }
+        return null;
       },
       () => null,
     );
   }
 
-  async getArticles(eventId: string, nowMs: number): Promise<Article[]> {
-    if (!eventId.startsWith('news-')) return this.memory.getArticles(eventId, nowMs);
+  async getArticles(requestedId: string, nowMs: number): Promise<Article[]> {
+    if (!requestedId.startsWith('news-')) return this.memory.getArticles(requestedId, nowMs);
+    const eventId = this.memory.resolveLiveId(requestedId);
     return this.guard(
       async () => {
         const rows = await this.db.query<{
@@ -429,8 +531,98 @@ export class PostgresNewsRepository implements EventRepository {
     return this.memory.frontlinesFor(conflictId);
   }
 
-  async replaceLiveNews(events: BuiltEvent[], nowMs: number): Promise<void> {
-    await this.memory.replaceLiveNews(events, nowMs);
+  /** Earlier live events in the database that share an article or the headline with a run. */
+  private async storedPriors(events: BuiltEvent[]): Promise<PriorEvent[]> {
+    const articleIds = [...new Set(events.flatMap((b) => b.articles.map((a) => a.id)))];
+    const headlines = [
+      ...new Set(
+        events.filter((b) => headlineKey(b.event.title)).map((b) => b.event.title.toLowerCase()),
+      ),
+    ];
+    const earliest = events.reduce((m, b) => Math.min(m, parseIso(b.event.time.start)), Infinity);
+    const rows = await this.db.query<PriorRow>(
+      PRIOR_NEWS,
+      [articleIds, headlines, toPgTimestamp(toIso(earliest - SAME_STORY_MS))],
+      { idempotent: true },
+    );
+    return rows.map(priorFromRow);
+  }
+
+  /**
+   * One-off tidy-up (pnpm db:merge-duplicates) for news stored before stories kept their ids
+   * across runs: copies of one story the window no longer brings back are merged into the copy
+   * with the most articles, which links their articles and adds up their coverage and time span.
+   * Nothing is deleted, and running it again changes nothing. Throws when the database fails.
+   */
+  async mergeStoredCopies(): Promise<{ stories: number; merged: number }> {
+    const stored = (await this.db.query<PriorRow>(STORED_NEWS, [], { idempotent: true })).map(
+      priorFromRow,
+    );
+    const into = duplicateCopies(stored);
+    const byIdMap = new Map(stored.map((p) => [p.id, p]));
+    const stories = new Map<string, PriorEvent[]>();
+    for (const [copy, kept] of into)
+      stories.set(kept, [...(stories.get(kept) ?? []), byIdMap.get(copy)!]);
+    const kept = [];
+    const links = [];
+    for (const [id, copies] of stories) {
+      const k = byIdMap.get(id)!;
+      const articles = new Set(k.articleIds);
+      const sources = new Set(k.sourceIds);
+      let start = k.startMs;
+      let end = k.endMs;
+      for (const c of copies) {
+        for (const a of c.articleIds) {
+          if (!articles.has(a)) links.push({ event_id: id, article_id: a });
+          articles.add(a);
+        }
+        for (const src of c.sourceIds) sources.add(src);
+        start = Math.min(start, c.startMs);
+        end = Math.max(end, c.endMs);
+      }
+      kept.push({
+        id,
+        article_count: articles.size,
+        source_count: sources.size,
+        importance: importanceFor(sources.size),
+        time_start: toPgTimestamp(toIso(start)),
+        time_end: end - start > 3_600_000 ? toPgTimestamp(toIso(end)) : null,
+      });
+    }
+    if (into.size > 0)
+      await this.db.transaction([
+        { text: ADD_UP_KEPT, params: [toJsonParam(uniqueSortedBy(kept, (k) => k.id))] },
+        {
+          text: LINK_ARTICLES,
+          params: [toJsonParam(uniqueSortedBy(links, (l) => `${l.event_id}|${l.article_id}`))],
+        },
+        {
+          text: MARK_MERGED,
+          params: [
+            toJsonParam(
+              uniqueSortedBy(
+                [...into].map(([copy, k]) => ({ id: copy, into_id: k })),
+                (m) => m.id,
+              ),
+            ),
+          ],
+        },
+      ]);
+    return { stories: stories.size, merged: into.size };
+  }
+
+  async replaceLiveNews(built: BuiltEvent[], nowMs: number): Promise<void> {
+    // One event per story across runs and isolates: earlier copies come from this isolate's
+    // memory and from the database every isolate shares.
+    const stored: PriorEvent[] = built.length
+      ? await this.guard(
+          () => this.storedPriors(built),
+          () => [],
+        )
+      : [];
+    const run = continueStories(built, mergePriors(this.memory.livePriors(nowMs), stored));
+    this.memory.applyLiveNews(run, nowMs);
+    const events = run.events;
     this.lastIngestedAt = new Date(nowMs).toISOString();
     this.lastCount = events.length;
     if (events.length === 0) return;
@@ -467,25 +659,45 @@ export class PostgresNewsRepository implements EventRepository {
       snippet: a.snippet ? a.snippet.slice(0, 600) : null,
       image_url: httpsOrNull(a.imageUrl),
     }));
-    const stored = new Set(articles.map((a) => a.id));
+    const saved = new Set(articles.map((a) => a.id));
+    // Articles of earlier copies of a story are linked to the event that carries it now; only
+    // those known to be stored (the database returned them), so a link never lacks its article.
+    const inDb = new Set(stored.flatMap((p) => [...p.articleIds]));
     const links = uniqueSortedBy(
-      events.flatMap((b) =>
-        b.articles
-          .filter((a) => stored.has(a.id))
+      events.flatMap((b) => [
+        ...b.articles
+          .filter((a) => saved.has(a.id))
           .map((a) => ({ event_id: b.event.id, article_id: a.id })),
-      ),
+        ...b.carriedArticleIds
+          .filter((id) => inDb.has(id))
+          .map((id) => ({ event_id: b.event.id, article_id: id })),
+      ]),
       (l) => `${l.event_id}|${l.article_id}`,
     );
-    await this.guard(
-      () =>
-        this.db.transaction([
+    const ok = await this.guard(
+      async () => {
+        await this.db.transaction([
           { text: UPSERT_SOURCES, params: [toJsonParam(sources)] },
           { text: UPSERT_EVENTS, params: [toJsonParam(eventRows)] },
           { text: UPSERT_ARTICLES, params: [toJsonParam(articles)] },
           { text: LINK_ARTICLES, params: [toJsonParam(links)] },
-        ]),
-      () => undefined,
+        ]);
+        return true;
+      },
+      () => false,
     );
+    // Earlier copies are marked once the events that carry their stories are stored; on its own
+    // so it locks few rows. Repeating it is harmless, and a failure leaves a duplicate until the
+    // next run marks it.
+    const merged = uniqueSortedBy(
+      [...run.mergedInto].map(([id, into]) => ({ id, into_id: into })),
+      (m) => m.id,
+    );
+    if (ok && merged.length > 0)
+      await this.guard(
+        () => this.db.query(MARK_MERGED, [toJsonParam(merged)], { idempotent: true }),
+        () => [],
+      );
   }
 
   async recordIngestionRun(run: IngestionRun): Promise<void> {

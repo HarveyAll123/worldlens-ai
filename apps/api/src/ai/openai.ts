@@ -21,6 +21,11 @@ interface OpenAiToolCall {
   id: string;
   type: 'function';
   function: { name: string; arguments: string };
+  /**
+   * Provider data to echo back unchanged with the call — Gemini 3 puts its "thought signature"
+   * here (`extra_content.google.thought_signature`) and rejects a follow-up turn without it.
+   */
+  extra_content?: unknown;
 }
 
 interface OpenAiMessage {
@@ -77,6 +82,7 @@ function toOpenAiMessages(messages: Anthropic.Beta.BetaMessageParam[]): OpenAiMe
             id: String(block.id),
             type: 'function',
             function: { name: String(block.name), arguments: JSON.stringify(block.input ?? {}) },
+            ...(block.extra_content !== undefined ? { extra_content: block.extra_content } : {}),
           });
       }
       out.push({
@@ -131,6 +137,40 @@ export interface OpenAiCompatibleOptions {
   providerName?: string;
   /** Sent as `x-opencode-session`; OpenCode Go requires it to route requests efficiently. */
   sessionId?: string;
+  /**
+   * Models tried in order when the tier's model is busy, rate-limited, unknown or too slow
+   * (HTTP 429/5xx/404, timeout). A model that failed sits out for COOLDOWN_MS, so the next
+   * turns go straight to one that answers.
+   */
+  fallbacks?: string[];
+  /** Sent as `reasoning_effort` (Gemini maps it to its thinking level): less is faster. */
+  reasoningEffort?: Partial<Record<ModelTier, 'none' | 'minimal' | 'low' | 'medium' | 'high'>>;
+  /** Per-attempt timeout; default 90 s. */
+  timeoutMs?: number;
+}
+
+const COOLDOWN_MS = 60_000;
+
+/** A failure worth trying another model for (not the caller's fault, not the key's). */
+class RetryableError extends Error {
+  constructor(
+    message: string,
+    /** How long the model should sit out; COOLDOWN_MS unless the provider says longer. */
+    readonly coolMs = COOLDOWN_MS,
+  ) {
+    super(message);
+  }
+}
+
+/**
+ * How long a rate-limited model should rest. Gemini answers 429 with a `retryDelay` ("68508s"
+ * when a free-tier *daily* quota is spent — 20 requests a day for the Flash models), so a
+ * spent model is skipped until its quota resets instead of costing a request every minute.
+ */
+export function retryAfterMs(body: string): number {
+  const m = /"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"/.exec(body);
+  const seconds = m ? Number(m[1]) : 0;
+  return Math.min(24 * 3_600_000, Math.max(COOLDOWN_MS, seconds * 1000));
 }
 
 export class OpenAiCompatibleProvider implements AiProvider {
@@ -145,9 +185,34 @@ export class OpenAiCompatibleProvider implements AiProvider {
     return this.opts.models[tier];
   }
 
+  /** Models that recently failed → when they may be tried first again. */
+  private readonly coolingUntil = new Map<string, number>();
+
+  /** The tier's model, then the fallbacks; ones cooling down after a failure go last. */
+  private candidates(tier: ModelTier): string[] {
+    const all = [...new Set([this.modelFor(tier), ...(this.opts.fallbacks ?? [])])];
+    const now = Date.now();
+    const cool = (m: string) => (this.coolingUntil.get(m) ?? 0) > now;
+    return [...all.filter((m) => !cool(m)), ...all.filter(cool)];
+  }
+
   async turn(req: AiTurnRequest): Promise<AiTurnResponse> {
-    const model = this.modelFor(req.tier);
+    let last: Error = new AiUnavailableError('AI provider unreachable');
+    for (const model of this.candidates(req.tier)) {
+      try {
+        return await this.turnWith(model, req);
+      } catch (err) {
+        if (!(err instanceof RetryableError)) throw err;
+        this.coolingUntil.set(model, Date.now() + err.coolMs);
+        last = new AiUnavailableError(err.message);
+      }
+    }
+    throw last;
+  }
+
+  private async turnWith(model: string, req: AiTurnRequest): Promise<AiTurnResponse> {
     const url = `${this.opts.baseUrl.replace(/\/+$/, '')}/chat/completions`;
+    const effort = this.opts.reasoningEffort?.[req.tier];
     const body = {
       model,
       messages: [
@@ -155,6 +220,7 @@ export class OpenAiCompatibleProvider implements AiProvider {
         ...toOpenAiMessages(req.messages),
       ],
       max_tokens: req.maxTokens,
+      ...(effort ? { reasoning_effort: effort } : {}),
       ...(req.tools?.length
         ? { tools: req.tools.map(toOpenAiTool), tool_choice: 'auto' as const }
         : {}),
@@ -171,15 +237,21 @@ export class OpenAiCompatibleProvider implements AiProvider {
           ...(this.opts.sessionId ? { 'x-opencode-session': this.opts.sessionId } : {}),
         },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(90_000),
+        signal: AbortSignal.timeout(this.opts.timeoutMs ?? 90_000),
       });
     } catch {
-      throw new AiUnavailableError('AI provider unreachable');
+      throw new RetryableError('AI provider unreachable or too slow');
     }
 
     if (res.status === 401 || res.status === 403)
       throw new AiUnavailableError('AI provider authentication failed');
-    if (res.status === 429) throw new AiUnavailableError('AI provider rate limit reached');
+    if (res.status === 429)
+      throw new RetryableError(
+        'AI provider rate limit reached',
+        retryAfterMs(await res.text().catch(() => '')),
+      );
+    if (res.status === 404 || res.status >= 500)
+      throw new RetryableError(`AI provider busy or model unavailable (${res.status})`);
     if (!res.ok) throw new AiUnavailableError(`AI provider error (${res.status})`);
 
     let data: OpenAiResponse;
@@ -190,16 +262,19 @@ export class OpenAiCompatibleProvider implements AiProvider {
     }
 
     const choice = data.choices?.[0];
+    if (!choice) throw new RetryableError('AI provider returned no answer');
     const message = choice?.message;
     const content: Anthropic.Beta.BetaContentBlock[] = [];
     const text = message?.content?.trim();
     if (text) content.push({ type: 'text', text } as Anthropic.Beta.BetaContentBlock);
-    for (const call of message?.tool_calls ?? []) {
+    for (const [i, call] of (message?.tool_calls ?? []).entries()) {
       content.push({
         type: 'tool_use',
-        id: call.id,
+        // Some compatible endpoints omit ids; tool results must still pair with their call.
+        id: call.id || `call_${Date.now().toString(36)}_${i}`,
         name: call.function.name,
         input: parseArguments(call.function.arguments),
+        ...(call.extra_content !== undefined ? { extra_content: call.extra_content } : {}),
       } as Anthropic.Beta.BetaContentBlock);
     }
 

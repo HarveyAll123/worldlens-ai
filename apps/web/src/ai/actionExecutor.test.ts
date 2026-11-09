@@ -3,16 +3,19 @@ import { utcMs } from '@worldlens/shared';
 import { useAppStore } from '../state/store';
 import {
   goToTourStep,
+  pannedView,
   resolutionForIso,
   runActions,
   toSteps,
   validateActions,
+  zoomedView,
 } from './actionExecutor';
 
 describe('AI action executor', () => {
   beforeEach(() => {
     useAppStore.getState().returnToLive();
     useAppStore.getState().setTour(null);
+    useAppStore.setState({ chatDocked: false, assistantOpen: false });
   });
 
   it('rejects malformed or unknown actions (no arbitrary execution)', () => {
@@ -69,6 +72,13 @@ describe('AI action executor', () => {
     expect(useAppStore.getState().assistantOpen).toBe(true);
   });
 
+  it('keeps the docked chat open beside an event the answer opens (wide screens)', () => {
+    useAppStore.setState({ chatDocked: true, assistantOpen: true });
+    runActions([{ tool: 'open_event', args: { event_id: 'hist-anschluss' } }]);
+    expect(useAppStore.getState().selectedEventId).toBe('hist-anschluss');
+    expect(useAppStore.getState().assistantOpen).toBe(true);
+  });
+
   it('opens Take Action review only (never pays)', () => {
     runActions([
       {
@@ -93,5 +103,36 @@ describe('AI action executor', () => {
     expect(resolutionForIso('1945-05-08')).toBe('day');
     expect(resolutionForIso('2026-10-14T09:00:00Z')).toBe('hour');
     expect(toSteps([])).toEqual([]);
+  });
+});
+
+describe('relative camera moves (zoom, pan)', () => {
+  const here = { lat: 52.5, lon: 13.4, altitudeKm: 900 };
+
+  it('zooms about the same centre', () => {
+    expect(zoomedView(here, 'in')).toEqual({ lat: 52.5, lon: 13.4, altitudeKm: 360 });
+    expect(zoomedView(here, 'out', 4).altitudeKm).toBe(3600);
+    expect(zoomedView({ ...here, altitudeKm: 30_000 }, 'out').altitudeKm).toBe(40_000); // capped
+  });
+
+  it('pans by about half the view, keeping the altitude', () => {
+    const north = pannedView(here, 'north');
+    expect(north.lat).toBeCloseTo(52.5 + 540 / 111.2, 5);
+    expect(north.lon).toBe(13.4);
+    expect(north.altitudeKm).toBe(900);
+    const east = pannedView(here, 'east', 100);
+    expect(east.lon).toBeGreaterThan(13.4);
+    expect(east.lat).toBe(52.5);
+    expect(pannedView({ lat: 0, lon: 179, altitudeKm: 900 }, 'east', 500).lon).toBeLessThan(0); // wraps
+  });
+
+  it('applies to the current camera', () => {
+    useAppStore.setState({ camera: { ...here, bbox: null } });
+    runActions([{ tool: 'zoom', args: { direction: 'in', factor: 3 } }]);
+    expect(useAppStore.getState().flyRequest).toMatchObject({
+      lat: 52.5,
+      lon: 13.4,
+      altitudeKm: 300,
+    });
   });
 });

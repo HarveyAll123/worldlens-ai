@@ -147,8 +147,7 @@ export function PlacePicker({ events }: { events: EventSummary[] }) {
   const choose = (e: EventSummary) => {
     const s = useAppStore.getState();
     s.setPlacePicker(null);
-    s.selectEvent(e.id);
-    s.setSheet('detail', true);
+    s.openEvent(e.id);
   };
 
   return (

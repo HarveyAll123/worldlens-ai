@@ -77,6 +77,18 @@ describe('storage', () => {
     expect(loaded.chats[0]!.turns).toHaveLength(1);
   });
 
+  it('keeps which event a question was asked from, and names the chat after it', () => {
+    const about = { eventId: 'hist-battle-of-berlin', title: 'Battle of Berlin' };
+    const chat = addTurn(
+      newChat(NOW, 'chat-2'),
+      { role: 'user', content: 'What led to this?', about },
+      NOW,
+    );
+    expect(chat.title).toBe('Battle of Berlin: What led to this');
+    saveChats({ chats: [chat], activeId: 'chat-2' });
+    expect(loadChats().chats[0]!.turns[0]!.about).toEqual(about);
+  });
+
   it('drops malformed records instead of repairing them', () => {
     localStorage.setItem(
       'worldlens.chats',

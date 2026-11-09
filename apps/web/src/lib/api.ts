@@ -77,7 +77,7 @@ export interface EventsResponse {
 
 export interface AppConfig {
   temporal: { minNavigableYear: number; comingSoonLabel: string | null };
-  ai: { available: boolean };
+  ai: { available: boolean; provider?: string | null };
   paypal: {
     configured: boolean;
     environment: 'sandbox' | 'live';
@@ -151,6 +151,8 @@ export interface BordersResponse {
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  /** The event a question was asked from; the server tells the model which event "this" is. */
+  about?: { eventId: string; title: string };
 }
 
 export interface ChatResponse {

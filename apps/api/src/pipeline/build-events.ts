@@ -16,6 +16,11 @@ export interface BuiltEvent {
   sources: NewsSource[];
 }
 
+/** 1–5 from how many outlets reported a story: 1 → 2, 3 → 3, 7 → 4, 15 or more → 5. */
+export function importanceFor(sourceCount: number): WorldEvent['importance'] {
+  return Math.min(5, 1 + Math.floor(Math.log2(1 + sourceCount))) as WorldEvent['importance'];
+}
+
 export function buildEventFromCluster(c: Cluster, nowMs: number): BuiltEvent | null {
   if (!c.location) return null; // unlocated stories are not placed on the globe
   const rep = representative(c);
@@ -88,7 +93,7 @@ export function buildEventFromCluster(c: Cluster, nowMs: number): BuiltEvent | n
         }
       : {}),
     references: [],
-    importance: Math.min(5, 1 + Math.floor(Math.log2(1 + sources.size))) as 1 | 2 | 3 | 4 | 5,
+    importance: importanceFor(sources.size),
     confidence: Math.round(confidence * 100) / 100,
     articleCount: articles.length,
     sourceCount: sources.size,

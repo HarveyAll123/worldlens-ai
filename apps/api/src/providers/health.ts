@@ -9,6 +9,7 @@ export type ProviderName =
   | 'historical-basemaps'
   | 'anthropic'
   | 'opencode'
+  | 'gemini'
   | 'paypal'
   | 'database';
 

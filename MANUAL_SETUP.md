@@ -68,6 +68,15 @@ Local check of the migrations without Neon: `pnpm test:db` (needs PostgreSQL + P
 5. `npx wrangler deploy`. The cron trigger (`*/15 * * * *`) runs GDELT and RSS in one ingestion.
 6. Recommended: add a Cloudflare WAF rate-limiting rule for `/api/ai/*` and `/api/payments/*` (the in-Worker limiter is per isolate).
 
+## Google Gemini (free — recommended for the assistant)
+
+1. aistudio.google.com → **Get API key** → create a key (no billing account needed; the free tier is used).
+2. `GEMINI_API_KEY=...` in `apps/api/.dev.vars` (dev) or `wrangler secret put GEMINI_API_KEY`. It is chosen automatically over the other providers; `AI_PROVIDER` overrides.
+3. Models default to `gemini-flash-lite-latest` (Google's current Flash-Lite: ~1.5 s per step, reliable tool calls, a large free daily allowance) and fall back to 3.1/3.5 Flash-Lite, then 3.6/3.5 Flash when a model is busy, rate-limited or slow. The Flash models are smarter but allow only 20 free requests a day each (an agent question takes 3–6), so they are fallbacks. Set `AI_MODEL_STRONG` / `AI_MODEL_FAST` to choose others.
+4. Check: the assistant header shows **Gemini**; replies show the model and "free".
+
+The assistant has two modes, switched in its header: **Agent** (default) may fly, zoom, pan, highlight, set the timeline, open events and toggle layers; **Chat** only answers — it is offered no globe tools and its replies never move the globe.
+
 ## Anthropic
 
 1. console.anthropic.com → **API keys** → create a key in a workspace with a **monthly spend limit**.
@@ -77,8 +86,11 @@ Local check of the migrations without Neon: `pnpm test:db` (needs PostgreSQL + P
 
 ## Alternative AI provider (OpenCode / OpenAI-compatible)
 
-The assistant can run on any OpenAI-compatible Chat Completions endpoint instead of Anthropic
-(the agent loop, tools and validation are provider-agnostic). For OpenCode Go with DeepSeek V4.1 Flash:
+The assistant can run on any OpenAI-compatible Chat Completions endpoint instead of Gemini or
+Anthropic (the agent loop, tools and validation are provider-agnostic) — e.g. Groq
+(`https://api.groq.com/openai/v1`), Cerebras (`https://api.cerebras.ai/v1`) or OpenRouter
+(`https://openrouter.ai/api/v1`), which also have free tiers, with `OPENAI_API_KEY` and a model
+that supports tool calling. For OpenCode Go with DeepSeek V4.1 Flash:
 
 ```
 # apps/api/.dev.vars

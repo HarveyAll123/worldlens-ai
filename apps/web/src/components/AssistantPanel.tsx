@@ -4,24 +4,82 @@ import { toIso } from '@worldlens/shared';
 import { runActions } from '../ai/actionExecutor';
 import { api, type ChatMessage } from '../lib/api';
 import { relativeTime, safeExternalUrl } from '../lib/format';
-import type { ChatTurn } from '../lib/chats';
-import { useConfig } from '../hooks/useData';
+import type { ChatTurn, TurnAbout } from '../lib/chats';
+import { useConfig, useVisibleEvents } from '../hooks/useData';
+import { starterPrompts } from '../lib/askPrompts';
+import { TIER_SETTINGS } from '../perf/tiers';
 import { orderedChats, useChatsStore } from '../state/chats';
 import { useAppStore } from '../state/store';
 import { ExternalLink, Icon, Notice, Spinner } from './ui';
-
-const QUICK = [
-  'What is happening near Taiwan?',
-  "Show me Germany's territorial changes between 1933 and 1945",
-  'Why does this matter historically?',
-  'I have $20. How can I help?',
-  'Berlin 1945',
-];
 
 type View = 'chat' | 'list';
 
 const MENU_ITEM =
   'flex w-full items-center gap-3 rounded-[10px] px-3 py-2 text-left text-[12.5px] text-white/75 transition-colors hover:bg-white/[0.06] hover:text-white';
+
+const PROVIDER_LABEL: Record<string, string> = {
+  gemini: 'Gemini',
+  anthropic: 'Claude',
+  opencode: 'AI',
+};
+
+/**
+ * Chat | Agent. Agent: the assistant may operate the globe (fly, zoom, pan, highlight, set the
+ * date, open events, toggle layers). Chat: a plain chatbot that only answers. A two-part pill
+ * per DESIGN.md: the active side is the inverted (light) fill, the other dim; 160 ms ease.
+ */
+function AgentSwitch() {
+  const agent = useAppStore((s) => s.aiAgent);
+  const setAgent = useAppStore((s) => s.setAiAgent);
+  const option = (on: boolean, label: string, hint: string) => (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={agent === on}
+      title={hint}
+      onClick={() => setAgent(on)}
+      className={`rounded-full px-2 py-[1px] transition-colors duration-150 ease-out ${
+        agent === on
+          ? 'bg-[var(--active-bg)] text-[var(--active-fg)]'
+          : 'text-white/45 hover:text-white/80'
+      }`}
+      data-testid={on ? 'ai-mode-agent' : 'ai-mode-chat'}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Assistant mode"
+      className="flex items-center rounded-full border border-white/12 p-[2px] text-[10px]"
+    >
+      {option(false, 'Chat', 'Chat: answers only, never moves the globe')}
+      {option(true, 'Agent', 'Agent: may fly, zoom, highlight and open events on the globe')}
+    </div>
+  );
+}
+
+/**
+ * Above a question asked from an event card: which event it is about, like a forwarded
+ * message — the question alone ("What led to this?") would not say. Opens the event again.
+ */
+function ForwardedFrom({ about }: { about: TurnAbout }) {
+  return (
+    <button
+      type="button"
+      onClick={() => useAppStore.getState().openEvent(about.eventId)}
+      title="Asked from this event — open it"
+      aria-label={`Asked about the event “${about.title}”. Open it`}
+      className="mb-1.5 flex w-full min-w-0 items-center gap-1.5 rounded-[10px] bg-white/[0.06] px-2 py-1 text-left text-[10.5px] transition-colors hover:bg-white/[0.1]"
+      data-testid="forwarded-from"
+    >
+      <Icon name="forward" className="h-3 w-3 shrink-0 text-white/45" />
+      <span className="shrink-0 text-white/40">From</span>
+      <span className="min-w-0 truncate text-white/75">{about.title}</span>
+    </button>
+  );
+}
 
 export function AssistantPanel() {
   const chats = useChatsStore((s) => s.chats);
@@ -126,18 +184,22 @@ export function AssistantPanel() {
     };
   }, [menu]);
 
-  const send = async (text: string) => {
+  /** `about`: the event a question was asked from (an event card's prompts). */
+  const send = async (text: string, about?: TurnAbout) => {
     const q = text.trim();
     if (!q || busy) return;
     setError(null);
     setView('chat');
-    const history: ChatMessage[] = [
-      ...turns.map((t): ChatMessage => ({ role: t.role, content: t.content })),
-      { role: 'user' as const, content: q },
-    ].slice(-12);
+    const withAbout = (t: ChatTurn): ChatMessage => ({
+      role: t.role,
+      content: t.content,
+      ...(t.about ? { about: t.about } : {}),
+    });
+    const turn: ChatTurn = { role: 'user', content: q, ...(about ? { about } : {}) };
+    const history: ChatMessage[] = [...turns, turn].map(withAbout).slice(-12);
     const now = Date.now();
     // No stored chat until the first message: empty drafts never appear in history.
-    const chatId = appendTurn({ role: 'user', content: q }, now, active?.id);
+    const chatId = appendTurn(turn, now, active?.id);
     setInput('');
     setBusy(true);
     const s = useAppStore.getState();
@@ -151,9 +213,11 @@ export function AssistantPanel() {
           selectedEventId: s.selectedEventId,
           camera: { lat: s.camera.lat, lon: s.camera.lon, altitudeKm: s.camera.altitudeKm },
           layers: s.layers,
+          agent: s.aiAgent,
         },
       });
-      const { rejected } = runActions(res.actions);
+      // Chat mode never moves the globe, even if a reply carried actions.
+      const { rejected } = runActions(useAppStore.getState().aiAgent ? res.actions : []);
       appendTurn(
         { role: 'assistant', content: res.reply, meta: { ...res, rejected } },
         Date.now(),
@@ -173,7 +237,7 @@ export function AssistantPanel() {
   useEffect(() => {
     if (!pendingQuestion || busy) return;
     const q = takePendingQuestion();
-    if (q) void send(q);
+    if (q) void send(q.text, q.about);
   });
 
   const startChat = () => {
@@ -190,6 +254,25 @@ export function AssistantPanel() {
   };
 
   const aiOn = config.data?.ai.available;
+  const agentMode = useAppStore((s) => s.aiAgent);
+  // Six starters that follow the timeline: trending stories (LIVE) or the period's key events.
+  const mode = useAppStore((s) => s.mode);
+  const timeMs = useAppStore((s) => s.timeMs);
+  const resolution = useAppStore((s) => s.resolution);
+  const tier = useAppStore((s) => s.qualityTier);
+  const visible = useVisibleEvents(TIER_SETTINGS[tier].maxEvents);
+  const starters = useMemo(
+    () =>
+      starterPrompts({
+        mode,
+        timeMs,
+        resolution,
+        nowMs: Date.now(),
+        events: visible.data?.events ?? [],
+      }),
+    [mode, timeMs, resolution, visible.data],
+  );
+  const providerLabel = PROVIDER_LABEL[config.data?.ai.provider ?? ''] ?? 'AI';
   const canSend = input.trim().length > 0 && !busy;
 
   return (
@@ -205,8 +288,9 @@ export function AssistantPanel() {
             className={`h-1 w-1 rounded-full ${aiOn ? 'bg-white/70' : 'bg-white/30'}`}
             aria-hidden
           />
-          {aiOn ? 'AI' : 'Offline assistant'}
+          {aiOn ? providerLabel : 'Offline assistant'}
         </span>
+        <AgentSwitch />
         <div className="ml-auto flex shrink-0 items-center gap-0.5">
           <button
             type="button"
@@ -373,8 +457,9 @@ export function AssistantPanel() {
             {turns.length === 0 && (
               <div className="space-y-3 text-[11.5px] text-white/45">
                 <p>
-                  Ask about places, events or dates. The assistant can move the globe and the
-                  timeline, open events and compare coverage.
+                  {agentMode
+                    ? 'Ask about places, events or dates. In Agent mode the assistant can fly, zoom and pan the globe, highlight countries, set the timeline, open events and compare coverage.'
+                    : 'Ask about places, events or dates. In Chat mode the assistant only answers — it never moves the globe. Switch to Agent to let it show you.'}
                 </p>
                 {!aiOn && config.data && (
                   <p className="text-white/30">
@@ -382,19 +467,24 @@ export function AssistantPanel() {
                     WorldLens data.
                   </p>
                 )}
-                <div className="flex flex-col gap-1 pt-1">
-                  {QUICK.map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => void send(p)}
-                      className="rounded-[10px] border border-transparent bg-white/[0.04] px-2.5 py-2 text-left text-[11.5px] text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white/90"
-                      data-testid="quick-prompt"
-                    >
-                      {p}
-                    </button>
-                  ))}
-                </div>
+                {starters.map((g) => (
+                  <div key={g.label} className="pt-1">
+                    <p className="px-0.5 pb-1 text-[10.5px] text-white/35">{g.label}</p>
+                    <div className="flex flex-col gap-1">
+                      {g.prompts.map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => void send(p)}
+                          className="rounded-[10px] border border-transparent bg-white/[0.04] px-2.5 py-2 text-left text-[11.5px] text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white/90"
+                          data-testid="quick-prompt"
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
             {turns.map((t, i) => (
@@ -407,6 +497,7 @@ export function AssistantPanel() {
                   }`}
                   data-testid={t.role === 'assistant' ? 'assistant-reply' : undefined}
                 >
+                  {t.about && <ForwardedFrom about={t.about} />}
                   <p className="whitespace-pre-wrap">{t.content}</p>
                   {t.meta && (
                     <div className="mt-2 space-y-1.5 text-[10.5px] text-white/40">
@@ -446,7 +537,10 @@ export function AssistantPanel() {
                       {t.meta.model && (
                         <p className="text-white/30">
                           {t.meta.model}
-                          {t.meta.usage && ` · ~$${t.meta.usage.costUsd.toFixed(4)}`}
+                          {t.meta.usage &&
+                            (t.meta.usage.costUsd > 0
+                              ? ` · ~$${t.meta.usage.costUsd.toFixed(4)}`
+                              : ' · free')}
                         </p>
                       )}
                     </div>

@@ -118,8 +118,7 @@ export function GlobeView({
               if (!p) return;
               if (p.kind === 'event') {
                 s.setPlacePicker(null);
-                s.selectEvent(p.id);
-                s.setSheet('detail', true);
+                s.openEvent(p.id);
               } else if (p.samePlace || s.camera.altitudeKm <= CLUSTER_FLY_MIN_KM * 1.25) {
                 // One spot, or already as close as a cluster click flies: zooming would not
                 // separate them, so list them to choose from.

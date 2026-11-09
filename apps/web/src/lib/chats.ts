@@ -10,9 +10,17 @@
  */
 import type { ChatResponse } from './api';
 
+/** The event a question was asked from (an event card's "Ask AI" prompts). */
+export interface TurnAbout {
+  eventId: string;
+  title: string;
+}
+
 export interface ChatTurn {
   role: 'user' | 'assistant';
   content: string;
+  /** User turns asked from an event card: shown above the question, and sent with it. */
+  about?: TurnAbout;
   /** Assistant metadata (citations, tool trace, model, cost). Absent on user turns. */
   meta?: ChatResponse & { rejected: string[] };
 }
@@ -65,10 +73,12 @@ export function addTurn(chat: Chat, turn: ChatTurn, nowMs: number): Chat {
   const turns = [...chat.turns, turn].slice(-MAX_TURNS);
   // The first user message names the chat; renaming later is an explicit user action.
   const isFirstUser = turn.role === 'user' && !chat.turns.some((t) => t.role === 'user');
+  // "What led to this?" asked from an event is named after the event.
+  const named = turn.about ? `${turn.about.title}: ${turn.content}` : turn.content;
   return {
     ...chat,
     turns,
-    title: isFirstUser ? titleFromMessage(turn.content) : chat.title,
+    title: isFirstUser ? titleFromMessage(named) : chat.title,
     updatedAt: nowMs,
   };
 }
@@ -104,9 +114,18 @@ function sanitizeTurn(turn: ChatTurn): ChatTurn {
         citations: (turn.meta.citations ?? []).slice(0, 12),
       }
     : undefined;
+  const about =
+    turn.about &&
+    typeof turn.about.eventId === 'string' &&
+    typeof turn.about.title === 'string' &&
+    turn.about.eventId &&
+    turn.about.title
+      ? { eventId: turn.about.eventId.slice(0, 160), title: turn.about.title.slice(0, 300) }
+      : undefined;
   return {
     role: turn.role,
     content: turn.content.slice(0, MAX_CONTENT),
+    ...(about ? { about } : {}),
     ...(meta ? { meta } : {}),
   };
 }

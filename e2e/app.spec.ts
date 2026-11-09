@@ -108,20 +108,74 @@ test.describe('AI assistant (offline fallback — no API key in CI)', () => {
     await page.getByTestId('assistant-send').click();
     await expect(page.getByTestId('event-title')).toContainText('Taiwan');
     await expect(page.getByTestId('live-status')).toBeVisible();
-    // The opened event takes over the context card; Ask AI brings the conversation back.
+    // Wide screens: the opened event shows in the card while the chat stays docked beside it.
+    await expect(page.getByTestId('assistant-dock').getByTestId('assistant-reply')).toContainText(
+      'LIVE',
+    );
+  });
+
+  test('wide screens: the chat docks on the left, events open beside it', async ({ page }) => {
+    await openApp(page);
     await page.getByTestId('open-assistant').click();
-    await expect(page.getByTestId('assistant-reply')).toContainText('LIVE');
+    const dock = page.getByTestId('assistant-dock');
+    await expect(dock).toBeVisible();
+    // The card on the right keeps the events; a picked event opens there, the chat stays.
+    await page.getByTestId('event-list-item').filter({ hasText: 'Taiwan Strait' }).click();
+    await expect(page.getByTestId('event-title')).toContainText('Taiwan Strait');
+    await expect(dock).toBeVisible();
+    const chat = (await dock.boundingBox())!;
+    const card = (await page.getByTestId('context-panel').boundingBox())!;
+    expect(chat.x + chat.width).toBeLessThan(card.x);
+    // A question of the user's own about the event, asked from the card (in Chat mode, so the
+    // answer cannot open another event in the card).
+    await dock.getByTestId('ai-mode-chat').click();
+    await page.getByTestId('ask-ai-custom').click();
+    await page.getByTestId('ask-ai-custom-input').fill('Which navies are taking part?');
+    await page.keyboard.press('Enter');
+    await expect(dock.getByText('Which navies are taking part?', { exact: true })).toHaveCount(1);
+    await expect(dock.getByTestId('forwarded-from')).toContainText('Taiwan Strait');
+    await expect(dock.getByTestId('assistant-reply')).toBeVisible();
+    // The card is back on the button, still showing the event.
+    await expect(page.getByTestId('ask-ai-custom')).toBeVisible();
+    await expect(page.getByTestId('event-title')).toContainText('Taiwan Strait');
+    // Ask AI closes the docked chat again.
+    await page.getByTestId('open-assistant').click();
+    await expect(dock).toHaveCount(0);
   });
 
   test('"Ask AI" prompts on an event are sent to the assistant', async ({ page }) => {
     await openApp(page);
     await page.getByTestId('event-list-item').filter({ hasText: 'Taiwan Strait' }).click();
     await expect(page.getByTestId('event-title')).toContainText('Taiwan Strait');
+    // Three prompts fitted to the event (several sources → a coverage comparison).
+    await expect(page.getByTestId('ask-ai-prompt')).toHaveCount(3);
     const question = 'How are different sources covering this?';
     await page.getByRole('button', { name: question }).click();
     await expect(page.getByTestId('assistant-reply')).toBeVisible();
+    // The question shows which event it was asked from.
+    await expect(page.getByTestId('forwarded-from')).toContainText('Taiwan Strait');
     // Asked once, although StrictMode runs the panel's mount effect twice in development.
     await expect(page.getByTestId('assistant').getByText(question, { exact: true })).toHaveCount(1);
+  });
+
+  test.describe('narrower screens: the chat and the events share one card', () => {
+    test.use({ viewport: { width: 1100, height: 800 } });
+
+    test('an event picked while chatting shows at once', async ({ page }) => {
+      // Chat mode: an answer that opens an event would hand it the card by itself.
+      await page.addInitScript(() => localStorage.setItem('worldlens.aiAgent', '0'));
+      await openApp(page);
+      await page.getByTestId('event-list-item').filter({ hasText: 'Taiwan Strait' }).click();
+      await page.getByTestId('ask-ai-prompt').first().click();
+      // The question takes the card over to the chat…
+      await expect(page.getByTestId('assistant-reply')).toBeVisible();
+      await expect(page.getByTestId('assistant-dock')).toHaveCount(0);
+      await expect(page.getByTestId('event-detail')).toHaveCount(0);
+      // …and opening the event from it turns the card back (it used to need Ask AI closed).
+      await page.getByTestId('forwarded-from').click();
+      await expect(page.getByTestId('event-title')).toContainText('Taiwan Strait');
+      await expect(page.getByTestId('open-assistant')).toHaveAttribute('aria-pressed', 'false');
+    });
   });
 
   test('AI failure path still answers (offline assistant notice)', async ({ page }) => {
