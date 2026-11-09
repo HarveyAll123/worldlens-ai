@@ -23,6 +23,16 @@ DATABASE_URL=
 # owner role, direct (unpooled) connection string.
 MIGRATION_DATABASE_URL=
 INGEST_TOKEN=
+# Accounts (MANUAL_SETUP.md → Accounts): session secret (openssl rand -base64 32)
+BETTER_AUTH_SECRET=
+# Google sign-in (optional): an OAuth client from Google Cloud
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+# Account emails: unset prints codes in the API console; "brevo" sends them (free tier)
+MAIL_PROVIDER=
+BREVO_API_KEY=
+MAIL_FROM=
+MAIL_FROM_NAME=WorldLens
 
 # Named-publisher RSS feeds (fixed list in src/providers/rss.ts, no key). Default off.
 RSS_ENABLED=false

@@ -2,6 +2,8 @@
  * WorldLens API (Hono). Runs on Cloudflare Workers (src/index.ts) and on Node for local
  * development and end-to-end tests (src/node-server.ts).
  */
+import { registerAccountRoutes, signedInUser } from './auth/account-routes';
+import { personalContext } from './ai/personal';
 import { Hono, type Context } from 'hono';
 import { redactSecrets } from './lib/redact';
 import { bodyLimit } from 'hono/body-limit';
@@ -158,8 +160,10 @@ export function createApp(deps: AppDeps, defaults: { defer?: Defer } = {}) {
     '/api/*',
     cors({
       origin: (origin) => (deps.config.allowedOrigins.includes(origin) ? origin : null),
-      allowMethods: ['GET', 'POST', 'OPTIONS'],
+      allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
       allowHeaders: ['Content-Type'],
+      // Account sessions are cookies.
+      credentials: true,
       maxAge: 600,
     }),
   );
@@ -190,6 +194,8 @@ export function createApp(deps: AppDeps, defaults: { defer?: Defer } = {}) {
   });
 
   const now = () => deps.now();
+
+  registerAccountRoutes(app, deps);
 
   /* ------------------------------------------------------------- health & config */
 
@@ -225,6 +231,13 @@ export function createApp(deps: AppDeps, defaults: { defer?: Defer } = {}) {
         provider: deps.ai.available ? deps.ai.name : null,
       },
       paypal: deps.payments.publicConfig(),
+      // Sign-in options the web app offers (Google needs an OAuth client).
+      // appUrl: Google returns only to this origin (its registered redirect URI).
+      auth: {
+        google: !!deps.config.auth.google,
+        mail: deps.config.auth.mail.provider,
+        appUrl: deps.config.publicAppUrl,
+      },
       news: { liveProvider: deps.news || deps.gdeltFiles ? 'gdelt' : null },
     });
   });
@@ -441,12 +454,20 @@ export function createApp(deps: AppDeps, defaults: { defer?: Defer } = {}) {
     else if (!deps.budget.canSpend()) fallbackReason = 'Daily AI budget reached.';
     else if (!aiLimiter.take(key).ok)
       fallbackReason = 'AI rate limit reached; try again in a minute.';
+    // What the user's AI settings let the assistant know: recent activity, earlier chats.
+    const user = await signedInUser(deps, c.req.raw.headers, c.get('defer'));
+    const personal = await personalContext(deps.accounts, user, req.context.chatId);
     if (!fallbackReason) {
       try {
         const res: ChatResponse = await runAgent(req, {
           provider: deps.ai,
           budget: deps.budget,
-          tools: toolContext(),
+          tools: {
+            ...toolContext(),
+            ...(personal.activity ? { activity: personal.activity } : {}),
+            activityOff: personal.activityOff,
+          },
+          personal: personal.blocks,
         });
         deps.health.ok(AI_HEALTH_NAME[deps.config.ai.provider]);
         return c.json(res);

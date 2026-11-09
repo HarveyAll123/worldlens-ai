@@ -21,6 +21,10 @@ import { PaymentService } from './payments/service';
 import { MemoryPaymentStore, type PaymentStore } from './payments/store';
 import { PostgresNewsRepository, PostgresPaymentStore } from './data/postgres';
 import { classifyDatabaseUrl, neonHttpClient, type SqlClient } from './data/sql';
+import { Pool as NeonPool } from '@neondatabase/serverless';
+import { createAuth, type Auth, type AuthSetup } from './auth/auth';
+import { MemoryAccountStore, PostgresAccountStore, type AccountStore } from './data/account-store';
+import { brevoMailer, logMailer, type Mailer, type TestMailbox } from './lib/mailer';
 
 /** The name each AI provider reports under in /api/health. */
 export const AI_HEALTH_NAME: Record<Config['ai']['provider'], ProviderName> = {
@@ -47,6 +51,13 @@ export interface AppDeps {
   payments: PaymentService;
   paymentStore: PaymentStore;
   ingestFlight: SingleFlight<CombinedRun | null>;
+  /** Accounts (Better Auth). `release` ends the request's database pool on the Worker. */
+  auth: { get(): { auth: Auth; release(): Promise<void> } };
+  /** An account's AI chats and viewing history. */
+  accounts: AccountStore;
+  mailer: Mailer;
+  /** TEST-ONLY (Playwright on the Node server): account emails, readable at /api/test/mail. */
+  testMailbox?: TestMailbox;
   now: () => number;
 }
 
@@ -59,7 +70,15 @@ export interface DepOverrides {
   /** SQL client to use instead of the Neon HTTP driver (local Postgres in dev/tests). */
   sql?: SqlClient;
   newId?: () => string;
+  /** pg Pool for accounts on the Node server (one for the process). */
+  authPool?: unknown;
+  accounts?: AccountStore;
+  mailer?: Mailer;
+  testMailbox?: TestMailbox;
 }
+
+/** Signs sessions when BETTER_AUTH_SECRET is not set: development only, never production. */
+const DEV_AUTH_SECRET = 'worldlens-development-secret-not-for-production-use';
 
 function randomId(): string {
   const bytes = new Uint8Array(12);
@@ -105,6 +124,48 @@ export function createDeps(env: Env, o: DepOverrides = {}): AppDeps {
   const repo = o.repo ?? (sql ? new PostgresNewsRepository(memory, sql, health) : memory);
   const paymentStore =
     o.paymentStore ?? (sql ? new PostgresPaymentStore(sql) : new MemoryPaymentStore());
+
+  const mailer: Mailer =
+    o.testMailbox ??
+    o.mailer ??
+    (config.auth.mail.provider === 'brevo'
+      ? brevoMailer(
+          config.auth.mail.brevoApiKey!,
+          { email: config.auth.mail.from!, name: config.auth.mail.fromName },
+          fetchImpl,
+        )
+      : logMailer);
+  if (!config.auth.secret)
+    console.warn(
+      '[worldlens-api] BETTER_AUTH_SECRET is not set: account sessions use a development secret. Set it before deploying.',
+    );
+  const accounts = o.accounts ?? (sql ? new PostgresAccountStore(sql) : new MemoryAccountStore());
+  const authSetup = (pool: unknown): AuthSetup => ({
+    secret: config.auth.secret ?? DEV_AUTH_SECRET,
+    baseURL: config.publicAppUrl,
+    trustedOrigins: [...new Set([config.publicAppUrl, ...config.allowedOrigins])],
+    google: config.auth.google,
+    mailer,
+    pool,
+    secureCookies: config.publicAppUrl.startsWith('https://'),
+    onUserDeleted: (userId) => accounts.removeAccountData(userId),
+  });
+  const single = (instance: Auth) => ({
+    get: () => ({ auth: instance, release: async () => undefined }),
+  });
+  // Node passes one pg Pool; the Worker opens a Neon pool per request (sockets cannot outlive
+  // it); without a database, accounts live in memory until the process stops.
+  const auth: AppDeps['auth'] =
+    o.authPool !== undefined
+      ? single(createAuth(authSetup(o.authPool)))
+      : target?.kind === 'neon' && !o.sql
+        ? {
+            get: () => {
+              const pool = new NeonPool({ connectionString: target.url });
+              return { auth: createAuth(authSetup(pool)), release: () => pool.end() };
+            },
+          }
+        : single(createAuth(authSetup(null)));
   const ai =
     o.ai ??
     (config.ai.apiKey
@@ -180,6 +241,10 @@ export function createDeps(env: Env, o: DepOverrides = {}): AppDeps {
     payments,
     paymentStore,
     ingestFlight: new SingleFlight<CombinedRun | null>(),
+    auth,
+    accounts,
+    mailer,
+    ...(o.testMailbox ? { testMailbox: o.testMailbox } : {}),
     now,
   };
 }

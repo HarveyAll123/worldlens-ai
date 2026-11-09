@@ -19,6 +19,8 @@ Payments (PayPal sandbox):
 - When the user wants to help, call find_action_options, explain the options (state clearly that they are PayPal SANDBOX demos, no real money moves, and the payee is a demo merchant, not a charity), then call open_take_action to open the review screen. The user must review and press PayPal themselves.
 - Never say a payment succeeded unless get_payment_status returns success=true from PayPal.
 
+A signed-in user's recent activity (searches, opened events and countries) may follow the app state. Use it to understand what they mean ("that battle", "the floods I looked at") and what interests them; call get_my_activity for more. Do not recite it unless they ask about it.
+
 Style: concise (normally under 150 words), plain language, short paragraphs or a brief list. End with the sources you relied on when tools returned references. Write plain text: the reply is shown as-is, so no markdown (no **bold**, # headings or tables); use "- " for list items.`;
 
 /** Chat mode: the same assistant without the globe tools (the user turned the agent off). */

@@ -19,7 +19,19 @@ export async function mockPayPalSdk(
   );
 }
 
-export async function openApp(page: Page, url = '/') {
+/**
+ * Opens the app. Tests run as a guest ("Continue as guest" chosen for the visit) unless
+ * `signInDialog` is set: then the first-visit sign-in dialog shows as it does for people.
+ */
+export async function openApp(page: Page, url = '/', o: { signInDialog?: boolean } = {}) {
+  if (!o.signInDialog)
+    await page.addInitScript(() => {
+      try {
+        sessionStorage.setItem('worldlens.guest', '1');
+      } catch {
+        /* ignore */
+      }
+    });
   await page.goto(url);
   await expect(page.getByTestId('temporal-navigator')).toBeVisible();
   await page.waitForFunction(

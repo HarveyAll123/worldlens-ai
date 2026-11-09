@@ -1,15 +1,13 @@
 /**
- * Conversations for the assistant. Browser-local (localStorage), so they survive closing the
- * panel, collapsing the mobile sheet and reloading. The API stays stateless.
+ * Conversations for the assistant, in memory: a guest's are gone when they leave the site; a
+ * signed-in account's are loaded from and saved to the server (lib/accountSync.ts).
  */
 import { create } from 'zustand';
 import {
   addTurn,
-  loadChats,
   makeChatId,
   newChat,
   renameChat,
-  saveChats,
   togglePin,
   type Chat,
   type ChatTurn,
@@ -25,6 +23,8 @@ interface ChatsState {
   rename: (id: string, title: string, nowMs: number) => void;
   togglePin: (id: string) => void;
   remove: (id: string) => void;
+  /** An account's chats as the server has them (after sign-in); [] after sign-out. */
+  replaceAll: (chats: Chat[]) => void;
 }
 
 function emptyChat(): Chat {
@@ -33,16 +33,12 @@ function emptyChat(): Chat {
 }
 
 export const useChatsStore = create<ChatsState>((set, get) => {
-  const persist = (chats: Chat[], activeId: string | null) => {
-    set({ chats, activeId });
-    saveChats({ chats, activeId });
-  };
-
-  const { chats, activeId } = loadChats();
+  const persist = (chats: Chat[], activeId: string | null) => set({ chats, activeId });
 
   return {
-    chats,
-    activeId,
+    chats: [],
+    activeId: null,
+    replaceAll: (chats) => set({ chats, activeId: null }),
 
     setActive: (id) => persist(get().chats, id),
 

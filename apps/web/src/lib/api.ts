@@ -17,6 +17,8 @@ import type {
 } from '@worldlens/shared';
 
 const BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
+/** The API's origin ('' = this page's origin; /api is proxied in development). */
+export const API_BASE = BASE;
 
 export const apiStats = { requests: 0, failures: 0 };
 
@@ -35,6 +37,8 @@ async function call<T>(path: string, init?: RequestInit & { signal?: AbortSignal
   let res: Response;
   try {
     res = await fetch(`${BASE}${path}`, {
+      // Account sessions are cookies, also when the API is on another origin.
+      credentials: 'include',
       ...init,
       headers: {
         Accept: 'application/json',
@@ -91,6 +95,8 @@ export interface AppConfig {
     };
   };
   news: { liveProvider: string | null };
+  /** Sign-in options: Google needs an OAuth client; "log" prints codes in the API console. */
+  auth?: { google: boolean; mail: 'log' | 'brevo'; appUrl?: string };
 }
 
 export interface SourcesResponse {

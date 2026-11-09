@@ -191,6 +191,32 @@ export function sheetTabOpen(
 
 let flySeq = 0;
 
+/** What a search led to: a result of the API's search, or a country of the borders index. */
+export type SearchPick =
+  | ({ type: string; title: string } & Record<string, unknown>)
+  | { type: 'COUNTRY'; title: string; country: CountrySelection };
+
+/**
+ * What the user did, for an account's history: a search and the result chosen, an event or a
+ * country opened (not one the timeline or the AI switched to).
+ */
+export type Opened =
+  | { kind: 'event'; id: string }
+  | { kind: 'country'; country: CountrySelection }
+  | { kind: 'search'; query: string; pick: SearchPick };
+const openedListeners = new Set<(o: Opened) => void>();
+/** Hears what the user opens (an account's viewing history); returns the unsubscribe. */
+export function onOpened(fn: (o: Opened) => void): () => void {
+  openedListeners.add(fn);
+  return () => openedListeners.delete(fn);
+}
+const opened = (o: Opened) => {
+  for (const fn of openedListeners) fn(o);
+};
+/** A search the user made and the result they chose (SearchBox). */
+export const noteSearch = (query: string, pick: SearchPick) =>
+  opened({ kind: 'search', query, pick });
+
 export const useAppStore = create<AppState>()(
   subscribeWithSelector((set, get) => ({
     mode: 'live',
@@ -256,22 +282,26 @@ export const useAppStore = create<AppState>()(
         selectedEventId: c ? null : s.selectedEventId,
         sheet: c ? 'detail' : s.sheet === 'detail' && !s.selectedEventId ? 'events' : s.sheet,
       })),
-    openEvent: (id) =>
+    openEvent: (id) => {
       set((s) => ({
         selectedEventId: id,
         selectedCountry: null,
         sheet: 'detail',
         sheetExpanded: true,
         assistantOpen: s.chatDocked && s.assistantOpen,
-      })),
-    openCountry: (c) =>
+      }));
+      opened({ kind: 'event', id });
+    },
+    openCountry: (c) => {
       set((s) => ({
         selectedCountry: c,
         selectedEventId: null,
         sheet: 'detail',
         sheetExpanded: true,
         assistantOpen: s.chatDocked && s.assistantOpen,
-      })),
+      }));
+      opened({ kind: 'country', country: c });
+    },
     setChatDocked: (chatDocked) => set({ chatDocked }),
     setSheet: (sheet, expanded) =>
       set((s) => ({ sheet, sheetExpanded: expanded ?? s.sheetExpanded })),

@@ -257,12 +257,106 @@ export interface PromptGroup {
  * Exactly six prompts for a new chat, in two groups: trending (from the events on the globe)
  * and more (about the selected period, or general).
  */
+/** What an account did, as personalPrompts reads it (lib/account.ts HistoryItem). */
+export interface PromptHistory {
+  kind: 'search' | 'event' | 'country';
+  ref: string;
+  title: string;
+  detail: Record<string, unknown>;
+}
+
+/** An earlier conversation, as personalPrompts reads it (lib/chats.ts Chat). */
+export interface PromptChat {
+  title: string;
+  turns: Array<{ role: string; about?: { title: string } }>;
+}
+
+/** Words a shortened title should not end on ("…reported around the…"). */
+const DANGLING = new Set(
+  'the a an of in on at to for and or near around after before with from by as is'.split(' '),
+);
+
+/** At most `n` characters, cut between words, without a dangling small word. */
+function clipWords(s: string, n: number): string {
+  if (s.length <= n) return s;
+  const words = s
+    .slice(0, n + 1)
+    .split(' ')
+    .slice(0, -1);
+  while (words.length > 1 && DANGLING.has(words[words.length - 1]!.toLowerCase())) words.pop();
+  return `${words.join(' ')}…`;
+}
+
+/**
+ * "For you": up to three questions from what this account looked at and asked lately, newest
+ * first — one per topic. Only what the AI settings allow is passed in (history, past chats).
+ */
+export function personalPrompts(o: {
+  history: PromptHistory[];
+  chats: PromptChat[];
+  max?: number;
+}): string[] {
+  const out: string[] = [];
+  const topics = new Set<string>();
+  const add = (topic: string, prompt: string) => {
+    const k = topic.trim().toLowerCase();
+    if (!k || topics.has(k) || out.includes(prompt)) return;
+    topics.add(k);
+    out.push(prompt);
+  };
+  for (const h of o.history.slice(0, 30)) {
+    const d = h.detail as {
+      eventKind?: string;
+      place?: string;
+      start?: string;
+      end?: string | null;
+      result?: { title?: string; type?: string };
+    };
+    if (h.kind === 'event') {
+      const name = shortTitle(h.title);
+      if (d.eventKind === 'historical')
+        add(name, `What happened after ${theName(h.title) ?? `“${clipWords(name, 48)}”`}?`);
+      else add(d.place ?? name, `What's the latest on ${clipWords(name, 56)}?`);
+    } else if (h.kind === 'country') {
+      const from = d.start?.slice(0, 4);
+      const to = d.end?.slice(0, 4);
+      add(
+        h.title,
+        to
+          ? `What shaped ${countryName(h.title)} between ${from} and ${to}?`
+          : `What's happening in ${h.title} today?`,
+      );
+    } else {
+      const picked = d.result?.title && d.result.type !== 'PLACE' ? d.result.title : h.title;
+      add(picked, `Tell me more about ${clipWords(picked, 56)}`);
+    }
+  }
+  for (const c of o.chats.slice(0, 10)) {
+    const about = c.turns.find((t) => t.role === 'user' && t.about)?.about?.title;
+    if (about) add(shortTitle(about), `Any news on ${clipWords(shortTitle(about), 56)}?`);
+    else if (c.title) add(c.title, `More on “${clipWords(c.title, 48)}”`);
+  }
+  return out.slice(0, o.max ?? 3);
+}
+
+/** "the Weimar Republic", "the United States", "Germany". */
+function countryName(name: string): string {
+  return /^(the )/i.test(name) ||
+    !/\b(Republic|Kingdom|Empire|Union|States|Federation|Emirates|Islands|Confederation|Reich)\b/.test(
+      name,
+    )
+    ? name
+    : `the ${name}`;
+}
+
 export function starterPrompts(o: {
   mode: 'live' | 'historical';
   timeMs: number;
   resolution: Resolution;
   nowMs: number;
   events: PromptEvent[];
+  /** "For you" (personalPrompts): shown first; the rest of the six follow the timeline. */
+  personal?: string[];
 }): PromptGroup[] {
   const trending: string[] = [];
   const more: Array<string | null> = [];
@@ -327,10 +421,13 @@ export function starterPrompts(o: {
     );
   }
 
-  const all = unique([...trending, ...more]);
-  for (const f of FALLBACKS) if (all.length < STARTER_PROMPT_COUNT && !all.includes(f)) all.push(f);
-  const six = all.slice(0, STARTER_PROMPT_COUNT);
+  const personal = unique(o.personal ?? []).slice(0, 3);
+  const room = STARTER_PROMPT_COUNT - personal.length;
+  const all = unique([...trending, ...more]).filter((p) => !personal.includes(p));
+  for (const f of FALLBACKS) if (all.length < room && !all.includes(f)) all.push(f);
+  const six = all.slice(0, room);
   const groups: PromptGroup[] = [];
+  if (personal.length) groups.push({ label: 'For you', prompts: personal });
   const t = six.filter((p) => trending.includes(p));
   const rest = six.filter((p) => !trending.includes(p));
   if (t.length) groups.push({ label: trendLabel, prompts: t });

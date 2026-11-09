@@ -12,6 +12,8 @@ import type { Env } from './env';
 import { FakePayPal } from './testing/fake-paypal';
 import { classifyDatabaseUrl, type SqlClient } from './data/sql';
 import { nodePostgresClient } from './data/sql-node';
+import pg from 'pg';
+import { TestMailbox } from './lib/mailer';
 
 function parseDevVarsFile(file: string): Record<string, string> {
   if (!existsSync(file)) return {};
@@ -67,7 +69,18 @@ const sql: SqlClient | undefined =
   target && (target.kind === 'local' || target.kind === 'other')
     ? nodePostgresClient(target.url)
     : undefined;
-const deps = createDeps(env, { ...(fetchImpl ? { fetchImpl } : {}), ...(sql ? { sql } : {}) });
+// Accounts use a pg Pool over TCP for any PostgreSQL, Neon included (one per process). Playwright
+// reads account emails from a test mailbox instead of the console.
+const authPool = env.DATABASE_URL?.trim()
+  ? new pg.Pool({ connectionString: env.DATABASE_URL.trim(), max: 4 })
+  : undefined;
+const testMailbox = process.env.WORLDLENS_E2E === '1' ? new TestMailbox() : undefined;
+const deps = createDeps(env, {
+  ...(fetchImpl ? { fetchImpl } : {}),
+  ...(sql ? { sql } : {}),
+  ...(authPool ? { authPool } : {}),
+  ...(testMailbox ? { testMailbox } : {}),
+});
 const app = createApp(deps);
 const port = Number(process.env.API_PORT ?? 8787);
 serve({ fetch: app.fetch, port, hostname: '127.0.0.1' }, (info) => {

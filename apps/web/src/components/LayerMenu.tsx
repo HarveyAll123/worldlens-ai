@@ -270,7 +270,7 @@ export function LayerMenu() {
         aria-pressed={shown}
         aria-label="Layers"
         onClick={() => (mobile ? toggleSheetTab('layers') : setOpen(!open))}
-        className={`flex h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] transition-colors ${
+        className={`flex h-9 items-center gap-1.5 rounded-full px-2 text-[12.5px] transition-colors sm:px-3 ${
           shown
             ? 'bg-white/[0.12] text-white'
             : 'text-white/70 hover:bg-white/[0.08] hover:text-white'

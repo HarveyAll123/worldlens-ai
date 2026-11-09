@@ -36,6 +36,35 @@ export interface ToolContext {
   borders: HistoricalBordersProvider;
   payments: PaymentService;
   nowMs: number;
+  /** The signed-in user's searches and opened events/countries; absent for guests. */
+  activity?: (limit: number) => Promise<ActivityItem[]>;
+  /** The user turned "AI reads my history" off in their AI settings. */
+  activityOff?: boolean;
+}
+
+export interface ActivityItem {
+  kind: 'search' | 'event' | 'country';
+  ref: string;
+  title: string;
+  detail: Record<string, unknown>;
+  viewedAt: string;
+}
+
+/** One line per activity item, for the model (data, never instructions). */
+export function activityLine(i: ActivityItem): string {
+  const d = i.detail as {
+    result?: { title?: string };
+    eventKind?: string;
+    place?: string;
+    start?: string;
+    end?: string | null;
+  };
+  const when = i.viewedAt.slice(0, 16).replace('T', ' ');
+  if (i.kind === 'search')
+    return `${when} searched "${i.title}"${d.result?.title ? ` → chose "${d.result.title}"` : ''}`;
+  if (i.kind === 'country')
+    return `${when} opened country ${i.title}${d.start ? ` (${d.start.slice(0, 4)}–${d.end ? d.end.slice(0, 4) : 'now'})` : ''}`;
+  return `${when} opened ${d.eventKind === 'historical' ? 'historical event' : 'news event'} "${i.title}" (event_id ${i.ref}${d.place ? `, ${d.place}` : ''}${d.start ? `, ${d.start.slice(0, 10)}` : ''})`;
 }
 
 export interface CitationOut {
@@ -390,6 +419,23 @@ export async function runServerTool(
         },
         citations,
       };
+    }
+    case 'get_my_activity': {
+      const a = parsed.data as { query?: string; kind: string; limit: number };
+      if (!ctx.activity)
+        return {
+          ok: true,
+          result: ctx.activityOff
+            ? { signed_in: true, reading_history_off: true, items: [] }
+            : { signed_in: false, items: [] },
+          citations,
+        };
+      const q = a.query?.trim().toLowerCase();
+      const items = (await ctx.activity(200))
+        .filter((i) => a.kind === 'any' || i.kind === a.kind)
+        .filter((i) => !q || activityLine(i).toLowerCase().includes(q))
+        .slice(0, a.limit);
+      return { ok: true, result: { signed_in: true, items: items.map(activityLine) }, citations };
     }
     case 'get_payment_status': {
       try {

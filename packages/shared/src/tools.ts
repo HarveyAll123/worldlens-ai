@@ -88,6 +88,15 @@ export const serverToolSchemas = {
     event_id: EventIdArg.optional(),
   }),
   get_payment_status: z.object({ payment_id: z.string().min(1).max(80) }),
+  get_my_activity: z.object({
+    query: z
+      .string()
+      .max(100)
+      .optional()
+      .describe('Only items whose text contains this (a place, topic, name or year)'),
+    kind: z.enum(['search', 'event', 'country', 'any']).default('any'),
+    limit: z.number().int().min(1).max(30).default(15),
+  }),
 } as const;
 
 /* ------------------------------------------------------------------ client (globe) tools */
@@ -178,6 +187,8 @@ export const TOOL_DESCRIPTIONS: Record<ToolName, string> = {
     'List Take Action options (PayPal SANDBOX demo donations) relevant to humanitarian events, optionally within a budget. Does not move money.',
   get_payment_status:
     'Read the server-verified state of a sandbox payment (from PayPal Orders API). Never claim success unless this returns CAPTURED.',
+  get_my_activity:
+    "The signed-in user's own WorldLens activity, newest first: what they searched for and which events and countries they opened (not their AI chats). Use it to understand what they are interested in or asking about, or to answer questions like 'what did I look at yesterday'. Guests have none.",
   fly_to: 'Move the globe camera to a place or coordinates.',
   zoom: 'Zoom the camera in or out from where the user is looking now (keeps the centre).',
   pan: 'Move the camera sideways from where the user is looking now (keeps the altitude).',

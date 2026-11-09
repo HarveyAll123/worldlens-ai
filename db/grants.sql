@@ -46,7 +46,7 @@ begin
   end loop;
   execute 'grant usage on schema public to worldlens_app';
 
-  -- Published content is readable; nothing is ever deleted by the API.
+  -- Published content is readable; the API never deletes it.
   foreach t in array array['news_sources','source_profiles','events','event_locations','event_geometries',
                            'event_relations','articles','event_articles','historical_entities',
                            'historical_geometries','conflicts','frontlines','control_zones','media_assets',
@@ -57,6 +57,9 @@ begin
   -- Live-news ingestion upserts these.
   execute 'grant insert, update on news_sources, events, articles to worldlens_app';
   execute 'grant insert on event_articles to worldlens_app';
+  -- Accounts and what each keeps. Unlike published content these rows are removed too: sessions
+  -- end, codes are used up, chats and history are deleted by their owner.
+  execute 'grant select, insert, update, delete on users, accounts, sessions, verifications, user_chats, user_history to worldlens_app';
   execute 'grant select, insert on ingestion_runs to worldlens_app';
   execute 'grant usage on sequence ingestion_runs_id_seq to worldlens_app';
 
