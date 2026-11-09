@@ -60,6 +60,8 @@ export const ChatRequestSchema = z.object({
       })
       .nullable(),
     layers: z.record(LayerSchema, z.boolean()).optional(),
+    /** The conversation this message belongs to: left out of the user's earlier chats. */
+    chatId: z.string().max(64).optional(),
     /**
      * Agent mode (default): the assistant may operate the globe. false: a plain chatbot — it
      * only reads WorldLens data and answers; no globe tools are offered and no actions return.
@@ -152,7 +154,13 @@ const MAX_TOOL_RESULT_CHARS = 6000;
 
 export async function runAgent(
   req: ChatRequest,
-  deps: { provider: AiProvider; budget: AiBudget; tools: ToolContext },
+  deps: {
+    provider: AiProvider;
+    budget: AiBudget;
+    tools: ToolContext;
+    /** What the user's AI settings let the assistant know about them (ai/personal.ts). */
+    personal?: string[];
+  },
 ): Promise<ChatResponse> {
   const messages: Anthropic.Beta.BetaMessageParam[] = req.messages
     .slice(0, -1)
@@ -163,6 +171,7 @@ export async function runAgent(
     content: [
       { type: 'text', text: withAbout(last) },
       { type: 'text', text: stateBlock(req) },
+      ...(deps.personal ?? []).map((text) => ({ type: 'text' as const, text })),
     ],
   });
 

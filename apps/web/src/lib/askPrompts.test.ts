@@ -4,6 +4,7 @@ import {
   COVERAGE_PROMPT,
   HELP_PROMPT,
   eventPrompts,
+  personalPrompts,
   placeName,
   starterPrompts,
   theName,
@@ -234,5 +235,89 @@ describe('starter prompts', () => {
     expect(all(groups)).toHaveLength(6);
     expect(groups).toHaveLength(1);
     expect(groups[0]!.label).toBe('Try asking');
+  });
+});
+
+describe('"For you" prompts', () => {
+  const history = [
+    {
+      kind: 'search' as const,
+      ref: 'waterloo',
+      title: 'waterloo',
+      detail: { result: { title: 'Battle of Waterloo', type: 'HISTORY' } },
+    },
+    {
+      kind: 'event' as const,
+      ref: 'hist-battle-of-waterloo',
+      title: 'Battle of Waterloo',
+      detail: { eventKind: 'historical' },
+    },
+    {
+      kind: 'country' as const,
+      ref: 'Q41304',
+      title: 'Weimar Republic',
+      detail: { start: '1918-11-09', end: '1933-03-23' },
+    },
+    {
+      kind: 'event' as const,
+      ref: 'news-1',
+      title: 'Houthi rebels say at least 44 killed in airstrike near Yemeni capital',
+      detail: { eventKind: 'news', place: 'Yemen' },
+    },
+    {
+      kind: 'country' as const,
+      ref: 'Q183',
+      title: 'Germany',
+      detail: { start: '1990-10-03', end: null },
+    },
+  ];
+
+  it('one question per topic, newest first, at most three', () => {
+    expect(personalPrompts({ history, chats: [] })).toEqual([
+      'Tell me more about Battle of Waterloo',
+      'What shaped the Weimar Republic between 1918 and 1933?',
+      "What's the latest on Houthi rebels say at least 44 killed in airstrike…?",
+    ]);
+    expect(personalPrompts({ history: history.slice(4), chats: [] })).toEqual([
+      "What's happening in Germany today?",
+    ]);
+  });
+
+  it('earlier chats count when memory is on; nothing for a new account', () => {
+    const chats = [
+      {
+        title: 'What led to this?',
+        turns: [
+          {
+            role: 'user',
+            about: {
+              title: 'DEMO: Large-scale naval and air drills reported around the Taiwan Strait',
+            },
+          },
+        ],
+      },
+      { title: 'Trip to Kyoto in spring', turns: [{ role: 'user' }] },
+    ];
+    expect(personalPrompts({ history: [], chats })).toEqual([
+      'Any news on Large-scale naval and air drills reported…?',
+      'More on “Trip to Kyoto in spring”',
+    ]);
+    expect(personalPrompts({ history: [], chats: [] })).toEqual([]);
+  });
+
+  it('come first among the six starters', () => {
+    const groups = starterPrompts({
+      mode: 'live',
+      timeMs: Date.parse('2026-11-09T13:00:00Z'),
+      resolution: 'day',
+      nowMs: Date.parse('2026-11-09T13:00:00Z'),
+      events: [],
+      personal: ['Tell me more about Battle of Waterloo', "What's happening in Germany today?"],
+    });
+    expect(groups[0]).toEqual({
+      label: 'For you',
+      prompts: ['Tell me more about Battle of Waterloo', "What's happening in Germany today?"],
+    });
+    expect(groups.flatMap((g) => g.prompts)).toHaveLength(6);
   });
 });

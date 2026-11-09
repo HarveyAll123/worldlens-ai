@@ -189,6 +189,162 @@ test.describe('AI assistant (offline fallback — no API key in CI)', () => {
   });
 });
 
+test.describe('accounts (test mailbox; accounts in memory)', () => {
+  test('sign up with email, confirm the code, finish the profile; history and settings; sign in by username', async ({
+    page,
+  }) => {
+    const stamp = `${Date.now() % 1_000_000}`;
+    const email = `e2e-${stamp}@example.com`;
+    const password = 'river stone lantern';
+    await openApp(page, '/', { signInDialog: true });
+    const dialog = page.getByTestId('auth-dialog');
+    await expect(dialog.getByTestId('auth-sign-in')).toBeVisible();
+    await expect(dialog.getByTestId('auth-guest')).toBeVisible();
+    await dialog.getByTestId('auth-to-sign-up').click();
+    await dialog.getByTestId('auth-email').fill(email);
+    await dialog.getByTestId('auth-new-password').fill('short');
+    await dialog.getByTestId('auth-confirm-password').fill('short');
+    await dialog.getByTestId('auth-submit').click();
+    await expect(dialog).toContainText('at least 12 characters');
+    await dialog.getByTestId('auth-new-password').fill(password);
+    await dialog.getByTestId('auth-confirm-password').fill(password);
+    await dialog.getByTestId('auth-submit').click();
+    await expect(dialog.getByTestId('auth-verify')).toContainText(email);
+    const mail = (await (await page.request.get(`/api/test/mail?to=${email}`)).json()) as {
+      code: string;
+    };
+    await dialog.getByTestId('auth-code').fill(mail.code);
+    await dialog.getByTestId('auth-submit').click();
+
+    // Name (last name optional) and a free username.
+    await expect(dialog.getByTestId('auth-profile')).toBeVisible();
+    await dialog.getByTestId('profile-first-name').fill('Ada');
+    await dialog.getByTestId('profile-username').fill(`ada_${stamp}`);
+    await expect(dialog).toContainText('is available');
+    await dialog.getByTestId('auth-submit').click();
+    await expect(dialog).toBeHidden();
+
+    // What the account opens is its history.
+    await page.getByTestId('event-list-item').filter({ hasText: 'Taiwan Strait' }).click();
+    await expect(page.getByTestId('event-title')).toContainText('Taiwan Strait');
+    await page.getByTestId('account-button').click();
+    await page.getByTestId('menu-history').click();
+    await expect(page.getByTestId('history-item').first()).toContainText('Taiwan Strait');
+
+    // Searches are kept too; the history has its own search; deleting always asks first.
+    await page.keyboard.press('Escape');
+    await page.getByTestId('search-input').fill('Waterloo');
+    await expect(page.getByTestId('search-result').first()).toContainText('Battle of Waterloo');
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('event-title')).toHaveText('Battle of Waterloo');
+    await page.getByTestId('account-button').click();
+    await page.getByTestId('menu-history').click();
+    const items = page.getByTestId('history-item');
+    await expect(items.filter({ hasText: '“Waterloo”' })).toContainText('chose Battle of Waterloo');
+    await page.getByTestId('history-search').fill('taiwan');
+    await expect(items).toHaveCount(1);
+    await page.getByTestId('history-search').fill('');
+    await page.getByTestId('history-filter-search').click();
+    await expect(items).toHaveCount(1);
+    await page.getByTestId('history-filter-all').click();
+    // An entry takes you back to what you saw (a news story: back to LIVE).
+    await items.filter({ hasText: 'Taiwan Strait' }).click();
+    await expect(page.getByTestId('account-panel')).toHaveCount(0);
+    await expect(page.getByTestId('event-title')).toContainText('Taiwan Strait');
+    await expect(page.getByTestId('live-status')).toBeVisible();
+
+    // Ask AI suggests from what this account did; the AI settings decide what it may read.
+    await page.getByTestId('open-assistant').click();
+    await expect(page.getByTestId('assistant')).toContainText('For you');
+    await expect(page.getByTestId('assistant')).toContainText('Battle of Waterloo');
+    await page.getByTestId('open-assistant').click();
+    await page.getByTestId('account-button').click();
+    await page.getByTestId('menu-ai-settings').click();
+    await expect(page.getByTestId('ai-memory')).toHaveAttribute('aria-checked', 'true');
+    await page.getByTestId('ai-reads-history').click();
+    await expect(page.getByTestId('ai-reads-history')).toHaveAttribute('aria-checked', 'false');
+    await page.getByTestId('ai-reads-history').click();
+    await expect(page.getByTestId('ai-reads-history')).toHaveAttribute('aria-checked', 'true');
+
+    await page.getByTestId('account-tab-history').click();
+    await page.getByTestId('history-select').click();
+    await items.filter({ hasText: 'Taiwan Strait' }).click();
+    await page.getByTestId('history-delete-selected').click();
+    await expect(page.getByTestId('account-confirm')).toContainText('cannot be undone');
+    await page.getByTestId('account-confirm-yes').click();
+    await expect(items.filter({ hasText: 'Taiwan Strait' })).toHaveCount(0);
+    await expect(items.filter({ hasText: 'Waterloo' }).first()).toBeVisible();
+    await page.getByTestId('history-delete-all').click();
+    await expect(page.getByTestId('account-confirm')).toContainText('whole history');
+    await page.getByTestId('account-confirm-yes').click();
+    await expect(page.getByTestId('history-empty')).toBeVisible();
+
+    // A new username is confirmed first, then waits a month.
+    await page.getByTestId('account-tab-settings').click();
+    await page.getByTestId('account-new-username').fill(`ada.l_${stamp}`);
+    await expect(page.getByTestId('account-settings')).toContainText('is available');
+    await page.getByTestId('account-change-username').click();
+    await expect(page.getByTestId('account-confirm')).toContainText('for a month');
+    await page.getByTestId('account-confirm-yes').click();
+    await expect(page.getByTestId('account-username')).toHaveText(`@ada.l_${stamp}`);
+    await expect(page.getByTestId('account-username-wait')).toBeVisible();
+
+    // A new email waits for its code — also after a reload — and the change can be cancelled.
+    await page.getByTestId('account-change-email').click();
+    await page.getByTestId('account-new-email').fill(`new-${email}`);
+    await page.getByTestId('account-send-email-code').click();
+    await expect(page.getByTestId('account-confirm')).toContainText('keeps using');
+    await page.getByTestId('account-confirm-yes').click();
+    await expect(page.getByTestId('account-email-pending')).toContainText(`new-${email}`);
+    await page.reload();
+    await page.getByTestId('account-button').click();
+    await page.getByTestId('menu-settings').click();
+    await expect(page.getByTestId('account-email-pending')).toContainText(`new-${email}`);
+    await page.getByTestId('account-cancel-email').click();
+    await expect(page.getByTestId('account-email-message')).toContainText('cancelled');
+    await expect(page.getByTestId('account-email')).toHaveText(email);
+
+    // Signed out, then back in with the username.
+    await page.getByTestId('account-sign-out').click();
+    await page.getByTestId('account-button').click();
+    await dialog.getByTestId('auth-login').fill(`ada.l_${stamp}`);
+    await dialog.getByTestId('auth-password').fill(password);
+    await dialog.getByTestId('auth-submit').click();
+    await expect(dialog).toBeHidden();
+    await expect(page.getByTestId('account-button')).toHaveAttribute('aria-label', /ada\.l_/);
+
+    // Deleting the account asks first and needs the password; then it is gone.
+    await page.getByTestId('account-button').click();
+    await page.getByTestId('menu-settings').click();
+    await page.getByTestId('account-delete').click();
+    await expect(page.getByTestId('account-delete-confirm')).toContainText('cannot be undone');
+    await expect(page.getByTestId('account-delete-yes')).toBeDisabled();
+    await page.getByTestId('account-delete-password').fill('not the password at all');
+    await page.getByTestId('account-delete-yes').click();
+    await expect(page.getByTestId('account-delete-message')).toContainText('not right');
+    await page.getByTestId('account-delete-password').fill(password);
+    await page.getByTestId('account-delete-yes').click();
+    await expect(dialog).toContainText('were deleted');
+    await expect(page.getByTestId('account-button')).toHaveAttribute('aria-label', 'Sign in');
+  });
+
+  test('guests: no account settings or history; the AI still answers', async ({ page }) => {
+    await openApp(page);
+    await expect(page.getByTestId('auth-dialog')).toHaveCount(0);
+    await page.getByTestId('account-button').click();
+    await expect(page.getByTestId('auth-sign-in')).toBeVisible();
+    await page.getByTestId('auth-guest').click();
+    await page.getByTestId('open-assistant').click();
+    await page.getByTestId('assistant-input').fill('Return to live');
+    await page.getByTestId('assistant-send').click();
+    await expect(page.getByTestId('assistant-reply')).toBeVisible();
+    // Nothing is kept for the next visit.
+    await page.reload();
+    await page.getByTestId('open-assistant').click();
+    await expect(page.getByTestId('assistant-reply')).toHaveCount(0);
+  });
+});
+
 test.describe('Take Action — PayPal sandbox (REST + SDK test doubles)', () => {
   test('explicit approval → server-verified capture', async ({ page }) => {
     await mockPayPalSdk(page, 'approve');

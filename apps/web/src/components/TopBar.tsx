@@ -1,3 +1,4 @@
+import { AccountButton } from './AccountButton';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   floorTo,
@@ -12,8 +13,8 @@ import { searchPolities, type PolityMatch } from '../globe/ohm';
 import { useOhmFlags, useOhmIndex } from '../hooks/useData';
 import { useMediaQuery } from '../hooks/useMedia';
 import { api } from '../lib/api';
-import { showCountry } from '../lib/countries';
-import { sheetTabOpen, useAppStore } from '../state/store';
+import { showCountry, toSelection } from '../lib/countries';
+import { sheetTabOpen, useAppStore, noteSearch } from '../state/store';
 import { HelpSheet } from './HelpSheet';
 import { LayerMenu } from './LayerMenu';
 import { Badge, Icon } from './ui';
@@ -172,6 +173,13 @@ export function SearchBox({
   }, [countries.length, open]);
 
   const choose = (item: Item) => {
+    // An account's history keeps the search and what it led to.
+    noteSearch(
+      q.trim(),
+      item.kind === 'country'
+        ? { type: 'COUNTRY', title: item.m.polity.name, country: toSelection(item.m.polity) }
+        : { ...item.r },
+    );
     if (item.kind === 'country') showCountry(item.m);
     else applySearchResult(item.r);
     setOpen(false);
@@ -334,7 +342,7 @@ export function TopBar({ mobile }: { mobile: boolean }) {
             type="button"
             onClick={() => toggleSheetTab('search')}
             aria-pressed={searchOpen}
-            className={`grid h-9 w-9 place-items-center rounded-full transition-colors ${
+            className={`grid h-9 w-8 place-items-center rounded-full transition-colors max-[359px]:hidden sm:w-9 ${
               searchOpen
                 ? 'bg-white/[0.12] text-white'
                 : 'text-white/70 hover:bg-white/[0.08] hover:text-white'
@@ -349,7 +357,7 @@ export function TopBar({ mobile }: { mobile: boolean }) {
           onClick={() => (mobile ? toggleSheetTab('assistant') : setAssistantOpen(!assistantOpen))}
           aria-pressed={aiShown}
           aria-label="Ask AI"
-          className={`flex h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] transition-colors ${
+          className={`flex h-9 items-center gap-1.5 rounded-full px-2 text-[12.5px] transition-colors sm:px-3 ${
             aiShown
               ? 'bg-white/[0.12] text-white'
               : 'text-white/70 hover:bg-white/[0.08] hover:text-white'
@@ -391,7 +399,7 @@ export function TopBar({ mobile }: { mobile: boolean }) {
           aria-expanded={cardShown}
           aria-controls={mobile ? 'bottom-sheet' : 'context-card'}
           aria-label={cardLabel}
-          className={`flex h-9 items-center gap-1.5 rounded-full px-2.5 text-[12.5px] transition-colors ${
+          className={`flex h-9 items-center gap-1.5 rounded-full px-2 text-[12.5px] transition-colors sm:px-2.5 ${
             cardShown
               ? 'bg-white/[0.12] text-white'
               : 'text-white/70 hover:bg-white/[0.08] hover:text-white'
@@ -403,6 +411,11 @@ export function TopBar({ mobile }: { mobile: boolean }) {
             {cardLabel}
           </span>
         </button>
+        <span
+          className="mx-0.5 hidden w-px shrink-0 self-stretch bg-white/12 md:block"
+          aria-hidden
+        />
+        <AccountButton />
       </div>
     </header>
   );

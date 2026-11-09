@@ -17,7 +17,9 @@ describe('chats store', () => {
     s.startDraft();
     s.startDraft();
     expect(useChatsStore.getState().chats).toHaveLength(0);
-    expect(JSON.parse(localStorage.getItem('worldlens.chats') ?? '{}').chats).toEqual([]);
+    // Chats live in memory: a guest's leave with them; an account's are on the server.
+    useChatsStore.getState().appendTurn({ role: 'user', content: 'Quake near Taipei' }, 1000);
+    expect(localStorage.getItem('worldlens.chats')).toBeNull();
   });
 
   it('creates the chat on the first message and reuses it afterwards', () => {

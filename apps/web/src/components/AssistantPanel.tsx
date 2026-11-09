@@ -6,7 +6,10 @@ import { api, type ChatMessage } from '../lib/api';
 import { relativeTime, safeExternalUrl } from '../lib/format';
 import type { ChatTurn, TurnAbout } from '../lib/chats';
 import { useConfig, useVisibleEvents } from '../hooks/useData';
-import { starterPrompts } from '../lib/askPrompts';
+import { personalPrompts, starterPrompts } from '../lib/askPrompts';
+import { account } from '../lib/account';
+import { useAccount } from '../state/account';
+import { useQuery } from '@tanstack/react-query';
 import { TIER_SETTINGS } from '../perf/tiers';
 import { orderedChats, useChatsStore } from '../state/chats';
 import { useAppStore } from '../state/store';
@@ -214,6 +217,8 @@ export function AssistantPanel() {
           camera: { lat: s.camera.lat, lon: s.camera.lon, altitudeKm: s.camera.altitudeKm },
           layers: s.layers,
           agent: s.aiAgent,
+          // Left out of "earlier conversations" the assistant may recall (AI settings).
+          chatId,
         },
       });
       // Chat mode never moves the globe, even if a reply carried actions.
@@ -261,6 +266,25 @@ export function AssistantPanel() {
   const resolution = useAppStore((s) => s.resolution);
   const tier = useAppStore((s) => s.qualityTier);
   const visible = useVisibleEvents(TIER_SETTINGS[tier].maxEvents);
+  // "For you": from the account's history and earlier chats, as its AI settings allow.
+  const user = useAccount((st) => st.user);
+  const readsHistory = !!user && user.aiReadsHistory;
+  const history = useQuery({
+    queryKey: ['me', 'history', user?.id],
+    queryFn: () => account.history.list(),
+    enabled: readsHistory,
+    staleTime: 60_000,
+  });
+  const personal = useMemo(
+    () =>
+      user
+        ? personalPrompts({
+            history: readsHistory ? (history.data?.items ?? []) : [],
+            chats: user.aiMemory ? chats : [],
+          })
+        : [],
+    [user, readsHistory, history.data, chats],
+  );
   const starters = useMemo(
     () =>
       starterPrompts({
@@ -269,8 +293,9 @@ export function AssistantPanel() {
         resolution,
         nowMs: Date.now(),
         events: visible.data?.events ?? [],
+        personal,
       }),
-    [mode, timeMs, resolution, visible.data],
+    [mode, timeMs, resolution, visible.data, personal],
   );
   const providerLabel = PROVIDER_LABEL[config.data?.ai.provider ?? ''] ?? 'AI';
   const canSend = input.trim().length > 0 && !busy;

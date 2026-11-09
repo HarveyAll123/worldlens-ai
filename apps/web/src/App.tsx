@@ -1,6 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
+import { AccountPanel } from './components/AccountPanel';
 import { AssistantPanel } from './components/AssistantPanel';
+import { AuthDialog } from './components/AuthDialog';
+import { startAccountSync } from './lib/accountSync';
+import { useAccount } from './state/account';
 import { CountryPanel } from './components/CountryPanel';
 import { EventDetail } from './components/EventDetail';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -139,6 +143,11 @@ export function App() {
   useEffect(() => setChatDocked(docked), [docked, setChatDocked]);
   // A selected country follows the timeline (its borders of the day, successor, or closes).
   useEffect(() => followCountriesInTime(queryClient), [queryClient]);
+  // Signed in or a guest; an account's chats and viewing history live on the server.
+  useEffect(() => {
+    void useAccount.getState().load();
+    return startAccountSync();
+  }, []);
   // Opening an event or a country brings the card back if it was closed, and so does the
   // assistant while it shares the card.
   useEffect(() => {
@@ -236,6 +245,8 @@ export function App() {
 
       <DiagnosticsPanel />
       <TakeActionModal />
+      <AuthDialog />
+      <AccountPanel />
       <Announcer />
     </div>
   );

@@ -16,6 +16,7 @@
     "@anthropic-ai/sdk": "0.133.0",
     "@neondatabase/serverless": "1.2.0",
     "@worldlens/shared": "workspace:*",
+    "better-auth": "1.7.18",
     "hono": "4.13.13",
     "zod": "4.6.7"
   },

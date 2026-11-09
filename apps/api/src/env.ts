@@ -44,6 +44,17 @@ export interface Env {
   ALLOWED_ORIGINS?: string;
   PUBLIC_APP_URL?: string;
   INGEST_TOKEN?: string;
+  /** Signs account sessions; 32+ random characters (openssl rand -base64 32). Required in production. */
+  BETTER_AUTH_SECRET?: string;
+  /** Google sign-in (an OAuth client from Google Cloud); off unless both are set. */
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  /** Account emails: "brevo" sends through Brevo; anything else prints them to the console. */
+  MAIL_PROVIDER?: string;
+  BREVO_API_KEY?: string;
+  /** Sender address (verified in Brevo) and name for account emails. */
+  MAIL_FROM?: string;
+  MAIL_FROM_NAME?: string;
   GEO_CACHE?: R2Bucket;
 }
 
@@ -68,6 +79,17 @@ const ConfigSchema = z.object({
     requestsPerMinute: z.number().int().positive(),
   }),
   database: z.object({ url: z.string().nullable() }),
+  auth: z.object({
+    /** null: a fixed development secret (sessions are not safe; never in production). */
+    secret: z.string().min(32).nullable(),
+    google: z.object({ clientId: z.string(), clientSecret: z.string() }).nullable(),
+    mail: z.object({
+      provider: z.enum(['log', 'brevo']),
+      brevoApiKey: z.string().nullable(),
+      from: z.string().nullable(),
+      fromName: z.string(),
+    }),
+  }),
   gdelt: z.object({
     enabled: z.boolean(),
     queries: z.array(z.string()),
@@ -183,6 +205,27 @@ export function loadConfig(env: Env): Config {
       requestsPerMinute: Math.max(1, Math.floor(Number(blank(env.AI_REQUESTS_PER_MINUTE) ?? '8'))),
     },
     database: { url: blank(env.DATABASE_URL) },
+    auth: {
+      secret: blank(env.BETTER_AUTH_SECRET),
+      google:
+        blank(env.GOOGLE_CLIENT_ID) && blank(env.GOOGLE_CLIENT_SECRET)
+          ? {
+              clientId: env.GOOGLE_CLIENT_ID!.trim(),
+              clientSecret: env.GOOGLE_CLIENT_SECRET!.trim(),
+            }
+          : null,
+      mail: {
+        provider:
+          blank(env.MAIL_PROVIDER)?.toLowerCase() === 'brevo' &&
+          blank(env.BREVO_API_KEY) &&
+          blank(env.MAIL_FROM)
+            ? 'brevo'
+            : 'log',
+        brevoApiKey: blank(env.BREVO_API_KEY),
+        from: blank(env.MAIL_FROM),
+        fromName: blank(env.MAIL_FROM_NAME) ?? 'WorldLens',
+      },
+    },
     rss: { enabled: (blank(env.RSS_ENABLED) ?? 'false').toLowerCase() === 'true' },
     gdelt: {
       enabled: (blank(env.GDELT_ENABLED) ?? 'true') !== 'false',

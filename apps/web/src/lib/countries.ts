@@ -61,6 +61,20 @@ export async function identifyCountry(qc: QueryClient, lon: number, lat: number)
   s.announce(`${p.name}`);
 }
 
+/** A country from the viewing history: its period on the timeline if needed, fly, open. */
+export function reopenCountry(c: CountrySelection): void {
+  const s = useAppStore.getState();
+  const day = currentDay();
+  if (day < c.start || (c.end !== null && day >= c.end)) {
+    const res: Resolution = c.start.length >= 10 ? 'day' : c.start.length >= 7 ? 'month' : 'year';
+    s.setTime(parseIso(c.start), res);
+  }
+  s.setLayer('borders', true);
+  s.openCountry(c);
+  flyToCountry(c);
+  s.announce(`Showing ${c.name}`);
+}
+
 /** A search result: move the timeline into the country's period if needed, fly, select. */
 export function showCountry(m: PolityMatch): void {
   const s = useAppStore.getState();

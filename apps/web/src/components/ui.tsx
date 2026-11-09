@@ -153,7 +153,11 @@ export type IconName =
   | 'pencil'
   | 'trash'
   | 'dots'
-  | 'forward';
+  | 'forward'
+  | 'user'
+  | 'eye'
+  | 'eye-off'
+  | 'mail';
 
 const PATHS: Record<IconName, ReactNode> = {
   search: (
@@ -189,6 +193,30 @@ const PATHS: Record<IconName, ReactNode> = {
     </>
   ),
   'arrow-left': <path d="M19.5 12H5M11 6l-6 6 6 6" />,
+  user: (
+    <>
+      <circle cx="12" cy="8.5" r="3.5" />
+      <path d="M5 19.5a7 7 0 0 1 14 0" />
+    </>
+  ),
+  eye: (
+    <>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+      <circle cx="12" cy="12" r="2.75" />
+    </>
+  ),
+  'eye-off': (
+    <>
+      <path d="M4 4l16 16M9.9 6A9.8 9.8 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-2.9 3.6M6.4 7.6A16.6 16.6 0 0 0 2.5 12S6 18.5 12 18.5a9.6 9.6 0 0 0 4.1-.9" />
+      <path d="M9.9 10a2.75 2.75 0 0 0 4 3.9" />
+    </>
+  ),
+  mail: (
+    <>
+      <rect x="3.5" y="5.5" width="17" height="13" rx="3" />
+      <path d="m4.5 7.5 7.5 5.5 7.5-5.5" />
+    </>
+  ),
   // A forwarded message: an arrow curving onward from where it came from.
   forward: <path d="M14 6.5 19.5 12 14 17.5M19.5 12H11a6.5 6.5 0 0 0-6.5 6.5v.5" />,
   check: <path d="M4.5 12.5 9.5 17.5 20 6.5" />,
