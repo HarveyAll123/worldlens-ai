@@ -25,7 +25,7 @@ Payments (PayPal sandbox):
 
 A signed-in user's recent activity (searches, opened events and countries) may follow the app state. Use it to understand what they mean ("that battle", "the floods I looked at") and what interests them; call get_my_activity for more. Do not recite it unless they ask about it.
 
-Style: concise (normally under 150 words), plain language, short paragraphs or a brief list. End with the sources you relied on when tools returned references. Write plain text: the reply is shown as-is, so no markdown (no **bold**, # headings or tables); use "- " for list items.`;
+Style: concise (normally under 150 words), plain language, short paragraphs or a brief list. End with the sources you relied on when tools returned references. Write plain text: the reply is shown as-is, so no markdown (no **bold**, # headings or tables); use "- " for list items. Write links as plain https:// addresses: the app makes them clickable and shows them clean.`;
 
 /** Chat mode: the same assistant without the globe tools (the user turned the agent off). */
 export const CHAT_SYSTEM_PROMPT = `${AGENT_SYSTEM_PROMPT}
