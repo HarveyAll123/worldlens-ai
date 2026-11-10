@@ -7,6 +7,7 @@ import { relativeTime, safeExternalUrl } from '../lib/format';
 import type { ChatTurn, TurnAbout } from '../lib/chats';
 import { useConfig, useVisibleEvents } from '../hooks/useData';
 import { personalPrompts, starterPrompts } from '../lib/askPrompts';
+import { linkify } from '../lib/linkify';
 import { account } from '../lib/account';
 import { useAccount } from '../state/account';
 import { useQuery } from '@tanstack/react-query';
@@ -60,6 +61,31 @@ function AgentSwitch() {
       {option(false, 'Chat', 'Chat: answers only, never moves the globe')}
       {option(true, 'Agent', 'Agent: may fly, zoom, highlight and open events on the globe')}
     </div>
+  );
+}
+
+/** Chat text with its links clickable and shown clean ("hasan-portfolio.com"; lib/linkify). */
+function LinkedText({ text }: { text: string }) {
+  return (
+    <>
+      {linkify(text).map((part, i) =>
+        typeof part === 'string' ? (
+          part
+        ) : (
+          <a
+            key={i}
+            href={part.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={part.href}
+            className="text-white underline decoration-white/35 underline-offset-2 transition-colors hover:decoration-white"
+            data-testid="chat-link"
+          >
+            {part.label}
+          </a>
+        ),
+      )}
+    </>
   );
 }
 
@@ -523,7 +549,9 @@ export function AssistantPanel() {
                   data-testid={t.role === 'assistant' ? 'assistant-reply' : undefined}
                 >
                   {t.about && <ForwardedFrom about={t.about} />}
-                  <p className="whitespace-pre-wrap">{t.content}</p>
+                  <p className="whitespace-pre-wrap">
+                    <LinkedText text={t.content} />
+                  </p>
                   {t.meta && (
                     <div className="mt-2 space-y-1.5 text-[10.5px] text-white/40">
                       {t.meta.notice && <p className="text-white/55">{t.meta.notice}</p>}
