@@ -12,6 +12,7 @@
 import * as Cesium from 'cesium';
 import type { EventSummary } from '@worldlens/shared';
 import { atOnePlace, clusterGeo, clusterLevel, placeLabels } from './clustering';
+import type { Rect } from './placeNames';
 import { COLORS, eventColor } from './styles';
 
 export type PickId =
@@ -75,6 +76,10 @@ export class EventLayer {
   private visible = true;
   private level: number | null = null;
   private drawn = new Map<string, Drawn>();
+  /** Screen boxes of the titles placed last (for what is placed after them: place names). */
+  private titleRects: Rect[] = [];
+  /** Called after every re-placement of titles (the place names follow). */
+  onRelabel: (() => void) | null = null;
   stats = { visibleEvents: 0, visibleLabels: 0, clusters: 0 };
 
   constructor(private readonly scene: Cesium.Scene) {
@@ -334,6 +339,9 @@ export class EventLayer {
         wanted.set(key, { side, text });
       }
     const chosen = placeLabels(candidates, this.settings.maxLabels);
+    this.titleRects = candidates
+      .filter((c) => chosen.has(c.id))
+      .map(({ x, y, width, height }) => ({ x, y, width, height }));
     for (const [key, d] of this.drawn) {
       const want = chosen.has(key) ? wanted.get(key) : undefined;
       if (want) {
@@ -366,5 +374,23 @@ export class EventLayer {
     }
     this.cull();
     this.scene.requestRender();
+    this.onRelabel?.();
+  }
+
+  /**
+   * What events take on screen now: every visible marker (with a margin) and the titles placed
+   * beside them. Nothing placed after them may cover these.
+   */
+  obstacles(): Rect[] {
+    const out: Rect[] = [];
+    if (!this.visible) return out;
+    for (const d of this.drawn.values()) {
+      if (!d.visible) continue;
+      const w = Cesium.SceneTransforms.worldToWindowCoordinates(this.scene, d.position, scratchWin);
+      if (!w) continue;
+      const size = d.point.pixelSize + 8;
+      out.push({ x: w.x - size / 2, y: w.y - size / 2, width: size, height: size });
+    }
+    return [...out, ...this.titleRects];
   }
 }

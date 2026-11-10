@@ -1,11 +1,11 @@
 /**
- * Several events pinned to one spot ("Germany", "Delhi, India") make a cluster that no zoom can
- * split — and a cluster clicked from as close as a cluster click flies cannot be split by
- * flying either — so clicking it lists them here, next to the marker, to choose one: news and
- * history alike. A floating glass card (DESIGN.md): monochrome, generously rounded, a stacked header
- * (dim count over the bright place), the event list's rows, subtle 160 ms entrance. It never
- * sits under the top bar, the timeline or another panel, and closes with ×, Escape, a press
- * elsewhere, or when the globe moves.
+ * A clicked cluster lists its events here, next to the marker, to choose one — news, history
+ * and battles alike — with "Zoom in" for a closer look when zooming can separate them (events
+ * pinned to one spot, "Germany" or "Delhi, India", never separate). A floating glass card
+ * (DESIGN.md): monochrome, generously rounded, a stacked header (dim count over the bright
+ * place), the event list's rows, subtle 160 ms entrance. It never sits under the top bar, the
+ * timeline or another panel, and closes with ×, Escape, a press elsewhere, or when the globe
+ * moves.
  */
 import { parseIso, type EventSummary } from '@worldlens/shared';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -141,8 +141,14 @@ export function PlacePicker({ events }: { events: EventSummary[] }) {
   const onePlace = rows.every((e) => e.location.name === place);
   const heading = onePlace ? place : `Near ${place}`;
   const news = rows.filter((e) => e.kind === 'news').length;
-  const history = rows.length - news;
-  const counts = [news && `${news} news`, history && `${history} history`].filter(Boolean);
+  // The battle layer's events (Wikidata, ids "wd-…").
+  const battles = rows.filter((e) => e.kind !== 'news' && e.id.startsWith('wd-')).length;
+  const history = rows.length - news - battles;
+  const counts = [
+    news && `${news} news`,
+    history && `${history} history`,
+    battles && `${battles} battle${battles === 1 ? '' : 's'}`,
+  ].filter(Boolean);
 
   const choose = (e: EventSummary) => {
     const s = useAppStore.getState();
@@ -169,6 +175,21 @@ export function PlacePicker({ events }: { events: EventSummary[] }) {
           </p>
           <h2 className="mt-0.5 truncate text-[13px] text-white/90">{heading}</h2>
         </div>
+        {picker.zoomTo && (
+          <button
+            type="button"
+            onClick={() => {
+              const s = useAppStore.getState();
+              s.setPlacePicker(null);
+              s.flyTo(picker.zoomTo!);
+            }}
+            className="flex h-7 shrink-0 items-center gap-1 rounded-full border border-white/12 px-2.5 text-[11px] text-white/70 transition-colors duration-150 ease-out hover:bg-white/[0.08] hover:text-white"
+            data-testid="place-picker-zoom"
+          >
+            <Icon name="plus" className="h-3 w-3" />
+            Zoom in
+          </button>
+        )}
         <button
           type="button"
           aria-label="Close"

@@ -28,6 +28,7 @@ function setup(
     ai?: AiProvider;
     paypal?: FakePayPal;
     paymentStore?: PaymentStore;
+    fetchImpl?: typeof fetch;
   } = {},
 ) {
   const paypal = opts.paypal;
@@ -45,7 +46,7 @@ function setup(
   let n = 0;
   const deps = createDeps(env, {
     now: () => NOW,
-    fetchImpl: paypal ? paypal.fetch : offlineFetch,
+    fetchImpl: paypal ? paypal.fetch : (opts.fetchImpl ?? offlineFetch),
     ...(opts.ai ? { ai: opts.ai } : {}),
     ...(opts.paymentStore ? { paymentStore: opts.paymentStore } : {}),
     newId: () => `testid${String(++n).padStart(6, '0')}`,
@@ -250,6 +251,72 @@ describe('search', () => {
       '/api/search?q=Indonesia%201965',
     );
     expect(indo.body.results.map((r) => r.eventId)).toContain('hist-30-september-movement');
+  });
+});
+
+describe('search bar: news since 2000', () => {
+  const DAY = `'''Disasters and accidents'''
+*[[Fukushima Daiichi nuclear disaster]]
+**A hydrogen explosion damages a reactor building at the nuclear plant in [[Ōkuma, Fukushima|Ōkuma]], [[Japan]]. [https://www.bbc.co.uk/news/x (BBC)]`;
+  /** Wikipedia: its search finds 14 March 2011; that day's page has the news. */
+  const wikipedia = () => {
+    const urls: string[] = [];
+    const fetchImpl = (async (input: string | Request) => {
+      const u = new URL(typeof input === 'string' ? input : input.url);
+      urls.push(u.toString());
+      if (u.hostname !== 'en.wikipedia.org') return new Response('offline', { status: 503 });
+      if (u.searchParams.get('list') === 'search')
+        return Response.json({
+          query: { search: [{ title: 'Portal:Current events/2011 March 14' }] },
+        });
+      const pages = (u.searchParams.get('titles') ?? '')
+        .split('|')
+        .map((title) =>
+          title === 'Portal:Current events/2011 March 14'
+            ? { title, revisions: [{ slots: { main: { content: DAY } } }] }
+            : { title, missing: true },
+        );
+      return Response.json({ query: { pages } });
+    }) as typeof fetch;
+    return { fetchImpl, urls };
+  };
+
+  it('lists past news on its own, best first, and says it is on', async () => {
+    const w = wikipedia();
+    const { json } = setup({ fetchImpl: w.fetchImpl });
+    const r = await json<{ results: Array<{ type: string; id: string; title: string }> }>(
+      '/api/search/past?q=Fukushima',
+    );
+    expect(r.status).toBe(200);
+    expect(r.body.results).toHaveLength(1);
+    expect(r.body.results[0]).toMatchObject({
+      type: 'NEWS',
+      id: expect.stringMatching(/^wnews-2011-03-14-/),
+    });
+    expect(r.headers.get('Cache-Control')).toBe('private, max-age=600');
+    const config = await json<{ news: { past: boolean } }>('/api/config');
+    expect(config.body.news.past).toBe(true);
+  });
+
+  it('the instant search never asks Wikipedia; too short a query is refused', async () => {
+    const w = wikipedia();
+    const { json } = setup({ fetchImpl: w.fetchImpl });
+    await json('/api/search?q=Fukushima');
+    expect(w.urls.filter((u) => u.includes('wikipedia.org/w/api.php'))).toEqual([]);
+    expect((await json('/api/search/past?q=ab')).status).toBe(400);
+  });
+
+  it('Wikipedia down: a clear 502; turned off: nothing, and the bar is told', async () => {
+    const down = setup();
+    const r = await down.json<{ error: string }>('/api/search/past?q=Fukushima');
+    expect(r.status).toBe(502);
+    expect(r.body.error).toBe('PAST_NEWS_UNAVAILABLE');
+    const off = setup({ env: { PAST_NEWS_ENABLED: 'false' } });
+    expect((await off.json('/api/search/past?q=Fukushima')).body).toEqual({
+      results: [],
+      available: false,
+    });
+    expect((await off.json<{ news: { past: boolean } }>('/api/config')).body.news.past).toBe(false);
   });
 });
 

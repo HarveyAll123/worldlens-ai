@@ -9,6 +9,8 @@ import { api } from '../lib/api';
 
 export type AuthView = 'sign-in' | 'sign-up' | 'verify' | 'profile' | 'forgot';
 export type AccountPanel = 'settings' | 'ai' | 'history';
+/** A part of Account settings the assistant can point to (it never changes it). */
+export type AccountSection = 'username' | 'email' | 'password' | 'delete';
 
 /** "Continue as guest" holds for this visit (tab); the next visit asks again. */
 const GUEST_KEY = 'worldlens.guest';
@@ -30,12 +32,16 @@ interface AccountState {
   /** A note shown on the sign-in view (e.g. after a password reset). */
   notice: string | null;
   panel: AccountPanel | null;
+  /** Scrolled to and briefly marked when the window opens there (the assistant pointing). */
+  section: AccountSection | null;
   /** Reads the session: signed in (profile to finish?) or a guest (asked once per visit). */
   load: () => Promise<void>;
   setUser: (u: AccountUser) => void;
   openDialog: (v: AuthView | null, o?: { email?: string; notice?: string }) => void;
   continueAsGuest: () => void;
   setPanel: (p: AccountPanel | null) => void;
+  /** Opens the account window on a tab, scrolled to a section. */
+  showSection: (p: AccountPanel, section: AccountSection | null) => void;
   signOut: () => Promise<void>;
 }
 
@@ -46,6 +52,7 @@ export const useAccount = create<AccountState>((set) => ({
   pendingEmail: null,
   notice: null,
   panel: null,
+  section: null,
 
   load: async () => {
     // Back from Google (?error= / ?signin=failed), or sent here to start it (?signin=google).
@@ -108,7 +115,8 @@ export const useAccount = create<AccountState>((set) => ({
     set({ dialog: null, notice: null });
   },
 
-  setPanel: (panel) => set({ panel }),
+  setPanel: (panel) => set({ panel, section: null }),
+  showSection: (panel, section) => set({ panel, section }),
 
   signOut: async () => {
     await authClient.signOut().catch(() => undefined);

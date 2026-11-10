@@ -3,7 +3,13 @@ import { createApp } from '../app';
 import { createDeps } from '../deps';
 import type { Env } from '../env';
 import { TestMailbox } from '../lib/mailer';
-import { activityBlock, memoryBlock, personalContext, profileBlock } from '../ai/personal';
+import {
+  GUEST_BLOCK,
+  activityBlock,
+  memoryBlock,
+  personalContext,
+  profileBlock,
+} from '../ai/personal';
 import { AGENT_SYSTEM_PROMPT, CHAT_SYSTEM_PROMPT } from '../ai/prompts';
 import { MemoryAccountStore } from '../data/account-store';
 import { activityLine, runServerTool, type ToolContext } from '../ai/tools-impl';
@@ -392,7 +398,8 @@ describe("the assistant and the user's activity", () => {
       aiMemory: false,
     });
     expect(nothing.blocks).toEqual([]);
-    expect((await personalContext(store, null)).blocks).toEqual([]);
+    // A guest: only that they are one (no settings or history to offer; sign-in instead).
+    expect((await personalContext(store, null)).blocks).toEqual([GUEST_BLOCK]);
     expect(memoryBlock([], undefined)).toBeNull();
   });
 

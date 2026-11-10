@@ -25,7 +25,12 @@ const LAYERS: Array<{ id: LayerId; label: string; hint: string }> = [
     label: 'Frontlines / ceasefire lines',
     hint: 'Dated ceasefire and control lines (Natural Earth); no live war frontlines',
   },
-  { id: 'labels', label: 'Labels', hint: 'Event names on the globe' },
+  { id: 'labels', label: 'Event names', hint: 'Titles beside event markers' },
+  {
+    id: 'places',
+    label: 'Place names',
+    hint: 'Cities, rivers, lakes, seas, mountains and deserts (Natural Earth); never over events',
+  },
 ];
 
 function ToggleRow({

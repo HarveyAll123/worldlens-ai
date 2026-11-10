@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { toIso } from '@worldlens/shared';
 import { runActions } from '../ai/actionExecutor';
+import { AiActions } from './AiActions';
 import { api, type ChatMessage } from '../lib/api';
 import { relativeTime, safeExternalUrl } from '../lib/format';
 import type { ChatTurn, TurnAbout } from '../lib/chats';
@@ -248,9 +249,10 @@ export function AssistantPanel() {
         },
       });
       // Chat mode never moves the globe, even if a reply carried actions.
-      const { rejected } = runActions(useAppStore.getState().aiAgent ? res.actions : []);
+      const ran = useAppStore.getState().aiAgent ? res.actions : [];
+      const { rejected } = runActions(ran);
       appendTurn(
-        { role: 'assistant', content: res.reply, meta: { ...res, rejected } },
+        { role: 'assistant', content: res.reply, meta: { ...res, actions: ran, rejected } },
         Date.now(),
         chatId,
       );
@@ -552,13 +554,14 @@ export function AssistantPanel() {
                   <p className="whitespace-pre-wrap">
                     <LinkedText text={t.content} />
                   </p>
+                  {t.meta && t.meta.actions.length > 0 && <AiActions raw={t.meta.actions} />}
                   {t.meta && (
                     <div className="mt-2 space-y-1.5 text-[10.5px] text-white/40">
                       {t.meta.notice && <p className="text-white/55">{t.meta.notice}</p>}
                       {t.meta.toolTrace.length > 0 && (
                         <details>
                           <summary className="cursor-pointer select-none">
-                            What I did ({t.meta.toolTrace.length} tool calls)
+                            Tool calls ({t.meta.toolTrace.length})
                           </summary>
                           <ul className="mt-1 space-y-0.5 font-mono">
                             {t.meta.toolTrace.map((x, j) => (

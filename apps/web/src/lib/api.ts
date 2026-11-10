@@ -94,9 +94,22 @@ export interface AppConfig {
       hasWebhookId: boolean;
     };
   };
-  news: { liveProvider: string | null };
+  /** past: news since 2000 (Wikipedia), which the search bar lists as its own group. */
+  news: { liveProvider: string | null; past?: boolean };
   /** Sign-in options: Google needs an OAuth client; "log" prints codes in the API console. */
   auth?: { google: boolean; mail: 'log' | 'brevo'; appUrl?: string };
+}
+
+/** Where a publisher is based (its country's outline, or a city-state without one). */
+export interface PublisherPlace {
+  iso3: string | null;
+  name: string;
+  /** Where to fly; absent when the map does not know the place (named only). */
+  lat?: number;
+  lon?: number;
+  altitudeKm?: number;
+  /** registry: WorldLens's list; wikidata; reported: the news feed; gdelt-list: GDELT (2018). */
+  basis: 'registry' | 'wikidata' | 'reported' | 'gdelt-list';
 }
 
 export interface SourcesResponse {
@@ -109,6 +122,8 @@ export interface SourcesResponse {
     byCountry: Record<string, number>;
     byType: Record<string, number>;
   };
+  /** By publisher id. */
+  places?: Record<string, PublisherPlace>;
 }
 
 export interface RelatedResponse {
@@ -222,6 +237,12 @@ export const api = {
     ),
   search: (q: string, signal?: AbortSignal) =>
     call<{ results: SearchResult[] }>(`/api/search?${new URLSearchParams({ q })}`, { signal }),
+  /** News since 2000 only (asks Wikipedia: slower than search). */
+  searchPast: (q: string, signal?: AbortSignal) =>
+    call<{ results: SearchResult[]; available: boolean }>(
+      `/api/search/past?${new URLSearchParams({ q })}`,
+      { signal },
+    ),
   chat: (body: { messages: ChatMessage[]; context: unknown }) =>
     call<ChatResponse>('/api/ai/chat', { method: 'POST', body: JSON.stringify(body) }),
   createPayment: (body: CreatePaymentRequest) =>

@@ -3,8 +3,23 @@
  * shared Zod schemas (defence in depth) — nothing from the network is executed as code.
  * Sequences containing several set_time steps become a "tour" the user can pause or stop.
  */
-import { parseClientAction, parseIso, type ClientAction, type Resolution } from '@worldlens/shared';
+import {
+  TEMPORAL_CONFIG,
+  findPlaceNames,
+  parseClientAction,
+  parseIso,
+  utcMs,
+  type ClientAction,
+  type Resolution,
+} from '@worldlens/shared';
+import { account } from '../lib/account';
 import { api } from '../lib/api';
+import { showCountryNamed } from '../lib/countries';
+import { marksView } from '../lib/placeMarks';
+import { placeNamesQuery, placeShapesQuery } from '../hooks/useData';
+import { queryClient } from '../lib/queryClient';
+import type { QualityPreference } from '../perf/tiers';
+import { useAccount, type AccountSection } from '../state/account';
 import { useAppStore } from '../state/store';
 
 export function resolutionForIso(date: string): Resolution {
@@ -79,6 +94,110 @@ export function pannedView(
   return { lat, lon, altitudeKm: camera.altitudeKm };
 }
 
+const SECTION: Record<string, AccountSection> = {
+  username: 'username',
+  email: 'email',
+  password: 'password',
+  delete_account: 'delete',
+};
+
+/**
+ * Opens a part of the app for the user. Account settings only open and scroll to a section: the
+ * assistant has no tool that types into them, submits them or deletes anything. A guest asked
+ * about account, AI settings or history gets the sign-in window.
+ */
+export function openPanel(panel: string, section?: string): void {
+  const s = useAppStore.getState();
+  const acc = useAccount.getState();
+  const mobile = window.matchMedia?.('(max-width: 767px)').matches ?? false;
+  if ((panel === 'account' || panel === 'ai_settings' || panel === 'history') && !acc.user)
+    return acc.openDialog('sign-in');
+  const click = (testId: string) => {
+    const b = document.querySelector<HTMLButtonElement>(`[data-testid="${testId}"]`);
+    if (b && b.getAttribute('aria-expanded') !== 'true') b.click();
+  };
+  switch (panel) {
+    case 'close':
+      // Windows and menus only: sign-up steps (code, profile) stay for the user to finish.
+      acc.setPanel(null);
+      if (acc.dialog === 'sign-in') acc.openDialog(null);
+      for (const id of ['help-button', 'layers-button']) {
+        const b = document.querySelector<HTMLButtonElement>(`[data-testid="${id}"]`);
+        if (b?.getAttribute('aria-expanded') === 'true') b.click();
+      }
+      return;
+    case 'account':
+      return acc.showSection('settings', section ? (SECTION[section] ?? null) : null);
+    case 'ai_settings':
+      return acc.showSection('ai', null);
+    case 'history':
+      return acc.showSection('history', null);
+    case 'sign_in':
+      return acc.user ? acc.showSection('settings', null) : acc.openDialog('sign-in');
+    case 'events':
+      if (mobile)
+        return s.setSheet(s.selectedEventId || s.selectedCountry ? 'detail' : 'events', true);
+      return s.setCardOpen(true);
+    case 'search':
+      if (mobile) return s.setSheet('search', true);
+      return document.querySelector<HTMLInputElement>('[data-testid="search-input"]')?.focus();
+    case 'layers':
+      if (mobile) return s.setSheet('layers', true);
+      return click('layers-button');
+    case 'help':
+      return click('help-button');
+  }
+}
+
+type MarkArgs = { name: string; kind?: string; id?: string };
+
+/**
+ * Mark places (highlight_place): each city, river, lake, sea, mountain or desert — by the id the
+ * server found, else by name — drawn on the globe, then the camera brought to show them all
+ * (several marked in one answer are framed together). "none" clears every mark.
+ */
+export async function markPlaces(list: MarkArgs[]): Promise<void> {
+  const s = useAppStore.getState();
+  if (list.some((a) => a.name === 'none')) s.clearPlaceMarks(null);
+  const wanted = list.filter((a) => a.name !== 'none');
+  if (wanted.length === 0) return;
+  const names = await queryClient.ensureQueryData(placeNamesQuery);
+  const marks = [];
+  for (const args of wanted) {
+    const found =
+      (args.id ? names.find((n) => n.id === args.id) : undefined) ??
+      findPlaceNames(
+        names,
+        args.name,
+        (args.kind ?? 'any') as Parameters<typeof findPlaceNames>[2],
+      )[0];
+    if (!found) {
+      useAppStore.getState().announce(`No place named ${args.name} on the map`);
+      continue;
+    }
+    const mark = {
+      id: found.id,
+      name: found.name,
+      kind: found.kind,
+      lat: found.lat,
+      lon: found.lon,
+    };
+    useAppStore.getState().addPlaceMark(mark);
+    marks.push(mark);
+  }
+  if (marks.length === 0) return;
+  const shapes = await queryClient.ensureQueryData(placeShapesQuery).catch(() => ({}));
+  // Still marked (a clear may have come meanwhile).
+  const now = new Set(useAppStore.getState().placeMarks.map((m) => m.id));
+  const still = marks.filter((m) => now.has(m.id));
+  const view = marksView(still, names, shapes);
+  if (view) useAppStore.getState().flyTo(view);
+  useAppStore.getState().announce(`Marked ${still.map((m) => m.name).join(', ')}`);
+}
+
+/** One place (a chip done again, or a single highlight_place). */
+export const markPlace = (args: MarkArgs) => markPlaces([args]);
+
 export function applyAction(a: ClientAction): void {
   const s = useAppStore.getState();
   switch (a.tool) {
@@ -118,6 +237,68 @@ export function applyAction(a: ClientAction): void {
     case 'toggle_layer':
       s.setLayer(a.args.layer, a.args.enabled);
       break;
+    case 'set_display': {
+      const { quality, night, city_lights: lights, diagnostics } = a.args;
+      if (quality) s.setQuality(quality.toUpperCase() as QualityPreference);
+      if (night !== undefined) s.setDayNight(night);
+      if (lights !== undefined) {
+        // City lights show on the night side only.
+        if (lights) s.setDayNight(true);
+        s.setNightLights(lights);
+      }
+      if (diagnostics !== undefined) s.setDiagnostics(diagnostics);
+      break;
+    }
+    case 'set_ai_settings': {
+      if (a.args.agent_mode !== undefined) s.setAiAgent(a.args.agent_mode);
+      if (a.args.remember_chats === undefined && a.args.read_history === undefined) break;
+      const acc = useAccount.getState();
+      if (!acc.user) {
+        acc.openDialog('sign-in');
+        break;
+      }
+      // The user sees the switches change (AI tab of the account window).
+      acc.showSection('ai', null);
+      void account
+        .saveAiSettings({
+          ...(a.args.remember_chats !== undefined ? { aiMemory: a.args.remember_chats } : {}),
+          ...(a.args.read_history !== undefined ? { aiReadsHistory: a.args.read_history } : {}),
+        })
+        .then(({ user }) => useAccount.getState().setUser(user))
+        .catch(() => undefined);
+      break;
+    }
+    case 'open_panel':
+      openPanel(a.args.panel, a.args.section);
+      break;
+    case 'highlight_place':
+      // Several in one step are marked together (applyStep).
+      void markPlace(a.args).catch(() => undefined);
+      break;
+    case 'open_country': {
+      const name = a.args.name;
+      void showCountryNamed(queryClient, name)
+        .then((found) => {
+          if (!found) useAppStore.getState().announce(`No country named ${name} on the map`);
+        })
+        .catch(() => undefined);
+      break;
+    }
+    case 'play_timeline': {
+      const { playing, from, resolution, speed } = a.args;
+      if (!playing) {
+        s.setTimelinePlaying(false);
+        break;
+      }
+      if (from) s.setTime(parseIso(from), resolution ?? resolutionForIso(from));
+      // From LIVE it starts at the beginning, as the Play button does.
+      else if (s.mode === 'live')
+        s.setTime(utcMs(TEMPORAL_CONFIG.minNavigableYear), resolution ?? 'year');
+      else if (resolution) s.setResolution(resolution);
+      if (speed) s.setTimelineSpeed(speed);
+      s.setTimelinePlaying(true);
+      break;
+    }
     case 'open_take_action':
       s.openTakeAction({
         eventId: a.args.event_id,
@@ -130,7 +311,11 @@ export function applyAction(a: ClientAction): void {
 
 /** Apply one step; if it opens an event without moving the camera, fly to that event. */
 function applyStep(step: ClientAction[]): void {
-  for (const a of step) applyAction(a);
+  // Places marked in one answer are framed together, not each in turn.
+  const marks = step.filter((a) => a.tool === 'highlight_place');
+  if (marks.length > 1)
+    void markPlaces(marks.map((a) => a.args as MarkArgs)).catch(() => undefined);
+  for (const a of step) if (marks.length <= 1 || a.tool !== 'highlight_place') applyAction(a);
   const open = step.find((a) => a.tool === 'open_event');
   if (open && !step.some((a) => a.tool === 'fly_to')) {
     const id = (open.args as { event_id: string }).event_id;

@@ -13,6 +13,7 @@
     "dev": "concurrently -k -n api,web -c blue,green \"pnpm --filter @worldlens/api dev\" \"pnpm --filter @worldlens/web dev\"",
     "dev:node": "concurrently -k -n api,web -c blue,green \"pnpm --filter @worldlens/api dev:node\" \"pnpm --filter @worldlens/web dev\"",
     "build": "pnpm -r build",
+    "deploy": "pnpm --filter @worldlens/web build && pnpm --filter @worldlens/api run deploy",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -31,6 +32,8 @@
     "data:succession": "tsx scripts/build-succession.ts",
     "data:audit-borders": "tsx scripts/audit-ohm-borders.ts",
     "data:fetch-basemaps": "tsx scripts/fetch-historical-basemaps.ts",
+    "data:publishers": "tsx scripts/build-publishers.ts",
+    "data:places": "tsx scripts/build-place-names.ts",
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test"
   },
   "devDependencies": {

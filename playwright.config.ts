@@ -50,6 +50,8 @@ export default defineConfig({
         // Ignore apps/api/.dev.vars (real database, AI key, PayPal credentials).
         WORLDLENS_E2E: '1',
         GDELT_ENABLED: 'false',
+        // No calls to Wikipedia from tests (news of the past).
+        PAST_NEWS_ENABLED: 'false',
         WORLDLENS_TEST_PAYPAL_MOCK: '1',
         HISTORICAL_BASEMAPS_BASE_URL: 'http://127.0.0.1:5173/vendor/historical-basemaps/',
         ANTHROPIC_API_KEY: '',

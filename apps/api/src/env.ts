@@ -37,9 +37,15 @@ export interface Env {
    * "api": the DOC 2.0 search API (rate-limited per IP; often HTTP 429 from shared addresses).
    */
   GDELT_SOURCE?: string;
+  /** News of the past (2000 → live) from Wikipedia on the timeline. Default on; "false" turns it off. */
+  PAST_NEWS_ENABLED?: string;
   /** Named-publisher RSS ingestion. Default off; set "true" to enable. */
   RSS_ENABLED?: string;
   HISTORICAL_BASEMAPS_BASE_URL?: string;
+  /** Where outlets are based (GDELT's list, split into files); default: the web app's copy. */
+  PUBLISHER_DIRECTORY_URL?: string;
+  /** The globe's place names (cities, rivers…); default: the web app's copy. */
+  PLACE_NAMES_URL?: string;
   WIKIPEDIA_USER_AGENT?: string;
   ALLOWED_ORIGINS?: string;
   PUBLIC_APP_URL?: string;
@@ -55,6 +61,11 @@ export interface Env {
   /** Sender address (verified in Brevo) and name for account emails. */
   MAIL_FROM?: string;
   MAIL_FROM_NAME?: string;
+  /**
+   * The website's files (apps/web/dist), when this Worker serves them too (wrangler.toml
+   * [assets]): the API reads its data files (place names, publisher directory) through it.
+   */
+  ASSETS?: { fetch(request: Request): Promise<Response> };
   GEO_CACHE?: R2Bucket;
 }
 
@@ -79,6 +90,7 @@ const ConfigSchema = z.object({
     requestsPerMinute: z.number().int().positive(),
   }),
   database: z.object({ url: z.string().nullable() }),
+  pastNews: z.object({ enabled: z.boolean() }),
   auth: z.object({
     /** null: a fixed development secret (sessions are not safe; never in production). */
     secret: z.string().min(32).nullable(),
@@ -97,6 +109,8 @@ const ConfigSchema = z.object({
   }),
   rss: z.object({ enabled: z.boolean() }),
   basemapsBaseUrl: z.string(),
+  publisherDirectoryUrl: z.string(),
+  placeNamesUrl: z.string(),
   wikipediaUserAgent: z.string(),
   allowedOrigins: z.array(z.string()),
   publicAppUrl: z.string(),
@@ -205,6 +219,7 @@ export function loadConfig(env: Env): Config {
       requestsPerMinute: Math.max(1, Math.floor(Number(blank(env.AI_REQUESTS_PER_MINUTE) ?? '8'))),
     },
     database: { url: blank(env.DATABASE_URL) },
+    pastNews: { enabled: (blank(env.PAST_NEWS_ENABLED) ?? 'true').toLowerCase() !== 'false' },
     auth: {
       secret: blank(env.BETTER_AUTH_SECRET),
       google:
@@ -247,6 +262,12 @@ export function loadConfig(env: Env): Config {
       .map((s) => s.trim())
       .filter(Boolean),
     publicAppUrl: blank(env.PUBLIC_APP_URL) ?? 'http://localhost:5173',
+    publisherDirectoryUrl:
+      blank(env.PUBLISHER_DIRECTORY_URL) ??
+      `${(blank(env.PUBLIC_APP_URL) ?? 'http://localhost:5173').replace(/\/$/, '')}/data/publishers/`,
+    placeNamesUrl:
+      blank(env.PLACE_NAMES_URL) ??
+      `${(blank(env.PUBLIC_APP_URL) ?? 'http://localhost:5173').replace(/\/$/, '')}/data/places/names.json`,
     ingestToken: blank(env.INGEST_TOKEN),
   });
 }

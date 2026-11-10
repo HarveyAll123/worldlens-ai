@@ -69,8 +69,17 @@ export function TemporalNavigator({ compact }: { compact: boolean }) {
   const [dragging, setDragging] = useState(false);
   /** Time under the pointer while dragging (the store is updated at a steady pace). */
   const [previewMs, setPreviewMs] = useState<number | null>(null);
-  const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState(1);
+  // In the store: the assistant plays and pauses the timeline too (play_timeline).
+  const playing = useAppStore((s) => s.timelinePlaying);
+  const speed = useAppStore((s) => s.timelineSpeed);
+  const setPlaying = (v: boolean | ((p: boolean) => boolean)) => {
+    const st = useAppStore.getState();
+    st.setTimelinePlaying(typeof v === 'function' ? v(st.timelinePlaying) : v);
+  };
+  const setSpeed = (v: (p: number) => number) => {
+    const st = useAppStore.getState();
+    st.setTimelineSpeed(v(st.timelineSpeed));
+  };
   const [editing, setEditing] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
   useEffect(() => {

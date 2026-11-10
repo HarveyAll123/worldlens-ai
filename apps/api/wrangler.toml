@@ -1,23 +1,36 @@
-# Cloudflare Worker for the WorldLens API.
-# Secrets (PayPal, Anthropic, DATABASE_URL, …) are NOT stored here. Set them with
-# `wrangler secret put NAME` (see MANUAL_SETUP.md)
-# or, for local development, in apps/api/.dev.vars (git-ignored).
-name = "worldlens-api"
+# WorldLens on Cloudflare: one Worker serves the website (apps/web/dist) and the API under
+# /api/* on the same address — sign-in cookies need both on one origin. See DEPLOYMENT.md.
+#
+# Secrets (keys, passwords, DATABASE_URL, BETTER_AUTH_SECRET…) are NOT stored here: set each with
+# `npx wrangler secret put NAME`. Local development reads apps/api/.dev.vars (git-ignored).
+name = "worldlens"
 main = "src/index.ts"
 compatibility_date = "2026-10-01"
 compatibility_flags = ["nodejs_compat"]
 
+# The website: build it first (pnpm deploy does). /api/* runs the Worker; every other path is a
+# file of the site, or the app itself (index.html) for its own routes.
+[assets]
+directory = "../web/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
 [vars]
+# After the first deploy, put the site's address here (https://worldlens.<you>.workers.dev or
+# your own domain) in both, then deploy again.
+PUBLIC_APP_URL = "http://localhost:5173"
+ALLOWED_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
 PAYPAL_ENVIRONMENT = "sandbox"
-AI_MODEL_STRONG = "claude-opus-5-5"
-AI_MODEL_FAST = "claude-haiku-5-5"
 AI_DAILY_BUDGET_USD = "5"
 AI_REQUESTS_PER_MINUTE = "8"
 GDELT_ENABLED = "true"
-ALLOWED_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
-PUBLIC_APP_URL = "http://localhost:5173"
+# Account emails through Brevo (BREVO_API_KEY and MAIL_FROM are secrets).
+MAIL_PROVIDER = "brevo"
+MAIL_FROM_NAME = "WorldLens"
 
-# News ingestion every 15 minutes (GDELT + RSS in one run; writes to Neon when DATABASE_URL is set).
+# Live news every 15 minutes (GDELT into Neon). Needs the Workers Paid plan: the Free plan
+# allows 10 ms of CPU per run, far too little to read GDELT's files.
 [triggers]
 crons = ["*/15 * * * *"]
 

@@ -1,0 +1,20 @@
+{
+  "retrieved": "2026-11-10",
+  "domains": 221391,
+  "gdeltDomains": 187993,
+  "wikidataOutlets": 56954,
+  "wikidataDomains": 49027,
+  "ratedDomains": 193,
+  "conflictingRatingsLeftOut": 9,
+  "vanityEndingsLeftOut": 1536,
+  "sources": {
+    "gdelt": {
+      "name": "GDELT Project — news outlets by country (May 2018 update)",
+      "url": "https://data.gdeltproject.org/blog/2018-news-outlets-by-country-may2018-update/MASTER-GDELTDOMAINSBYCOUNTRY-MAY2018.TXT"
+    },
+    "wikidata": {
+      "name": "Wikidata (CC0)",
+      "url": "https://www.wikidata.org/"
+    }
+  }
+}

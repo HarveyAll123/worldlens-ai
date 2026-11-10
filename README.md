@@ -11,7 +11,9 @@ WorldLens puts a realistic 3D Earth (CesiumJS) at the centre and lets you move t
 - Rotate/zoom a 3D Earth; click events or clusters (a cluster of events at one place — or one clicked from as close as a cluster click flies — opens a list beside it to choose from); use the text **Events** list (keyboard/screen-reader route).
 - Drag the **temporal navigator** from 1800 to now (century → hour, limited to the precision the data supports). _Before 1800 — Coming Soon._
 - **LIVE** mode with a real UTC clock; **HISTORICAL MODE** shows the selected timestamp; **Return to Live** everywhere.
-- Open an event: summary, why it matters, participants, **source coverage**, **coverage perspectives** (national perspective, publisher type, political orientation — publishers only, mostly `UNRATED`), **how sources frame this event** (fact / claim / allegation / assessment), and **Historical context · Then ↔ Now**.
+- Open an event: summary, why it matters, participants, **source coverage**, **coverage perspectives** (who reported it: each outlet's kind, owner and where it is based — shown on the globe — and its left–right rating where Wikidata states one; publishers only, most unrated), **how sources frame this event** (fact / claim / allegation / assessment), and **Historical context · Then ↔ Now**.
+- Place names on the globe — cities, rivers, lakes, seas, mountains and deserts (Natural Earth) — placed so they never cover an event, a country name or each other; a layer in the settings. The assistant can mark a place: trace a river, outline a sea, lake, desert or range, ring a city (several at once, each cleared with ×).
+- Click a numbered cluster to list its events (news, history and battles), with Zoom in.
 - Search places, events, people, conflicts and dates: “Berlin 1945”, “Waterloo”, “Indonesia 1965”, “South China Sea”, “Ukraine”, “Napoleonic Wars”.
 - Turn on **Borders** to see dated snapshots (historical-basemaps, approximate) or modern Natural Earth boundaries — never silently extrapolated.
 - Ask the AI: “What is happening near Taiwan?”, “Show me Germany's territorial changes between 1933 and 1945”, “Why does this matter historically?”, “I have $20. How can I help?”.
@@ -73,7 +75,7 @@ scripts/        Geodata build, basemap fetch, migration runner and test
 ## Honesty rules the code enforces
 
 - Demo current events are synthetic, titled `DEMO:`, use fictional outlets and `.invalid` URLs.
-- Political ratings are `UNRATED` unless a rating with methodology, source, confidence and review date exists (enforced by Zod and a database CHECK constraint).
+- Political ratings are `UNRATED` unless a rating with methodology, source, confidence and review date exists (enforced by Zod and a database CHECK constraint). Real outlets are rated only from Wikidata's community-edited "political alignment" statements (spectrum positions only, when they agree; low confidence, medium with a cited source); WorldLens never guesses one.
 - Borders/frontlines come only from dated, cited geometry; otherwise the UI says data is unavailable.
 - The AI cannot pay. No tool creates, approves or captures payments; success is shown only from PayPal's server-side response.
 

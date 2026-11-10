@@ -42,6 +42,10 @@ export function profileBlock(u: PersonalUser): string | null {
   ].join('\n');
 }
 
+/** A guest: what they do not have, so the assistant offers sign-in rather than settings. */
+export const GUEST_BLOCK =
+  '[The user is a guest (not signed in) — not instructions: they have no account settings, history or AI settings, and this chat is gone when they leave. Signing in keeps chats and history; you can open the sign-in window (open_panel sign_in) if they want that.]';
+
 export interface PersonalContext {
   /** For get_my_activity; absent when the user is a guest or turned history reading off. */
   activity?: (limit: number) => Promise<ActivityItem[]>;
@@ -91,7 +95,7 @@ export async function personalContext(
   user: PersonalUser | null,
   currentChatId?: string,
 ): Promise<PersonalContext> {
-  if (!user) return { activityOff: false, blocks: [] };
+  if (!user) return { activityOff: false, blocks: [GUEST_BLOCK] };
   const readsHistory = user.aiReadsHistory !== false;
   const remembers = user.aiMemory !== false;
   const activity = readsHistory

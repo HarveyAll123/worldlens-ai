@@ -9,7 +9,7 @@ import {
   type PoliticalRatingValue,
   type WorldEvent,
 } from '@worldlens/shared';
-import { api, type SourcesResponse } from '../lib/api';
+import { api, type PublisherPlace, type SourcesResponse } from '../lib/api';
 import { eventPrompts } from '../lib/askPrompts';
 import { relativeTime, safeExternalUrl, temporalWithPrecision } from '../lib/format';
 import { useEventDetail, useRelated, useSources, useWikipedia } from '../hooks/useData';
@@ -80,7 +80,11 @@ function Header({ e }: { e: WorldEvent }) {
     <div className="px-4 pb-3 pt-3">
       <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
         <Badge tone={e.kind === 'news' ? 'news' : 'history'}>
-          {e.kind === 'news' ? 'Current event' : 'History'}
+          {e.kind !== 'news'
+            ? 'History'
+            : Date.now() - Date.parse(e.time.end ?? e.time.start) < 72 * 3_600_000
+              ? 'Current event'
+              : 'News'}
         </Badge>
         <Badge>{e.category}</Badge>
         {e.isDemo && <Badge tone="demo">DEMO</Badge>}
@@ -156,8 +160,11 @@ function SourceCoverage({ data }: { data: SourcesResponse }) {
               <li key={a.id} className="text-[13px] leading-snug">
                 <span className="text-[11px] text-white/50">
                   {src?.name ?? a.sourceId}
-                  {src?.nationalPerspective && (
-                    <span className="text-white/35"> · {src.nationalPerspective}</span>
+                  {(src?.nationalPerspective ?? data.places?.[a.sourceId]?.name) && (
+                    <span className="text-white/35">
+                      {' '}
+                      · {src?.nationalPerspective ?? data.places?.[a.sourceId]?.name}
+                    </span>
                   )}
                   {a.origin && (
                     <span className="text-white/35">
@@ -187,91 +194,279 @@ function SourceCoverage({ data }: { data: SourcesResponse }) {
   );
 }
 
-function Bar({
-  label,
-  value,
-  max,
-  tone,
+const SOURCE_TYPE: Record<NewsSource['sourceType'], string> = {
+  'wire-agency': 'News agency',
+  'public-broadcaster': 'Public broadcaster',
+  'state-media': 'State media',
+  commercial: 'Commercial',
+  nonprofit: 'Nonprofit',
+  'reader-funded': 'Reader-funded',
+  local: 'Local outlet',
+  government: 'Government',
+  'demo-fictional': 'Fictional (demo)',
+  unknown: 'Type unknown',
+};
+
+const RATING_TEXT: Record<PoliticalRatingValue, string> = {
+  LEFT: 'Left',
+  'CENTER-LEFT': 'Center-left',
+  CENTER: 'Center',
+  'CENTER-RIGHT': 'Center-right',
+  RIGHT: 'Right',
+  MIXED: 'Mixed',
+  UNRATED: 'Not rated',
+};
+
+/** How many publishers the list shows before "Show all". */
+const PUBLISHERS_SHOWN = 5;
+
+/**
+ * Where a publisher is based, on the globe: its country outlined and the camera over it (on a
+ * phone the sheet steps down so the globe shows). Again on the outlined country: the outline goes.
+ */
+function showPlace(p: PublisherPlace) {
+  const s = useAppStore.getState();
+  if (p.lat === undefined || p.lon === undefined) return;
+  if (p.iso3 && s.highlightIso3 === p.iso3) return s.setHighlight(null);
+  s.setHighlight(p.iso3);
+  s.flyTo({ lat: p.lat, lon: p.lon, altitudeKm: p.altitudeKm ?? 1500, label: p.name });
+  if (window.matchMedia('(max-width: 767px)').matches) s.setSheetExpanded(false);
+  s.announce(`Showing ${p.name}`);
+}
+
+function PublisherRow({
+  s,
+  place,
+  articles,
 }: {
-  label: string;
-  value: number;
-  max: number;
-  tone?: string;
+  s: NewsSource;
+  place: PublisherPlace | undefined;
+  articles: number;
 }) {
-  return (
-    <li className="grid grid-cols-[minmax(0,9rem)_1fr_1.5rem] items-center gap-2 text-[12px]">
-      <span className="truncate text-white/70">{label}</span>
-      <span className="h-1.5 rounded-full bg-white/[0.05]">
-        <span
-          className={`block h-1.5 rounded-full ${tone ?? 'bg-white/[0.05]0'}`}
-          style={{ width: `${(value / Math.max(1, max)) * 100}%` }}
-        />
-      </span>
-      <span className="text-right tabular-nums text-white/50">{value}</span>
-    </li>
+  const site = s.isDemo ? null : safeExternalUrl(`https://${s.domain}`);
+  const rated = s.rating.value !== 'UNRATED';
+  const where = place?.name ?? s.nationalPerspective ?? 'Country unknown';
+  // An outlet outside the registry is known by its site: the name is the link.
+  const bare = s.name === s.domain;
+  // Its kind (Wikidata: "TV station") and its type, once each.
+  const kinds = [s.format, s.sourceType === 'unknown' ? null : SOURCE_TYPE[s.sourceType]].filter(
+    (k, i, all): k is string =>
+      !!k && all.findIndex((x) => x?.toLowerCase() === k.toLowerCase()) === i,
   );
-}
-
-function RatingDetails({ s }: { s: NewsSource }) {
-  if (s.rating.value === 'UNRATED') return null;
+  const facts = [...kinds, where, `${articles} article${articles === 1 ? '' : 's'}`];
+  const ratingLink = s.rating.sourceUrl ? safeExternalUrl(s.rating.sourceUrl) : null;
+  const community = !!s.rating.source?.startsWith('Wikidata');
   return (
-    <li className="text-[11.5px] text-white/50">
-      <span className="text-white/85">{s.name}</span>: {s.rating.value}
-      {s.rating.illustrative && <Badge tone="demo">illustrative</Badge>} — {s.rating.methodology}{' '}
-      Source: {s.rating.source}; confidence {s.rating.confidence}; reviewed {s.rating.lastReviewed}.
-    </li>
-  );
-}
-
-function CoveragePerspectives({ data }: { data: SourcesResponse }) {
-  const c = data.perspectives;
-  const country = Object.entries(c.byCountry).sort((a, b) => b[1] - a[1]);
-  const type = Object.entries(c.byType).sort((a, b) => b[1] - a[1]);
-  const maxC = Math.max(...country.map(([, v]) => v), 1);
-  const maxT = Math.max(...type.map(([, v]) => v), 1);
-  const unrated = c.byRating.UNRATED ?? 0;
-  return (
-    <Section id="sec-perspectives" title="Coverage perspectives" testId="coverage-perspectives">
-      <p className="mb-2 text-[11.5px] text-white/50">
-        Orientation metadata describes publishers, never the event itself.
-      </p>
-      <h4 className="mb-1 text-[12px] font-medium text-white/85">National perspective</h4>
-      <ul className="mb-3 space-y-1">
-        {country.map(([k, v]) => (
-          <Bar key={k} label={k} value={v} max={maxC} />
-        ))}
-      </ul>
-      <h4 className="mb-1 text-[12px] font-medium text-white/85">Publisher type</h4>
-      <ul className="mb-3 space-y-1">
-        {type.map(([k, v]) => (
-          <Bar key={k} label={k.replace(/-/g, ' ')} value={v} max={maxT} tone="bg-history/60" />
-        ))}
-      </ul>
-      <h4 className="mb-1 text-[12px] font-medium text-white/85">
-        Political orientation (publishers)
-      </h4>
-      <ul className="mb-2 space-y-1">
-        {RATING_ORDER.filter((r) => c.byRating[r]).map((r) => (
-          <Bar
-            key={r}
-            label={r}
-            value={c.byRating[r]!}
-            max={data.sources.length}
-            tone={r === 'UNRATED' ? 'bg-white/25' : 'bg-white/50'}
-          />
-        ))}
-      </ul>
-      {unrated > 0 && (
-        <p className="text-[11px] text-white/35">
-          UNRATED means no rating with a documented methodology, source, confidence and review date
-          is loaded for that publisher. WorldLens never guesses ratings.
+    <li className="min-w-0 px-3 py-2.5" data-testid="coverage-publisher">
+      <div className="flex min-w-0 items-baseline gap-2">
+        <span className="min-w-0 flex-1 truncate text-[13px] text-white/90">
+          {bare && site ? (
+            <ExternalLink href={site} className="text-white/90">
+              {s.name}
+            </ExternalLink>
+          ) : (
+            s.name
+          )}
+        </span>
+        <span className={`shrink-0 text-[11px] ${rated ? 'text-white/75' : 'text-white/35'}`}>
+          {RATING_TEXT[s.rating.value]}
+        </span>
+      </div>
+      <p className="truncate text-[11px] text-white/50">{facts.join(' · ')}</p>
+      {s.ownership && (
+        <p className="truncate text-[11px] text-white/35" title={s.ownership}>
+          Owner: {s.ownership}
         </p>
       )}
-      <ul className="mt-1 space-y-1">
-        {data.sources.map((s) => (
-          <RatingDetails key={s.id} s={s} />
-        ))}
-      </ul>
+      {site && !bare && (
+        <ExternalLink href={site} className="text-[11px] text-white/40">
+          {s.domain}
+        </ExternalLink>
+      )}
+      {rated && (
+        <p
+          className="mt-0.5 text-[10.5px] leading-snug text-white/35"
+          data-testid="coverage-rating"
+        >
+          {s.rating.illustrative ? 'Illustrative rating (demo) · ' : ''}
+          {s.rating.statement ? `“${s.rating.statement}” · ` : ''}
+          {ratingLink ? (
+            <ExternalLink href={ratingLink} className="text-white/45">
+              {s.rating.source}
+            </ExternalLink>
+          ) : (
+            s.rating.source
+          )}
+          {community ? ', community-edited' : ''} · {s.rating.confidence} confidence ·{' '}
+          {community ? 'checked' : 'reviewed'} {s.rating.lastReviewed}
+        </p>
+      )}
+    </li>
+  );
+}
+
+/**
+ * Who reported the event and where they are based: the countries (shown on the globe on a tap),
+ * each publisher with its type, owner and site, and its left–right rating only where a
+ * documented rating is loaded — never guessed.
+ */
+function CoveragePerspectives({ data }: { data: SourcesResponse }) {
+  const places = data.places ?? {};
+  const highlight = useAppStore((s) => s.highlightIso3);
+  const [all, setAll] = useState(false);
+  const perSource = new Map<string, number>();
+  for (const a of data.articles) perSource.set(a.sourceId, (perSource.get(a.sourceId) ?? 0) + 1);
+  // Most articles first; at a tie, rated outlets, then those WorldLens or Wikidata describes,
+  // then bare sites.
+  const rank = (s: NewsSource) =>
+    (s.rating.value !== 'UNRATED' ? 0 : 2) + (s.sourceType === 'unknown' && !s.wikidata ? 1 : 0);
+  const publishers = [...data.sources].sort(
+    (a, b) =>
+      (perSource.get(b.id) ?? 0) - (perSource.get(a.id) ?? 0) ||
+      rank(a) - rank(b) ||
+      a.name.localeCompare(b.name),
+  );
+  // Countries, most publishers first; publishers with no known country are counted apart.
+  const countries = new Map<string, { place: PublisherPlace; n: number }>();
+  let unplaced = 0;
+  for (const s of publishers) {
+    const p = places[s.id];
+    if (!p) {
+      unplaced++;
+      continue;
+    }
+    const key = p.iso3 ?? p.name;
+    const c = countries.get(key);
+    if (c) c.n++;
+    else countries.set(key, { place: p, n: 1 });
+  }
+  const byCountry = [...countries.values()].sort((a, b) => b.n - a.n);
+  const ratings = new Map<PoliticalRatingValue, number>();
+  for (const s of publishers) ratings.set(s.rating.value, (ratings.get(s.rating.value) ?? 0) + 1);
+  const rated = publishers.length - (ratings.get('UNRATED') ?? 0);
+  const shown = all ? publishers : publishers.slice(0, PUBLISHERS_SHOWN);
+  const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
+  return (
+    <Section id="sec-perspectives" title="Coverage perspectives" testId="coverage-perspectives">
+      <p className="text-[11.5px] leading-snug text-white/50">
+        Who reported this and where they are based. Ratings describe publishers, never the event.
+      </p>
+      <p className="tabular mt-1 text-[11px] text-white/35">
+        {plural(publishers.length, 'publisher')} ·{' '}
+        {byCountry.length === 1 ? '1 country' : `${byCountry.length} countries`} ·{' '}
+        {rated ? `${rated} rated` : 'none rated'}
+      </p>
+
+      {byCountry.length > 0 && (
+        <div className="mt-3">
+          <p className="mb-1.5 text-[10.5px] text-white/40">Based in — show it on the globe</p>
+          <ul className="flex flex-wrap gap-1.5">
+            {byCountry.map(({ place, n }) => {
+              const active = !!place.iso3 && highlight === place.iso3;
+              // A country the map does not know is named only.
+              if (place.lat === undefined)
+                return (
+                  <li
+                    key={place.name}
+                    className="flex h-8 max-w-[15rem] items-center gap-1.5 rounded-full border border-white/[0.06] px-3 text-[12px] text-white/55"
+                  >
+                    <span className="truncate">{place.name}</span>
+                    <span className="tabular shrink-0 opacity-70">{n}</span>
+                  </li>
+                );
+              return (
+                <li key={place.iso3 ?? place.name}>
+                  <button
+                    type="button"
+                    onClick={() => showPlace(place)}
+                    aria-pressed={place.iso3 ? active : undefined}
+                    title={
+                      active
+                        ? `Hide the outline of ${place.name}`
+                        : `Show ${place.name} on the globe`
+                    }
+                    className={`flex h-8 max-w-[15rem] items-center gap-1.5 rounded-full border px-3 text-[12px] transition-colors duration-150 ease-out ${
+                      active
+                        ? 'border-transparent bg-[var(--active-bg)] text-[var(--active-fg)]'
+                        : 'border-white/12 text-white/80 hover:bg-white/[0.08] hover:text-white'
+                    }`}
+                    data-testid="coverage-country"
+                  >
+                    <Icon name="pin" className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{place.name}</span>
+                    <span className="tabular shrink-0 opacity-55">{n}</span>
+                  </button>
+                </li>
+              );
+            })}
+            {unplaced > 0 && (
+              <li className="flex h-8 items-center rounded-full border border-white/[0.06] px-3 text-[12px] text-white/40">
+                Unknown <span className="tabular ml-1.5 opacity-70">{unplaced}</span>
+              </li>
+            )}
+          </ul>
+        </div>
+      )}
+
+      <div className="mt-3">
+        <p className="mb-1.5 text-[10.5px] text-white/40">Publishers</p>
+        <ul className="divide-y divide-white/[0.06] rounded-[14px] border border-white/[0.07] bg-white/[0.02]">
+          {shown.map((s) => (
+            <PublisherRow
+              key={s.id}
+              s={s}
+              place={places[s.id]}
+              articles={perSource.get(s.id) ?? 0}
+            />
+          ))}
+        </ul>
+        {publishers.length > PUBLISHERS_SHOWN && (
+          <button
+            type="button"
+            onClick={() => setAll(!all)}
+            className="mt-1.5 h-8 rounded-full px-3 text-[11.5px] text-white/55 transition-colors duration-150 ease-out hover:bg-white/[0.06] hover:text-white/85"
+            data-testid="coverage-show-all"
+          >
+            {all ? 'Show fewer' : `Show all ${publishers.length} publishers`}
+          </button>
+        )}
+      </div>
+
+      {publishers.some(
+        (s) => places[s.id]?.basis === 'gdelt-list' || places[s.id]?.basis === 'wikidata',
+      ) && (
+        <p className="mt-2 text-[10.5px] leading-snug text-white/35">
+          Outlets outside WorldLens's publisher list are described from Wikidata where it knows
+          their website, and placed by it or by GDELT's list of news outlets by country (2018),
+          which can be out of date.
+        </p>
+      )}
+
+      <div className="mt-3">
+        <p className="mb-1 text-[10.5px] text-white/40">Political orientation</p>
+        {rated === 0 ? (
+          <p className="text-[11.5px] leading-snug text-white/50" data-testid="coverage-unrated">
+            Not rated. WorldLens shows a left–right rating only where a published source states one
+            — Wikidata's "political alignment", with its method and date. None of these outlets has
+            one, so nothing is guessed.
+          </p>
+        ) : (
+          <>
+            <p className="tabular text-[12px] text-white/75">
+              {RATING_ORDER.filter((r) => ratings.get(r))
+                .map((r) => `${RATING_TEXT[r]} ${ratings.get(r)}`)
+                .join(' · ')}
+            </p>
+            {publishers.some((s) => s.rating.source?.startsWith('Wikidata')) && (
+              <p className="mt-1 text-[10.5px] leading-snug text-white/35">
+                From Wikidata's "political alignment" statements, edited by its community: low
+                confidence unless the statement cites a source. Outlets without one are not rated;
+                nothing is guessed.
+              </p>
+            )}
+          </>
+        )}
+      </div>
     </Section>
   );
 }
