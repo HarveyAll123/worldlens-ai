@@ -216,10 +216,19 @@ const COUNTRY_ALIASES: Record<string, string> = {
 };
 
 const countryByIso = new Map(COUNTRIES.map((c) => [c.iso3, c]));
+/**
+ * Name → country. A country's own name always wins: a territory names its sovereign
+ * (New Caledonia → "France", Puerto Rico → "United States of America"), which must never take
+ * that name from the country itself. So: every short name first, then long names, formal names,
+ * and sovereigns last — each only where no earlier pass claimed the name.
+ */
 const countryByName = new Map<string, CountryEntry>();
-for (const c of COUNTRIES) {
-  for (const n of [c.name, c.nameLong, c.formal, c.sovereign]) {
-    if (n) countryByName.set(normalizeName(n), c);
+for (const field of ['name', 'nameLong', 'formal', 'sovereign'] as const) {
+  for (const c of COUNTRIES) {
+    const n = c[field];
+    if (!n) continue;
+    const key = normalizeName(n);
+    if (!countryByName.has(key)) countryByName.set(key, c);
   }
 }
 

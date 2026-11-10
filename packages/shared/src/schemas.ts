@@ -198,6 +198,8 @@ export const PoliticalRatingSchema = z
     confidence: z.enum(['low', 'medium', 'high']).nullable(),
     lastReviewed: z.string().nullable(),
     illustrative: z.boolean().default(false),
+    /** The rating source's own words for it (Wikidata: "right-wing extremism"). */
+    statement: z.string().max(200).optional(),
   })
   .superRefine((r, ctx) => {
     if (r.value === 'UNRATED') return;
@@ -249,6 +251,10 @@ export const NewsSourceSchema = z.object({
   nationalPerspective: z.string().max(80).nullable(),
   rating: PoliticalRatingSchema,
   isDemo: z.boolean().default(false),
+  /** What kind of outlet it is, where Wikidata says ("TV station", "Daily newspaper"). */
+  format: z.string().max(60).optional(),
+  /** The outlet's Wikidata item ("Q724844"), where WorldLens matched it by its website. */
+  wikidata: z.string().max(20).optional(),
 });
 export type NewsSource = z.infer<typeof NewsSourceSchema>;
 

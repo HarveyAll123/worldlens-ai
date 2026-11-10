@@ -193,6 +193,9 @@ const stampMs = (s: string) =>
   Date.UTC(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8), +s.slice(8, 10), +s.slice(10, 12));
 const msStamp = (ms: number) => new Date(ms).toISOString().replace(/[-:T]/g, '').slice(0, 14);
 
+/** How far back the live news reads GDELT's files: older days are never backfilled. */
+export const GDELT_FILES_WINDOW_HOURS = 24;
+
 export class GdeltFilesProvider {
   readonly name = 'gdelt';
   /** Matching articles per 15-minute slot already read (an empty list for a missing slot). */
@@ -201,7 +204,7 @@ export class GdeltFilesProvider {
   constructor(
     private readonly fetchImpl: FetchLike = fetch,
     private readonly opts: { windowHours: number; maxNewFilesPerRun: number } = {
-      windowHours: 24,
+      windowHours: GDELT_FILES_WINDOW_HOURS,
       maxNewFilesPerRun: 6,
     },
   ) {}

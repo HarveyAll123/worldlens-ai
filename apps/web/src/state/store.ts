@@ -9,6 +9,7 @@ import {
   type ClientAction,
   type EventCategory,
   type LayerId,
+  type PlaceKindCode,
   type Resolution,
 } from '@worldlens/shared';
 import type { QualityPreference, QualityTier } from '../perf/tiers';
@@ -61,11 +62,25 @@ export interface PendingQuestion {
 }
 
 /** Events pinned to one spot, listed next to the marker that was clicked (PlacePicker). */
+/** How many places stay marked at once. */
+export const MAX_PLACE_MARKS = 6;
+
+export interface PlaceMark {
+  /** The place's id in the place names (its shape: placeShapeId). */
+  id: string;
+  name: string;
+  kind: PlaceKindCode;
+  lat: number;
+  lon: number;
+}
+
 export interface PlacePickerState {
   ids: string[];
   /** Click position in CSS pixels from the globe's top-left corner. */
   x: number;
   y: number;
+  /** Where "Zoom in" flies (absent when zooming cannot separate them). */
+  zoomTo?: { lat: number; lon: number; altitudeKm: number };
 }
 
 interface AppState {
@@ -95,6 +110,8 @@ interface AppState {
   kindFilter: 'all' | 'news' | 'historical';
   categoryFilter: EventCategory[] | null;
   highlightIso3: string | null;
+  /** Cities, rivers, seas, mountains or deserts marked on the globe (highlight_place), oldest first. */
+  placeMarks: PlaceMark[];
   takeAction: TakeActionState | null;
   tour: TourState | null;
   quality: QualityPreference;
@@ -110,6 +127,10 @@ interface AppState {
    */
   aiAgent: boolean;
   diagnosticsOpen: boolean;
+  /** The timeline plays forward one step at a time (its Play button, Space, the assistant). */
+  timelinePlaying: boolean;
+  /** Playback speed: 1, 2, 4 or 8 times. */
+  timelineSpeed: number;
   camera: CameraState;
   flyRequest: FlyRequest | null;
   announcement: string;
@@ -141,6 +162,10 @@ interface AppState {
   setLayer: (l: LayerId, on: boolean) => void;
   setKindFilter: (k: 'all' | 'news' | 'historical', categories?: EventCategory[] | null) => void;
   setHighlight: (iso3: string | null) => void;
+  /** Add a mark (the same place again moves it last); at most MAX_PLACE_MARKS stay. */
+  addPlaceMark: (mark: PlaceMark) => void;
+  /** Remove one mark by id, or all (null). */
+  clearPlaceMarks: (id: string | null) => void;
   openTakeAction: (s: TakeActionState | null) => void;
   setTour: (t: TourState | null) => void;
   setQuality: (q: QualityPreference) => void;
@@ -148,6 +173,8 @@ interface AppState {
   setNightLights: (on: boolean) => void;
   setAiAgent: (on: boolean) => void;
   setDiagnostics: (open: boolean) => void;
+  setTimelinePlaying: (on: boolean) => void;
+  setTimelineSpeed: (speed: number) => void;
   setCamera: (c: CameraState) => void;
   flyTo: (req: Omit<FlyRequest, 'seq'>) => void;
   announce: (msg: string) => void;
@@ -239,10 +266,12 @@ export const useAppStore = create<AppState>()(
       borders: false,
       frontlines: true,
       labels: true,
+      places: true,
     },
     kindFilter: 'all',
     categoryFilter: null,
     highlightIso3: null,
+    placeMarks: [],
     takeAction: null,
     tour: null,
     quality: readQuality(),
@@ -251,6 +280,8 @@ export const useAppStore = create<AppState>()(
     nightLights: readFlag('worldlens.nightLights', true),
     aiAgent: readFlag('worldlens.aiAgent', true),
     diagnosticsOpen: false,
+    timelinePlaying: false,
+    timelineSpeed: 1,
     camera: { lat: 20, lon: 30, altitudeKm: 18000, bbox: null },
     flyRequest: null,
     announcement: '',
@@ -327,6 +358,12 @@ export const useAppStore = create<AppState>()(
     setKindFilter: (kindFilter, categories) =>
       set({ kindFilter, categoryFilter: categories ?? null }),
     setHighlight: (highlightIso3) => set({ highlightIso3 }),
+    addPlaceMark: (mark) =>
+      set((s) => ({
+        placeMarks: [...s.placeMarks.filter((m) => m.id !== mark.id), mark].slice(-MAX_PLACE_MARKS),
+      })),
+    clearPlaceMarks: (id) =>
+      set((s) => ({ placeMarks: id ? s.placeMarks.filter((m) => m.id !== id) : [] })),
     openTakeAction: (takeAction) => set({ takeAction }),
     setTour: (tour) => set({ tour }),
     setQuality: (quality) => {
@@ -350,6 +387,9 @@ export const useAppStore = create<AppState>()(
       set({ nightLights });
     },
     setDiagnostics: (diagnosticsOpen) => set({ diagnosticsOpen }),
+    setTimelinePlaying: (timelinePlaying) => set({ timelinePlaying }),
+    setTimelineSpeed: (speed) =>
+      set({ timelineSpeed: speed >= 6 ? 8 : speed >= 3 ? 4 : speed >= 2 ? 2 : 1 }),
     setCamera: (camera) => set({ camera }),
     flyTo: (req) => set({ flyRequest: { ...req, seq: ++flySeq } }),
     announce: (announcement) => set({ announcement }),

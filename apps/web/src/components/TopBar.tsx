@@ -1,5 +1,6 @@
 import { AccountButton } from './AccountButton';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   floorTo,
   formatAt,
@@ -10,9 +11,10 @@ import {
   type SearchResult,
 } from '@worldlens/shared';
 import { searchPolities, type PolityMatch } from '../globe/ohm';
-import { useOhmFlags, useOhmIndex } from '../hooks/useData';
+import { useConfig, useOhmFlags, useOhmIndex } from '../hooks/useData';
 import { useMediaQuery } from '../hooks/useMedia';
 import { api } from '../lib/api';
+import { LIVE_WINDOW_MS } from '../lib/format';
 import { showCountry, toSelection } from '../lib/countries';
 import { sheetTabOpen, useAppStore, noteSearch } from '../state/store';
 import { HelpSheet } from './HelpSheet';
@@ -81,13 +83,26 @@ export function LiveStatus({
 
 const TYPE_STYLE = 'border-white/15 text-white/55';
 
+/**
+ * News of the past (Wikipedia's, or older than the live days): it shows on its own day, not at
+ * LIVE (where only the live news is drawn).
+ */
+export function isPastNews(
+  r: Pick<SearchResult, 'type' | 'time' | 'id'>,
+  now = Date.now(),
+): boolean {
+  if (r.type !== 'NEWS' || !r.time) return false;
+  return r.id.startsWith('wnews-') || now - parseIso(r.time.start) > LIVE_WINDOW_MS;
+}
+
 export function applySearchResult(r: SearchResult): void {
   const s = useAppStore.getState();
-  if (r.type === 'NEWS') s.returnToLive();
+  const past = isPastNews(r);
+  if (r.type === 'NEWS' && !past) s.returnToLive();
   else if (r.time)
     s.setTime(
       parseIso(r.time.start),
-      r.type === 'HISTORY' || r.type === 'ENTITY' ? resolutionFor(r.time) : 'year',
+      past || r.type === 'HISTORY' || r.type === 'ENTITY' ? resolutionFor(r.time) : 'year',
     );
   if (r.lat !== undefined && r.lon !== undefined)
     s.flyTo({
@@ -112,6 +127,10 @@ export function SearchBox({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const [error, setError] = useState<string | null>(null);
+  // News since 2000 (Wikipedia): its own group, after the rest, once typing pauses.
+  const pastOn = !!useConfig().data?.news.past;
+  const [past, setPast] = useState<{ q: string; results: SearchResult[] }>({ q: '', results: [] });
+  const [pastStatus, setPastStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const inputRef = useRef<HTMLInputElement>(null);
   const listId = useId();
 
@@ -152,6 +171,32 @@ export function SearchBox({
     };
   }, [q]);
 
+  useEffect(() => {
+    const query = q.trim();
+    if (!pastOn || query.length < 3) {
+      setPastStatus('idle');
+      return;
+    }
+    setPastStatus('loading');
+    const ctrl = new AbortController();
+    const t = setTimeout(() => {
+      api
+        .searchPast(query, ctrl.signal)
+        .then((r) => {
+          setPast({ q: query, results: r.results });
+          setPastStatus('idle');
+          if (r.results.length && document.activeElement === inputRef.current) setOpen(true);
+        })
+        .catch((err: unknown) => {
+          if ((err as Error).name !== 'AbortError') setPastStatus('error');
+        });
+    }, 450);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
+  }, [q, pastOn]);
+
   // Historical countries (OpenHistoricalMap) are matched in the browser and listed first.
   const searching = q.trim().length >= 2;
   const ohmIndex = useOhmIndex(searching);
@@ -163,11 +208,65 @@ export function SearchBox({
     () => (searching && ohmIndex.data ? searchPolities(ohmIndex.data.polities, q, day, 5) : []),
     [searching, ohmIndex.data, q, day],
   );
-  type Item = { kind: 'country'; m: PolityMatch } | { kind: 'result'; r: SearchResult };
+  type Item =
+    | { kind: 'country'; m: PolityMatch }
+    | { kind: 'result'; r: SearchResult }
+    | { kind: 'past'; r: SearchResult };
+  // Only for the words typed now (an older answer never shows under a newer query).
+  const shown = new Set(results.map((r) => r.eventId ?? r.id));
+  const pastResults =
+    pastOn && past.q === q.trim() ? past.results.filter((r) => !shown.has(r.id)) : [];
   const items: Item[] = [
     ...countries.map((m): Item => ({ kind: 'country', m })),
     ...results.map((r): Item => ({ kind: 'result', r })),
+    ...pastResults.map((r): Item => ({ kind: 'past', r })),
   ];
+  const pastNote =
+    pastOn && q.trim().length >= 3 && pastResults.length === 0
+      ? pastStatus === 'loading'
+        ? 'Searching news since 2000…'
+        : pastStatus === 'error'
+          ? 'News since 2000 is unavailable right now.'
+          : null
+      : null;
+  const listShown = open && (items.length > 0 || !!pastNote);
+
+  // The list floats on the page (a portal), not inside the bar: glass nested in glass cannot blur
+  // the globe behind it. At least 360px wide (news titles are sentences), within the screen.
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [place, setPlace] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    maxHeight: number;
+  } | null>(null);
+  useLayoutEffect(() => {
+    if (!listShown) return;
+    const measure = () => {
+      const r = boxRef.current?.getBoundingClientRect();
+      if (!r) return;
+      const vw = window.innerWidth;
+      const width = Math.min(vw - 24, Math.max(r.width, 360));
+      const top = r.bottom + 8;
+      setPlace({
+        left: Math.max(12, Math.min(r.left, vw - 12 - width)),
+        top,
+        width,
+        maxHeight: Math.max(160, Math.min(440, window.innerHeight - top - 16)),
+      });
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    window.addEventListener('scroll', measure, true);
+    return () => {
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('scroll', measure, true);
+    };
+  }, [listShown]);
+  // Globe labels move out from under the list.
+  useEffect(() => {
+    window.dispatchEvent(new Event('worldlens:chrome'));
+  }, [listShown, items.length]);
   useEffect(() => {
     if (countries.length && !open && document.activeElement === inputRef.current) setOpen(true);
   }, [countries.length, open]);
@@ -189,7 +288,7 @@ export function SearchBox({
   };
 
   return (
-    <div className="relative w-full">
+    <div className="relative w-full" ref={boxRef}>
       <label htmlFor={`${listId}-input`} className="sr-only">
         Search places, events, people, conflicts and dates
       </label>
@@ -203,7 +302,7 @@ export function SearchBox({
         autoFocus={autoFocus}
         type="search"
         role="combobox"
-        aria-expanded={open && items.length > 0}
+        aria-expanded={listShown}
         aria-controls={listId}
         aria-autocomplete="list"
         aria-activedescendant={active >= 0 ? `${listId}-opt-${active}` : undefined}
@@ -230,65 +329,119 @@ export function SearchBox({
         data-testid="search-input"
       />
       {error && <p className="mt-1 text-xs text-white/70">{error}</p>}
-      {open && items.length > 0 && (
-        <ul
-          id={listId}
-          role="listbox"
-          className="glass scroll-thin absolute left-0 right-0 top-full z-40 mt-2 max-h-80 overflow-auto rounded-[var(--radius-inner)] p-1"
-        >
-          {items.map((item, i) => {
-            const common = {
-              id: `${listId}-opt-${i}`,
-              role: 'option' as const,
-              'aria-selected': i === active,
-              onMouseDown: (e: React.MouseEvent) => {
-                e.preventDefault();
-                choose(item);
-              },
-              onMouseEnter: () => setActive(i),
-              className: `flex cursor-pointer items-start gap-2 rounded-[10px] px-2 py-2 text-[12.5px] ${i === active ? 'bg-white/[0.09]' : ''}`,
-              'data-testid': 'search-result',
-            };
-            if (item.kind === 'country') {
-              const { m } = item;
-              const desc = m.polity.wikidata ? flags.data?.[m.polity.wikidata]?.description : null;
-              const years = `${m.start.slice(0, 4)}–${m.end ? m.end.slice(0, 4) : 'today'}`;
+      {listShown &&
+        place &&
+        createPortal(
+          <ul
+            id={listId}
+            role="listbox"
+            aria-label="Search results"
+            data-label-occluder
+            style={{
+              left: place.left,
+              top: place.top,
+              width: place.width,
+              maxHeight: place.maxHeight,
+            }}
+            className="glass scroll-thin fixed z-50 overflow-auto rounded-[var(--radius-inner)] p-1"
+            data-testid="search-results"
+          >
+            {items.map((item, i) => {
+              const common = {
+                id: `${listId}-opt-${i}`,
+                role: 'option' as const,
+                'aria-selected': i === active,
+                onMouseDown: (e: React.MouseEvent) => {
+                  e.preventDefault();
+                  choose(item);
+                },
+                onMouseEnter: () => setActive(i),
+                className: `flex cursor-pointer items-start gap-2 rounded-[10px] px-2 py-2 text-[12.5px] ${i === active ? 'bg-white/[0.09]' : ''}`,
+                'data-testid': 'search-result',
+              };
+              if (item.kind === 'country') {
+                const { m } = item;
+                const desc = m.polity.wikidata
+                  ? flags.data?.[m.polity.wikidata]?.description
+                  : null;
+                const years = `${m.start.slice(0, 4)}–${m.end ? m.end.slice(0, 4) : 'today'}`;
+                return (
+                  <li key={`country-${m.polity.wikidata ?? m.polity.name}`} {...common}>
+                    <span className="mt-0.5 shrink-0 rounded-full border border-white/20 px-1.5 py-px text-[10px] text-white/60">
+                      Country
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-white/90">{m.polity.name}</span>
+                      <span className="block truncate text-[11px] text-white/45">
+                        {years}
+                        {m.activeNow ? ' · on the selected date' : ' · jumps to its time'}
+                        {desc ? ` · ${desc}` : ''}
+                      </span>
+                    </span>
+                  </li>
+                );
+              }
+              const r = item.r;
+              if (item.kind === 'past') {
+                const when = r.time
+                  ? formatAt(parseIso(r.time.start), 'day', { upper: false })
+                  : null;
+                return (
+                  <Fragment key={`past-${r.id}`}>
+                    {items[i - 1]?.kind !== 'past' && (
+                      <li
+                        role="presentation"
+                        className="px-2 pb-1 pt-2.5 text-[10.5px] text-white/40"
+                        data-testid="search-past-heading"
+                      >
+                        News since 2000 · Wikipedia
+                      </li>
+                    )}
+                    <li {...common} data-testid="search-result-past">
+                      <span
+                        className={`mt-0.5 shrink-0 rounded-full border px-1.5 py-px text-[10px] ${TYPE_STYLE}`}
+                      >
+                        NEWS
+                      </span>
+                      <span className="min-w-0">
+                        <span className="line-clamp-2 text-white/90">{r.title}</span>
+                        <span className="block truncate text-[11px] text-white/45">
+                          {[when, r.subtitle].filter(Boolean).join(' · ')}
+                        </span>
+                      </span>
+                    </li>
+                  </Fragment>
+                );
+              }
               return (
-                <li key={`country-${m.polity.wikidata ?? m.polity.name}`} {...common}>
-                  <span className="mt-0.5 shrink-0 rounded-full border border-white/20 px-1.5 py-px text-[10px] text-white/60">
-                    Country
+                <li key={`${r.type}-${r.id}`} {...common}>
+                  <span
+                    className={`mt-0.5 shrink-0 rounded-full border px-1.5 py-px text-[10px] ${TYPE_STYLE}`}
+                  >
+                    {r.type}
                   </span>
                   <span className="min-w-0">
-                    <span className="block truncate text-white/90">{m.polity.name}</span>
-                    <span className="block truncate text-[11px] text-white/45">
-                      {years}
-                      {m.activeNow ? ' · on the selected date' : ' · jumps to its time'}
-                      {desc ? ` · ${desc}` : ''}
-                    </span>
+                    <span className="block truncate text-white/90">{r.title}</span>
+                    {r.subtitle && (
+                      <span className="block truncate text-[11px] text-white/45">{r.subtitle}</span>
+                    )}
                   </span>
+                  {r.isDemo && <Badge tone="demo">DEMO</Badge>}
                 </li>
               );
-            }
-            const r = item.r;
-            return (
-              <li key={`${r.type}-${r.id}`} {...common}>
-                <span
-                  className={`mt-0.5 shrink-0 rounded-full border px-1.5 py-px text-[10px] ${TYPE_STYLE}`}
-                >
-                  {r.type}
-                </span>
-                <span className="min-w-0">
-                  <span className="block truncate text-white/90">{r.title}</span>
-                  {r.subtitle && (
-                    <span className="block truncate text-[11px] text-white/45">{r.subtitle}</span>
-                  )}
-                </span>
-                {r.isDemo && <Badge tone="demo">DEMO</Badge>}
+            })}
+            {pastNote && (
+              <li
+                role="presentation"
+                className="px-2 py-2 text-[11px] text-white/40"
+                data-testid="search-past-status"
+              >
+                {pastNote}
               </li>
-            );
-          })}
-        </ul>
-      )}
+            )}
+          </ul>,
+          document.body,
+        )}
     </div>
   );
 }

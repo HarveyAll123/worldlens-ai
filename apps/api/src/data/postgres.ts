@@ -8,6 +8,7 @@
  * database is unreachable, reads fall back to memory and the provider is reported as degraded.
  */
 import {
+  TEMPORAL_CONFIG,
   parseIso,
   toIso,
   type ActionOption,
@@ -50,6 +51,9 @@ import { sqlState, type SqlClient } from './sql';
 
 /** Drivers return timestamptz as Date (pg-types); keep a string form for the shared schemas. */
 type Ts = Date | string;
+
+/** How often an instance reloads the stored live news for its search. */
+const HYDRATE_EVERY_MS = 5 * 60_000;
 const tsToIso = (v: Ts): string => toIso(v instanceof Date ? v.getTime() : parseIso(v));
 
 export interface EventRow {
@@ -509,11 +513,72 @@ export class PostgresNewsRepository implements EventRepository {
   getRelated(eventId: string, nowMs: number): Promise<RelatedEvent[]> {
     return this.memory.getRelated(eventId, nowMs);
   }
-  search(
+  async search(
     query: string,
     opts: { limit: number; nowMs: number; includeDemo: boolean; window?: TimeWindow },
   ): Promise<SearchResult[]> {
+    // The live news another instance stored (on the Worker, the cron), for this one's search.
+    await this.hydrateLive(opts.nowMs);
     return this.memory.search(query, opts);
+  }
+
+  private hydratedAt = Number.NEGATIVE_INFINITY;
+  private hydration: Promise<void> | null = null;
+
+  /**
+   * Loads the live news stored in the database into this instance's memory, at most every few
+   * minutes: on the Worker each instance has its own memory and only the cron's ingests, so
+   * search (the bar, the assistant) would otherwise miss stories the globe shows.
+   */
+  async hydrateLive(nowMs: number): Promise<void> {
+    if (nowMs - this.hydratedAt < HYDRATE_EVERY_MS) return;
+    this.hydration ??= this.guard(
+      async () => {
+        const rows = await this.db.query<EventRow>(
+          `select ${EVENT_COLUMNS}
+           from events_in_window($1::timestamptz, $2::timestamptz, $3::text[], $4::boolean,
+                                 null, null, null, null, $5::integer)`,
+          [
+            toIso(nowMs - TEMPORAL_CONFIG.liveWindowHours * 3_600_000),
+            toIso(nowMs + 3_600_000),
+            ['news'],
+            false,
+            1000,
+          ],
+          { idempotent: true },
+        );
+        this.memory.adoptStoredLive(rows.filter((r) => !mergedInto(r)).map(rowToEvent), nowMs);
+        this.hydratedAt = nowMs;
+      },
+      () => undefined,
+    ).finally(() => {
+      this.hydration = null;
+    });
+    await this.hydration;
+  }
+
+  private latestRun: { atMs: number | null; checkedMs: number } | null = null;
+
+  /**
+   * When live news was last stored by any instance (the ingestion log), checked at most once a
+   * minute: an instance whose own memory is empty then loads it instead of reading GDELT again.
+   */
+  async latestIngestionMs(nowMs: number): Promise<number | null> {
+    if (this.latestRun && nowMs - this.latestRun.checkedMs < 60_000) return this.latestRun.atMs;
+    const atMs = await this.guard(
+      async () => {
+        const rows = await this.db.query<{ at: Ts | null }>(
+          'select max(finished_at) as at from ingestion_runs',
+          [],
+          { idempotent: true },
+        );
+        const at = rows[0]?.at;
+        return at ? new Date(at).getTime() : null;
+      },
+      () => null,
+    );
+    this.latestRun = { atMs, checkedMs: nowMs };
+    return atMs;
   }
   density(fromMs: number, toMs: number, bins: number): Promise<number[]> {
     return this.memory.density(fromMs, toMs, bins);

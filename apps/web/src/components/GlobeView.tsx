@@ -1,4 +1,4 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { floorTo, toIso } from '@worldlens/shared';
 import { TIER_SETTINGS } from '../perf/tiers';
@@ -22,10 +22,14 @@ import {
   useOhmIndex,
   useVisibleEvents,
   type BorderLineScale,
+  placeShapesQuery,
+  usePlaceNames,
 } from '../hooks/useData';
 import { useReducedMotion } from '../hooks/useMedia';
 import { identifyCountry } from '../lib/countries';
+import { markDraw } from '../lib/placeMarks';
 import { useAppStore } from '../state/store';
+import { MarkChip } from './MarkChip';
 import { PlacePicker } from './PlacePicker';
 
 /** A cluster click flies three times closer, but no lower than this (km). */
@@ -119,15 +123,26 @@ export function GlobeView({
               if (p.kind === 'event') {
                 s.setPlacePicker(null);
                 s.openEvent(p.id);
-              } else if (p.samePlace || s.camera.altitudeKm <= CLUSTER_FLY_MIN_KM * 1.25) {
-                // One spot, or already as close as a cluster click flies: zooming would not
-                // separate them, so list them to choose from.
-                s.setPlacePicker({ ids: p.ids, x: at.x, y: at.y });
-              } else {
-                s.setPlacePicker(null);
-                const alt = Math.max(CLUSTER_FLY_MIN_KM, s.camera.altitudeKm / 3);
-                s.flyTo({ lat: p.lat, lon: p.lon, altitudeKm: alt });
+                return;
               }
+              // A cluster lists its events beside it (news, history, battles) — what people
+              // want to see. Zooming in is a button there, unless zooming cannot separate them
+              // (one spot, or already as close as it flies).
+              const zoomable = !p.samePlace && s.camera.altitudeKm > CLUSTER_FLY_MIN_KM * 1.25;
+              s.setPlacePicker({
+                ids: p.ids,
+                x: at.x,
+                y: at.y,
+                ...(zoomable
+                  ? {
+                      zoomTo: {
+                        lat: p.lat,
+                        lon: p.lon,
+                        altitudeKm: Math.max(CLUSTER_FLY_MIN_KM, s.camera.altitudeKm / 3),
+                      },
+                    }
+                  : {}),
+              });
             },
             onCameraMoveStart: () => {
               const s = useAppStore.getState();
@@ -161,6 +176,7 @@ export function GlobeView({
       gl.intro();
       (window as unknown as { __worldlens?: unknown }).__worldlens = {
         diagnostics: () => gl.diagnostics(),
+        labelCheck: () => gl.labelCheck(),
         perf: gl.perf,
       };
 
@@ -227,6 +243,28 @@ export function GlobeView({
   useEffect(() => {
     if (globe) safely('events', () => globe.setEvents(events.data?.events ?? []));
   }, [globe, events.data]);
+
+  // Place names (cities, rivers, seas, mountains, deserts) and a marked place. The names load
+  // with the layer or a mark; shapes (river courses, outlines) with the first mark — until
+  // then a mark is a ring at its name.
+  const placeMarks = useAppStore((s) => s.placeMarks);
+  const marked = placeMarks.length > 0;
+  const placeNames = usePlaceNames(layers.places || marked);
+  const placeShapes = useQuery({ ...placeShapesQuery, enabled: marked });
+  useEffect(() => {
+    if (globe && placeNames.data) safely('place names', () => globe.setPlaceNames(placeNames.data));
+  }, [globe, placeNames.data]);
+  useEffect(() => {
+    if (globe) safely('place names', () => globe.setPlaceNamesVisible(layers.places));
+  }, [globe, layers.places]);
+  useEffect(() => {
+    if (!globe) return;
+    if (!marked) return safely('place marks', () => globe.setPlaceMarks([]));
+    if (!placeNames.data) return;
+    const names = placeNames.data;
+    const draws = placeMarks.map((m) => markDraw(m, names, placeShapes.data ?? {}).draw);
+    safely('place marks', () => globe.setPlaceMarks(draws));
+  }, [globe, marked, placeMarks, placeNames.data, placeShapes.data]);
 
   // Borders. LIVE: today's boundaries from Natural Earth. Historical: OpenHistoricalMap's dated
   // borders (they change on the exact day a state, colony or occupation regime begins or ends),
@@ -370,6 +408,7 @@ export function GlobeView({
         </div>
       )}
       <PlacePicker events={events.data?.events ?? []} />
+      <MarkChip />
       <div
         ref={creditsRef}
         className="credits pointer-events-auto absolute bottom-[132px] left-3 max-w-[60vw] md:bottom-[118px]"

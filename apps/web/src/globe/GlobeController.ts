@@ -13,10 +13,14 @@ import {
   FrontlineLayer,
   HighlightLayer,
   OutlineLayer,
+  PlaceMarkLayer,
   type BorderFeatureLike,
   type BorderLabel,
   type BorderLineLike,
+  type PlaceMarkDraw,
 } from './GeometryLayers';
+import { PlaceLabelLayer } from './PlaceLabelLayer';
+import type { PlaceName } from '@worldlens/shared';
 import { nightLightsAt, type NightLightsLook } from './nightLights';
 import {
   createBaseMap,
@@ -109,6 +113,8 @@ export class GlobeController {
   private highlight: HighlightLayer;
   private frontlines: FrontlineLayer;
   private countryOutline: OutlineLayer;
+  private places: PlaceLabelLayer;
+  private placeMark: PlaceMarkLayer;
   private imagery: ImageryKind | 'loading' = 'loading';
   private terrainKind: TerrainKind = 'ellipsoid';
   private terrainWanted: boolean | null = null;
@@ -196,6 +202,10 @@ export class GlobeController {
     this.highlight = new HighlightLayer(scene);
     this.frontlines = new FrontlineLayer(scene);
     this.countryOutline = new OutlineLayer(scene);
+    this.places = new PlaceLabelLayer(scene);
+    this.placeMark = new PlaceMarkLayer(scene);
+    // Place names are placed after the event titles, around them.
+    this.events.onRelabel = () => this.relabelPlaces();
 
     this.applyQuality(this.perf.quality);
     this.removeListeners.push(
@@ -216,6 +226,7 @@ export class GlobeController {
     this.removeListeners.push(
       scene.preRender.addEventListener(() => {
         this.events.update();
+        this.places.update();
         this.fadeNightLights();
       }),
     );
@@ -281,6 +292,7 @@ export class GlobeController {
       // Redraw lines so they drape on (or come off) the terrain.
       this.drawBorders();
       this.drawFrontlines();
+      this.syncDraping();
       this.viewer.scene.requestRender();
     });
   }
@@ -451,6 +463,7 @@ export class GlobeController {
     if (!this.bordersState) return;
     this.bordersState = { ...this.bordersState, labels };
     this.borders.setLabels(labels, TIER_SETTINGS[this.perf.quality.tier].borderLabels);
+    this.relabelPlaces();
   }
 
   private drawBorders(): void {
@@ -465,10 +478,63 @@ export class GlobeController {
       ...(labels ? { labels } : {}),
       clampToGround: this.clampToGround,
     });
+    this.relabelPlaces();
   }
 
   setHighlight(geometry: BorderFeatureLike['geometry'] | null): void {
-    this.highlight.set(geometry);
+    this.highlight.set(geometry, this.clampToGround);
+  }
+
+  /** Marks and names follow the terrain: lines draped when close, names on the ground. */
+  private syncDraping(): void {
+    this.highlight.setClampToGround(this.clampToGround);
+    this.placeMark.setClampToGround(this.clampToGround);
+    this.places.setClampToGround(this.terrainKind !== 'ellipsoid');
+  }
+
+  /** The place names (cities, rivers, seas, mountains, deserts) the globe may label. */
+  setPlaceNames(places: PlaceName[]): void {
+    this.places.setPlaces(places);
+    this.relabelPlaces();
+  }
+
+  setPlaceNamesVisible(v: boolean): void {
+    this.places.setEnabled(v);
+    if (v) this.relabelPlaces();
+  }
+
+  /** Marked places (the assistant's highlight_place); [] clears them. */
+  setPlaceMarks(marks: PlaceMarkDraw[]): void {
+    this.placeMark.set(marks, this.clampToGround);
+    this.relabelPlaces();
+  }
+
+  /**
+   * Re-place the names around everything already on screen: event markers and titles, country
+   * names, the marked place and open panels — in the area the top bar and timeline leave free.
+   */
+  private relabelPlaces(): void {
+    const canvas = this.viewer.scene.canvas;
+    const frame = canvas.getBoundingClientRect();
+    const panels = [...document.querySelectorAll('[data-label-occluder]')]
+      .map((el) => el.getBoundingClientRect())
+      .filter((r) => r.width > 0 && r.height > 0)
+      .map((r) => ({
+        x: r.left - frame.left - 8,
+        y: r.top - frame.top - 8,
+        width: r.width + 16,
+        height: r.height + 16,
+      }));
+    const wide = window.matchMedia('(min-width: 768px)').matches;
+    this.places.relabel(
+      [
+        ...this.events.obstacles(),
+        ...this.borders.labelRects(),
+        ...this.placeMark.rects(),
+        ...panels,
+      ],
+      { top: 78, bottom: wide ? 128 : 196 },
+    );
   }
 
   /** Glowing outline of the selected country (null clears it). */
@@ -515,6 +581,7 @@ export class GlobeController {
     if (this.clampToGround !== wasDraped) {
       this.drawBorders();
       this.drawFrontlines();
+      this.syncDraping();
     }
     let bbox: string | null = null;
     if (rect && altitudeKm < 4000) {
@@ -532,6 +599,34 @@ export class GlobeController {
     this.events.relabel();
   }
 
+  /**
+   * Place names on screen and what they must leave free (event markers and titles, country
+   * names, the marked place), with every overlap between them — none expected.
+   */
+  labelCheck(): {
+    names: number;
+    obstacles: number;
+    overlaps: { name: string; with: 'name' | 'event or country name' }[];
+  } {
+    const names = this.places.boxes();
+    const obstacles = [
+      ...this.events.obstacles(),
+      ...this.borders.labelRects(),
+      ...this.placeMark.rects(),
+    ];
+    const hit = (
+      a: { x: number; y: number; width: number; height: number },
+      b: { x: number; y: number; width: number; height: number },
+    ) => a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+    const overlaps: { name: string; with: 'name' | 'event or country name' }[] = [];
+    names.forEach((n, i) => {
+      if (obstacles.some((o) => hit(n, o)))
+        overlaps.push({ name: n.name, with: 'event or country name' });
+      if (names.some((m, j) => j > i && hit(n, m))) overlaps.push({ name: n.name, with: 'name' });
+    });
+    return { names: names.length, obstacles: obstacles.length, overlaps };
+  }
+
   diagnostics(): GlobeDiagnostics {
     const s = this.perf.stats();
     const q = this.perf.quality;
@@ -545,7 +640,8 @@ export class GlobeController {
       effectivePixelRatio: Math.round((canvas.width / Math.max(1, canvas.clientWidth)) * 100) / 100,
       cameraAltitudeKm: Math.round(this.viewer.camera.positionCartographic.height / 1000),
       visibleEvents: this.events.stats.visibleEvents,
-      visibleLabels: this.events.stats.visibleLabels + this.borders.stats.labels,
+      visibleLabels:
+        this.events.stats.visibleLabels + this.borders.stats.labels + this.places.stats.labels,
       clusters: this.events.stats.clusters,
       visiblePolygons: this.borders.stats.polygons,
       frontlines: this.frontlines.stats.lines,
@@ -569,6 +665,7 @@ export class GlobeController {
     for (const r of this.removeListeners) r();
     this.perfObserver?.disconnect();
     this.events.destroy();
+    this.places.destroy();
     this.borders.destroy();
     this.viewer.destroy();
   }

@@ -51,8 +51,17 @@ test.describe('globe, time and events', () => {
     await expect(page.getByTestId('event-title')).toContainText('Taiwan Strait');
     await expect(page.getByTestId('demo-banner')).toContainText('DEMO');
     await expect(page.getByTestId('source-coverage')).toContainText('Pacific Wire (demo)');
-    await expect(page.getByTestId('coverage-perspectives')).toContainText('National perspective');
-    await expect(page.getByTestId('coverage-perspectives')).toContainText('UNRATED');
+    // Who reported it and where they are based; a country shows on the globe, outlined.
+    const coverage = page.getByTestId('coverage-perspectives');
+    await expect(coverage.getByTestId('coverage-publisher').first()).toBeVisible();
+    await expect(coverage).toContainText('Pacific Wire (demo)');
+    const country = coverage.getByTestId('coverage-country').first();
+    await expect(country).toHaveAttribute('aria-pressed', 'false');
+    await country.click();
+    await expect(country).toHaveAttribute('aria-pressed', 'true');
+    await country.click();
+    await expect(country).toHaveAttribute('aria-pressed', 'false');
+    await expect(coverage).toContainText('Illustrative rating (demo)');
     await page.getByTestId('compare-framing').click();
     await expect(page.getByTestId('source-framing')).toContainText('Differences in framing');
     await expect(page.getByTestId('source-framing')).toContainText(/claim|allegation/i);
@@ -84,6 +93,96 @@ test.describe('history and search', () => {
     await expect(page.getByTestId('event-detail')).toContainText('Wellington');
   });
 
+  test('news since 2000: its own group under the rest; a pick goes to its day', async ({
+    page,
+  }) => {
+    // The test API has no Wikipedia: the bar's past-news answers are stubbed in the browser.
+    const id = 'wnews-2011-03-14-0123456789ab';
+    const title =
+      'A hydrogen explosion damages a reactor building at the nuclear plant in Ōkuma, Japan.';
+    const time = { start: '2011-03-14T00:00:00Z', precision: 'day', approximate: false };
+    const location = {
+      name: 'Ōkuma, Japan',
+      lat: 37.4,
+      lon: 141.03,
+      precision: 'city',
+      countryCode: 'JPN',
+      confidence: 0.8,
+    };
+    const event = {
+      id,
+      kind: 'news',
+      isDemo: false,
+      title,
+      summary: title,
+      category: 'disaster',
+      tags: ['Fukushima Daiichi nuclear disaster'],
+      time,
+      location,
+      extraLocations: [],
+      participants: [],
+      references: [
+        {
+          title: 'Current events, 2011-03-14',
+          url: 'https://en.wikipedia.org/wiki/Portal:Current_events/2011_March_14',
+          publisher: 'Wikipedia',
+          kind: 'encyclopedia',
+          license: 'CC BY-SA 4.0',
+        },
+      ],
+      importance: 2,
+      confidence: 0.9,
+      articleCount: 1,
+      sourceCount: 1,
+      hasTakeAction: false,
+      provenance: { provider: 'wikipedia', retrievedAt: '2026-11-10T00:00:00Z' },
+      updatedAt: '2011-03-14T00:00:00Z',
+    };
+    const searched: string[] = [];
+    await page.route('**/api/config', async (route) => {
+      const res = await route.fetch();
+      const body = (await res.json()) as { news: Record<string, unknown> };
+      await route.fulfill({ response: res, json: { ...body, news: { ...body.news, past: true } } });
+    });
+    await page.route('**/api/search/past?*', async (route) => {
+      searched.push(new URL(route.request().url()).searchParams.get('q')!);
+      await route.fulfill({
+        json: {
+          available: true,
+          results: [
+            {
+              type: 'NEWS',
+              id,
+              title,
+              subtitle: location.name,
+              lat: location.lat,
+              lon: location.lon,
+              altitude: 250_000,
+              time,
+              eventId: id,
+              isDemo: false,
+              score: 9,
+            },
+          ],
+        },
+      });
+    });
+    await page.route(`**/api/events/${id}`, (route) =>
+      route.fulfill({ json: { event, actions: [] } }),
+    );
+    await openApp(page);
+    await page.getByTestId('search-input').fill('Fukushima');
+    await expect(page.getByTestId('search-past-heading')).toHaveText('News since 2000 · Wikipedia');
+    const past = page.getByTestId('search-result-past');
+    await expect(past).toContainText('hydrogen explosion');
+    await expect(past).toContainText('14 Mar 2011 · Ōkuma, Japan');
+    // One search after typing pauses, not one per letter.
+    expect(searched).toEqual(['Fukushima']);
+    await past.click();
+    await expect(page.getByTestId('historical-time')).toHaveText('14 MAR 2011');
+    await expect(page.getByTestId('event-title')).toContainText('hydrogen explosion');
+  });
+
   test('keyboard search: "/" focuses, "Berlin 1945" moves to 1945', async ({ page }) => {
     await openApp(page);
     await page.locator('body').click({ position: { x: 600, y: 400 } });
@@ -93,6 +192,100 @@ test.describe('history and search', () => {
     await expect(page.getByTestId('search-result').first()).toBeVisible();
     await page.keyboard.press('Enter');
     await expect(page.getByTestId('historical-time')).toHaveText('1945');
+  });
+});
+
+test.describe('place names and clusters', () => {
+  /** The app's store (Vite serves one instance of each module). */
+  const store = `
+    const url = performance.getEntriesByType('resource').map((e) => e.name)
+      .find((n) => n.includes('/src/state/store.ts'));
+    const { useAppStore } = await import(/* @vite-ignore */ url);`;
+
+  test('cities, rivers, seas and mountains are named — never over events or each other', async ({
+    page,
+  }) => {
+    // Jumps instead of flights: each view settles at once.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await openApp(page);
+    type Check = { names: number; obstacles: number; overlaps: { name: string; with: string }[] };
+    // The globe loads after the page: no names until it has.
+    const check = () =>
+      page.evaluate(
+        () =>
+          (
+            window as unknown as { __worldlens?: { labelCheck?: () => Check } }
+          ).__worldlens?.labelCheck?.() ?? { names: 0, obstacles: 0, overlaps: [] },
+      );
+    await expect.poll(async () => (await check()).names, { timeout: 30_000 }).toBeGreaterThan(0);
+    const views = [
+      { lat: 22, lon: 60, altitudeKm: 19_000 },
+      { lat: 47, lon: 10, altitudeKm: 2500 },
+      { lat: 35, lon: 105, altitudeKm: 5000 },
+      { lat: 40, lon: -95, altitudeKm: 4000 },
+      { lat: 30, lon: 31, altitudeKm: 1200 },
+      { lat: 51.5, lon: -0.1, altitudeKm: 300 },
+    ];
+    for (const v of views) {
+      await page.evaluate(
+        new Function(
+          'v',
+          `return (async () => { ${store} useAppStore.getState().flyTo(v); })()`,
+        ) as (v: unknown) => Promise<void>,
+        v,
+      );
+      await page.waitForTimeout(1500);
+      const c = await check();
+      expect(c.names, `names at ${JSON.stringify(v)}`).toBeGreaterThan(0);
+      expect(c.overlaps, `overlaps at ${JSON.stringify(v)}`).toEqual([]);
+    }
+    // Off in the settings: no names.
+    await page.evaluate(
+      new Function(
+        `return (async () => { ${store} useAppStore.getState().setLayer('places', false); })()`,
+      ) as () => Promise<void>,
+    );
+    await expect.poll(async () => (await check()).names).toBe(0);
+  });
+
+  test('marking a place: shown, named under the top bar, cleared with ×', async ({ page }) => {
+    await openApp(page);
+    await page.evaluate(async () => {
+      const url = performance
+        .getEntriesByType('resource')
+        .map((e) => e.name)
+        .find((n) => n.includes('/src/ai/actionExecutor.ts'))!;
+      const ex = (await import(/* @vite-ignore */ url)) as {
+        runActions: (raw: unknown[]) => unknown;
+      };
+      ex.runActions([{ tool: 'highlight_place', args: { name: 'Nile', kind: 'river' } }]);
+    });
+    const chip = page.getByTestId('mark-chip');
+    await expect(chip).toContainText('Nile');
+    await expect(chip).toContainText('river');
+    await page.getByTestId('mark-chip-clear').click();
+    await expect(chip).toHaveCount(0);
+  });
+
+  test('a clicked cluster lists its events (news, history, battles) with Zoom in', async ({
+    page,
+  }) => {
+    await openApp(page);
+    const ids = await page
+      .getByTestId('event-list-item')
+      .evaluateAll((rows) => rows.slice(0, 3).map((r) => r.getAttribute('data-event-id')));
+    await page.evaluate(
+      new Function(
+        'ids',
+        `return (async () => { ${store} useAppStore.getState().setPlacePicker({ ids, x: 420, y: 320, zoomTo: { lat: 20, lon: 10, altitudeKm: 900 } }); })()`,
+      ) as (ids: unknown) => Promise<void>,
+      ids,
+    );
+    const picker = page.getByTestId('place-picker');
+    await expect(picker).toBeVisible();
+    await expect(picker.getByTestId('place-picker-item')).toHaveCount(ids.length);
+    await picker.getByTestId('place-picker-zoom').click();
+    await expect(picker).toHaveCount(0);
   });
 });
 
@@ -288,6 +481,23 @@ test.describe('accounts (test mailbox; accounts in memory)', () => {
     await page.getByTestId('account-confirm-yes').click();
     await expect(page.getByTestId('account-username')).toHaveText(`@ada.l_${stamp}`);
     await expect(page.getByTestId('account-username-wait')).toBeVisible();
+
+    // The assistant only points in account settings: it opens them scrolled to a section, marked
+    // for a moment; the user does the rest.
+    await page.evaluate(async () => {
+      const url = performance
+        .getEntriesByType('resource')
+        .map((e) => e.name)
+        .find((n) => n.includes('/src/ai/actionExecutor.ts'))!;
+      const ex = (await import(/* @vite-ignore */ url)) as {
+        runActions: (raw: unknown[]) => unknown;
+      };
+      ex.runActions([{ tool: 'open_panel', args: { panel: 'account', section: 'password' } }]);
+    });
+    const pointed = page.locator('[data-account-section="password"]');
+    await expect(pointed).toHaveClass(/ring-1/);
+    await expect(pointed).toBeInViewport();
+    await expect(pointed).not.toHaveClass(/ring-1/, { timeout: 6000 });
 
     // A new email waits for its code — also after a reload — and the change can be cancelled.
     await page.getByTestId('account-change-email').click();

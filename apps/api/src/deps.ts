@@ -21,6 +21,10 @@ import { PaymentService } from './payments/service';
 import { MemoryPaymentStore, type PaymentStore } from './payments/store';
 import { PostgresNewsRepository, PostgresPaymentStore } from './data/postgres';
 import { classifyDatabaseUrl, neonHttpClient, type SqlClient } from './data/sql';
+import { WithPastNews } from './data/past-news';
+import { WikipediaNewsProvider } from './providers/wikipedia-news';
+import { PublisherDirectory } from './providers/publisher-directory';
+import { PlaceNameIndex } from './providers/place-names';
 import { Pool as NeonPool } from '@neondatabase/serverless';
 import { createAuth, type Auth, type AuthSetup } from './auth/auth';
 import { MemoryAccountStore, PostgresAccountStore, type AccountStore } from './data/account-store';
@@ -56,6 +60,10 @@ export interface AppDeps {
   /** An account's AI chats and viewing history. */
   accounts: AccountStore;
   mailer: Mailer;
+  /** Where outlets outside the publisher registry are based (GDELT's list, 2018). */
+  publishers: PublisherDirectory;
+  /** The globe's place names, for the assistant's highlight_place. */
+  places: PlaceNameIndex;
   /** TEST-ONLY (Playwright on the Node server): account emails, readable at /api/test/mail. */
   testMailbox?: TestMailbox;
   now: () => number;
@@ -120,8 +128,29 @@ export function createDeps(env: Env, o: DepOverrides = {}): AppDeps {
     console.warn(`[worldlens-api] database disabled: ${databaseProblem}`);
   }
 
+  // The website's own data files: read straight from the Worker's assets when it serves the site
+  // (a Worker fetching its own address would call itself), else over the network.
+  const site = config.publicAppUrl.replace(/\/$/, '');
+  const assets = env.ASSETS;
+  const siteFetch: FetchLike = assets
+    ? (input, init) => {
+        const url = typeof input === 'string' ? input : input.url;
+        return url.startsWith(`${site}/`)
+          ? assets.fetch(new Request(url, init))
+          : fetchImpl(input, init);
+      }
+    : fetchImpl;
+
   const memory = new MemoryRepository();
-  const repo = o.repo ?? (sql ? new PostgresNewsRepository(memory, sql, health) : memory);
+  const stored = o.repo ?? (sql ? new PostgresNewsRepository(memory, sql, health) : memory);
+  // News of the past (2000 → live) from Wikipedia joins the timeline.
+  const repo = config.pastNews.enabled
+    ? new WithPastNews(
+        stored,
+        new WikipediaNewsProvider(config.wikipediaUserAgent, fetchImpl, now),
+        health,
+      )
+    : stored;
   const paymentStore =
     o.paymentStore ?? (sql ? new PostgresPaymentStore(sql) : new MemoryPaymentStore());
 
@@ -244,6 +273,8 @@ export function createDeps(env: Env, o: DepOverrides = {}): AppDeps {
     auth,
     accounts,
     mailer,
+    publishers: new PublisherDirectory(config.publisherDirectoryUrl, siteFetch, now),
+    places: new PlaceNameIndex(config.placeNamesUrl, siteFetch, now),
     ...(o.testMailbox ? { testMailbox: o.testMailbox } : {}),
     now,
   };

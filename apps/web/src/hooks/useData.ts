@@ -1,6 +1,12 @@
 /** TanStack Query hooks. Only what the camera/time/layers need is requested. */
 import { keepPreviousData, queryOptions, useQueries, useQuery } from '@tanstack/react-query';
-import { floorTo, toIso, type Resolution } from '@worldlens/shared';
+import {
+  decodePlaceNames,
+  floorTo,
+  toIso,
+  type PlaceNameRaw,
+  type Resolution,
+} from '@worldlens/shared';
 import { useEffect, useMemo, useState } from 'react';
 import type { BorderLineLike } from '../globe/GeometryLayers';
 import { parseOhmIndex, type Succession } from '../globe/ohm';
@@ -168,6 +174,31 @@ async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`${url} unavailable`);
   return (await res.json()) as T;
+}
+
+/**
+ * The globe's place names (Natural Earth: cities, rivers, lakes, seas, mountains, deserts) —
+ * loaded once, when the Place names layer is on or a place is marked.
+ */
+export const placeNamesQuery = queryOptions({
+  queryKey: ['place-names'],
+  queryFn: async () =>
+    decodePlaceNames((await fetchJson('/data/places/names.json')) as { places: PlaceNameRaw[] }),
+  staleTime: Number.POSITIVE_INFINITY,
+  retry: 1,
+});
+
+/** Shapes of places (river courses, coasts, outlines) — loaded on the first marked place. */
+export const placeShapesQuery = queryOptions({
+  queryKey: ['place-shapes'],
+  queryFn: async () =>
+    (await fetchJson('/data/places/shapes.json')) as Record<string, number[][][]>,
+  staleTime: Number.POSITIVE_INFINITY,
+  retry: 1,
+});
+
+export function usePlaceNames(enabled: boolean) {
+  return useQuery({ ...placeNamesQuery, enabled });
 }
 
 /** OpenHistoricalMap dated borders: polity index (names, dates, ways) — loaded once. */

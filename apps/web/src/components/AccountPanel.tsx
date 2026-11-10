@@ -7,8 +7,8 @@ import { createPortal } from 'react-dom';
 import { parseIso, passwordProblem, type Resolution, type SearchResult } from '@worldlens/shared';
 import { account, authClient, authMessage, type HistoryItem } from '../lib/account';
 import { reopenCountry } from '../lib/countries';
-import { relativeTime } from '../lib/format';
-import { useAccount, type AccountPanel as Tab } from '../state/account';
+import { LIVE_WINDOW_MS, relativeTime } from '../lib/format';
+import { useAccount, type AccountPanel as Tab, type AccountSection } from '../state/account';
 import { useAppStore, type CountrySelection, type SearchPick } from '../state/store';
 import { applySearchResult } from './TopBar';
 import {
@@ -23,11 +23,24 @@ import {
 } from './AuthDialog';
 import { Icon } from './ui';
 
-const LIVE_WINDOW_MS = 72 * 3_600_000;
-
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({
+  title,
+  children,
+  id,
+}: {
+  title: string;
+  children: ReactNode;
+  /** Where the assistant can point (open_panel → account, section). */
+  id?: AccountSection;
+}) {
+  const pointed = useAccount((s) => !!id && s.section === id);
   return (
-    <section className="flex flex-col gap-2.5 border-t border-white/[0.07] pt-4">
+    <section
+      data-account-section={id}
+      className={`flex flex-col gap-2.5 border-t border-white/[0.07] pt-4 transition-shadow duration-300 ${
+        pointed ? 'rounded-[var(--radius-inner)] px-1 ring-1 ring-white/40' : ''
+      }`}
+    >
       <h3 className="px-1 text-[11px] tracking-[0.08em] text-white/40">{title}</h3>
       {children}
     </section>
@@ -118,7 +131,7 @@ function UsernameSection() {
     }
   };
   return (
-    <Section title="USERNAME">
+    <Section title="USERNAME" id="username">
       <p className="px-1 text-[13px] text-white/90" data-testid="account-username">
         @{user.displayUsername ?? user.username}
       </p>
@@ -224,7 +237,7 @@ function EmailSection() {
     setMessage(`Email change cancelled. Your email stays ${user.email}.`);
   };
   return (
-    <Section title="EMAIL">
+    <Section title="EMAIL" id="email">
       <p className="px-1 text-[13px] text-white/90" data-testid="account-email">
         {user.email}
       </p>
@@ -379,7 +392,7 @@ function PasswordSection() {
     );
   };
   return (
-    <Section title="PASSWORD">
+    <Section title="PASSWORD" id="password">
       <form onSubmit={submit} className="flex flex-col gap-2.5">
         {forgot === 'sent' ? (
           <Field label={`Code sent to ${user.email}`}>
@@ -483,7 +496,7 @@ function DeleteSection() {
       .openDialog('sign-in', { notice: 'Your account and everything it kept were deleted.' });
   };
   return (
-    <Section title="DELETE ACCOUNT">
+    <Section title="DELETE ACCOUNT" id="delete">
       {!open ? (
         <>
           <Note>Deletes your account, your AI chats and your history for good.</Note>
@@ -557,6 +570,16 @@ function DeleteSection() {
 
 function Settings() {
   const user = useAccount((s) => s.user)!;
+  // Opened at a section (the assistant pointing at it): scrolled there, marked for a moment.
+  const section = useAccount((s) => s.section);
+  useEffect(() => {
+    if (!section) return;
+    document
+      .querySelector(`[data-account-section="${section}"]`)
+      ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    const t = setTimeout(() => useAccount.setState({ section: null }), 2500);
+    return () => clearTimeout(t);
+  }, [section]);
   const signOut = useAccount((s) => s.signOut);
   return (
     <div className="flex flex-col gap-4" data-testid="account-settings">
@@ -689,7 +712,12 @@ const PRECISION_TO_RESOLUTION: Record<string, Resolution> = {
 function reopenEvent(id: string, d: Record<string, unknown>) {
   const s = useAppStore.getState();
   const start = typeof d.start === 'string' ? parseIso(d.start) : null;
-  if (start !== null && (d.eventKind === 'historical' || Date.now() - start > LIVE_WINDOW_MS))
+  // History, Wikipedia's news of the past, and news older than the live days: on their day.
+  const past =
+    d.eventKind === 'historical' ||
+    id.startsWith('wnews-') ||
+    Date.now() - (start ?? 0) > LIVE_WINDOW_MS;
+  if (start !== null && past)
     s.setTime(start, PRECISION_TO_RESOLUTION[String(d.resolution ?? 'day')] ?? 'day');
   else if (s.mode !== 'live') s.returnToLive();
   s.openEvent(id);

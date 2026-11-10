@@ -256,6 +256,23 @@ export class MemoryRepository implements EventRepository {
     this.liveVersion++;
   }
 
+  /**
+   * Live events another instance stored (the database: the Worker's cron runs elsewhere), so
+   * this instance's search finds them. Only where it has none of its own — its own carry their
+   * articles and continuity — and none replaced.
+   */
+  adoptStoredLive(events: WorldEvent[], nowMs: number): number {
+    this.pruneLive(nowMs);
+    let added = 0;
+    for (const event of events) {
+      if (this.live.has(event.id) || this.mergedLive.has(event.id)) continue;
+      this.live.set(event.id, { event, articles: [], sources: [] });
+      added++;
+    }
+    if (added) this.liveVersion++;
+    return added;
+  }
+
   /** The id a live event goes by now: a merged event's id leads to the event it joined. */
   resolveLiveId(id: string): string {
     let current = id;

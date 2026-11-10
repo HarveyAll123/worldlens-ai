@@ -301,6 +301,33 @@ export class BordersLayer {
     this.scene.requestRender();
   }
 
+  /**
+   * Where country names sit on screen now (for names placed after them: place names). Names
+   * on the far side of the globe take nothing.
+   */
+  labelRects(): { x: number; y: number; width: number; height: number }[] {
+    const out: { x: number; y: number; width: number; height: number }[] = [];
+    const camera = this.scene.camera.positionWC;
+    const ellipsoid = this.scene.globe.ellipsoid;
+    const scratch = new Cesium.Cartesian2();
+    for (let i = 0; i < this.labels.length; i++) {
+      const label = this.labels.get(i);
+      if (!label.show) continue;
+      const n = ellipsoid.geodeticSurfaceNormal(label.position, new Cesium.Cartesian3());
+      const toCamera = Cesium.Cartesian3.subtract(camera, label.position, new Cesium.Cartesian3());
+      if (Cesium.Cartesian3.dot(toCamera, n) <= 0) continue;
+      const w = Cesium.SceneTransforms.worldToWindowCoordinates(
+        this.scene,
+        label.position,
+        scratch,
+      );
+      if (!w) continue;
+      const width = label.text.length * 6.6 + 8;
+      out.push({ x: w.x - width / 2, y: w.y - 10, width, height: 18 });
+    }
+    return out;
+  }
+
   /** Replace only the name labels (cheap; lines and fills are untouched). */
   setLabels(candidates: BorderLabel[], budget: number): void {
     this.labels.removeAll();
@@ -332,26 +359,152 @@ export class BordersLayer {
   }
 }
 
+const glow = (glowPower: number) => () =>
+  Cesium.Material.fromType('PolylineGlow', {
+    color: COLORS.highlight,
+    glowPower,
+    taperPower: 1,
+  });
+
+/**
+ * A highlighted country (the assistant's highlight_region): its outline, draped on the terrain
+ * when 3D terrain is on and the camera is close, so it stays on the real border as the view
+ * tilts and zooms.
+ */
 export class HighlightLayer {
-  private lines = new Cesium.PolylineCollection();
-  constructor(private readonly scene: Cesium.Scene) {
-    scene.primitives.add(this.lines);
+  private lines: LineSet;
+  private geometry: PolyGeom | null = null;
+  private clamp = false;
+  constructor(scene: Cesium.Scene) {
+    this.lines = new LineSet(scene);
   }
-  set(geometry: PolyGeom | null): void {
-    this.lines.removeAll();
+  set(geometry: PolyGeom | null, clampToGround = this.clamp): void {
+    this.geometry = geometry;
+    this.clamp = clampToGround;
+    const strokes: Stroke[] = [];
     if (geometry)
-      for (const poly of polygons(geometry))
-        if (poly[0])
-          this.lines.add({
-            positions: ringPositions(poly[0]),
-            width: 6,
-            material: Cesium.Material.fromType('PolylineGlow', {
-              color: COLORS.highlight,
-              glowPower: 0.25,
-              taperPower: 1,
-            }),
+      for (const poly of polygons(geometry)) {
+        const positions = poly[0] ? strokePositions(poly[0]) : null;
+        if (positions)
+          strokes.push({ positions, width: 6, key: 'highlight', material: glow(0.25) });
+      }
+    this.lines.set(strokes, clampToGround);
+  }
+  setClampToGround(v: boolean): void {
+    if (v !== this.clamp && this.geometry) this.set(this.geometry, v);
+    this.clamp = v;
+  }
+}
+
+/** A place to mark: a point (city, peak) or a shape (river course, coast or outline). */
+export interface PlaceMarkDraw {
+  name: string;
+  /** Where its name goes. */
+  lon: number;
+  lat: number;
+  /** River reaches (open) or outlines (closed rings), as [lon, lat] points. */
+  lines: number[][][];
+  closed: boolean;
+  /** A city or a peak: a ring at the place. */
+  point: boolean;
+}
+
+/**
+ * A marked place (the assistant's highlight_place): a river traced along its course, a lake,
+ * sea, desert or range outlined, a city or peak ringed — with its name. Lines are draped on the
+ * terrain when 3D terrain is on and the camera is close (as borders are), so the mark stays on
+ * the real river or coast while the view moves.
+ */
+export class PlaceMarkLayer {
+  private lines: LineSet;
+  private points = new Cesium.PointPrimitiveCollection();
+  private labels = new Cesium.LabelCollection({ blendOption: Cesium.BlendOption.TRANSLUCENT });
+  private marks: PlaceMarkDraw[] = [];
+  private clamp = false;
+
+  constructor(private readonly scene: Cesium.Scene) {
+    this.lines = new LineSet(scene);
+    scene.primitives.add(this.points);
+    scene.primitives.add(this.labels);
+  }
+
+  set(marks: PlaceMarkDraw[], clampToGround = this.clamp): void {
+    this.marks = marks;
+    this.clamp = clampToGround;
+    this.points.removeAll();
+    this.labels.removeAll();
+    const strokes: Stroke[] = [];
+    for (const mark of marks)
+      for (const line of mark.lines) {
+        const pts = mark.closed && line.length > 2 ? [...line, line[0]!] : line;
+        const positions = strokePositions(pts);
+        if (positions)
+          strokes.push({
+            positions,
+            width: mark.closed ? 5 : 6,
+            key: mark.closed ? 'mark-area' : 'mark-river',
+            material: glow(mark.closed ? 0.25 : 0.3),
           });
+      }
+    this.lines.set(strokes, clampToGround);
+    for (const mark of marks) this.drawPointAndName(mark, mark.lines.length > 0);
     this.scene.requestRender();
+  }
+
+  private drawPointAndName(mark: PlaceMarkDraw, hasLines: boolean): void {
+    const at = Cesium.Cartesian3.fromDegrees(mark.lon, mark.lat);
+    if (mark.point || !hasLines) {
+      this.points.add({
+        position: at,
+        pixelSize: 20,
+        color: Cesium.Color.TRANSPARENT,
+        outlineColor: COLORS.highlight,
+        outlineWidth: 2,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      });
+      this.points.add({
+        position: at,
+        pixelSize: 6,
+        color: COLORS.highlight,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      });
+    }
+    this.labels.add({
+      position: at,
+      text: mark.name,
+      font: '400 13px "Inter Variable", "Inter", system-ui, sans-serif',
+      fillColor: Cesium.Color.fromCssColorString('#ffffff'),
+      outlineColor: Cesium.Color.fromCssColorString('#05070b').withAlpha(0.85),
+      outlineWidth: 4,
+      style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+      horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+      verticalOrigin: mark.point ? Cesium.VerticalOrigin.BOTTOM : Cesium.VerticalOrigin.CENTER,
+      pixelOffset: new Cesium.Cartesian2(0, mark.point ? -14 : 0),
+      disableDepthTestDistance: Number.POSITIVE_INFINITY,
+    });
+  }
+
+  setClampToGround(v: boolean): void {
+    if (v !== this.clamp && this.marks.length) this.set(this.marks, v);
+    this.clamp = v;
+  }
+
+  /** The marks' names and rings on screen (nothing else is placed over them). */
+  rects(): { x: number; y: number; width: number; height: number }[] {
+    const out: { x: number; y: number; width: number; height: number }[] = [];
+    for (const mark of this.marks) {
+      const at = Cesium.Cartesian3.fromDegrees(mark.lon, mark.lat);
+      const w = Cesium.SceneTransforms.worldToWindowCoordinates(
+        this.scene,
+        at,
+        new Cesium.Cartesian2(),
+      );
+      if (!w) continue;
+      const width = mark.name.length * 7.6 + 12;
+      const top = mark.point ? w.y - 34 : w.y - 11;
+      out.push({ x: w.x - width / 2, y: top, width, height: mark.point ? 46 : 22 });
+    }
+    return out;
   }
 }
 

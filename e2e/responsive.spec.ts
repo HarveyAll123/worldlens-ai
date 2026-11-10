@@ -76,8 +76,11 @@ for (const [name, width, height] of WIDTHS) {
       const panel = (await layers.boundingBox())!;
       expect(panel.x).toBeGreaterThanOrEqual(0);
       expect(panel.x + panel.width).toBeLessThanOrEqual(width);
-      await layers.getByText('Labels', { exact: true }).click();
+      await layers.getByText('Event names', { exact: true }).click();
       await expect(page.getByTestId('layer-labels')).not.toBeChecked();
+      // Place names can be turned off too.
+      await layers.getByText('Place names', { exact: true }).click();
+      await expect(page.getByTestId('layer-places')).not.toBeChecked();
       // Each top-bar button has its own tab: the panel button goes back to the events (it used
       // to reopen whatever tab showed last), and tapping it again closes the sheet.
       const eventsButton = page.getByTestId('toggle-context-card');

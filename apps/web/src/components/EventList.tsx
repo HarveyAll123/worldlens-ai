@@ -30,7 +30,9 @@ export function EventRowLines({ e, place = true }: { e: EventSummary; place?: bo
   return (
     <>
       <span className="flex min-w-0 items-center gap-1.5 text-[10.5px] text-white/35">
-        <span className="text-white/55">{e.kind === 'news' ? 'News' : 'History'}</span>
+        <span className="text-white/55">
+          {e.kind === 'news' ? 'News' : e.id.startsWith('wd-') ? 'Battle' : 'History'}
+        </span>
         <span aria-hidden>·</span>
         <span className="tabular truncate">{t.label}</span>
         {e.isDemo && (
@@ -140,6 +142,7 @@ export function EventList() {
                   selected ? 'bg-white/[0.09]' : 'hover:bg-white/[0.05]'
                 }`}
                 data-testid="event-list-item"
+                data-event-id={e.id}
               >
                 <EventRowLines e={e} />
               </button>

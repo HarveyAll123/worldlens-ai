@@ -14,9 +14,19 @@ import {
   termVector,
   tokenize,
 } from '../text';
-import { findCountry, resolvePlace } from '../data/geo';
+import { COUNTRIES, findCountry, normalizeName, resolvePlace } from '../data/geo';
 
 describe('geo', () => {
+  it("a country's own name wins over territories that name it as their sovereign", () => {
+    // New Caledonia's sovereign is "France", Puerto Rico's "United States of America".
+    expect(findCountry('France')?.iso3).toBe('FRA');
+    expect(findCountry('United States')?.iso3).toBe('USA');
+    expect(findCountry('United States of America')?.iso3).toBe('USA');
+    expect(resolvePlace('France')?.name).toBe('France');
+    for (const c of COUNTRIES)
+      expect(normalizeName(findCountry(c.name)?.name ?? ''), c.name).toBe(normalizeName(c.name));
+  });
+
   it('computes great-circle distances', () => {
     expect(haversineKm(51.5074, -0.1278, 48.8566, 2.3522)).toBeGreaterThan(330);
     expect(haversineKm(51.5074, -0.1278, 48.8566, 2.3522)).toBeLessThan(350);

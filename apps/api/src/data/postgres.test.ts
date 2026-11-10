@@ -187,3 +187,29 @@ describe('PostgreSQL repository: tidying up copies stored earlier', () => {
     expect(db.transactions).toHaveLength(0);
   });
 });
+
+describe('PostgreSQL repository: news stored by another instance (the Worker’s cron)', () => {
+  it('search finds it: the stored live news is loaded, at most every few minutes', async () => {
+    const [story] = await ingestWindow([copy('kxan.com', 10)]);
+    const stored = eventToRow(story!.event, NOW);
+    const db = new FakeDb((text) => (text.includes('events_in_window') ? [stored] : []));
+    const { repo } = repoOn(db);
+    const results = await repo.search('Congress', { limit: 10, nowMs: NOW, includeDemo: false });
+    expect(results.map((r) => r.eventId)).toContain(stored.id);
+    const loads = () => db.queries.filter((q) => q.text.includes('events_in_window')).length;
+    expect(loads()).toBe(1);
+    await repo.search('Congress', { limit: 10, nowMs: NOW + MIN, includeDemo: false });
+    expect(loads()).toBe(1);
+    await repo.search('Congress', { limit: 10, nowMs: NOW + 6 * MIN, includeDemo: false });
+    expect(loads()).toBe(2);
+  });
+
+  it('knows when news was last stored, from the ingestion log (checked once a minute)', async () => {
+    const at = new Date(NOW - 5 * MIN);
+    const db = new FakeDb((text) => (text.includes('ingestion_runs') ? [{ at }] : []));
+    const { repo } = repoOn(db);
+    expect(await repo.latestIngestionMs(NOW)).toBe(at.getTime());
+    await repo.latestIngestionMs(NOW + 30_000);
+    expect(db.queries.filter((q) => q.text.includes('ingestion_runs'))).toHaveLength(1);
+  });
+});

@@ -1,4 +1,13 @@
-import { formatTemporal, parseIso, precisionLabel, type Temporal } from '@worldlens/shared';
+import {
+  TEMPORAL_CONFIG,
+  formatTemporal,
+  parseIso,
+  precisionLabel,
+  type Temporal,
+} from '@worldlens/shared';
+
+/** News older than this is news of the past: it shows on its own day, not at LIVE. */
+export const LIVE_WINDOW_MS = TEMPORAL_CONFIG.liveWindowHours * 3_600_000;
 
 export function relativeTime(iso: string, now = Date.now()): string {
   const diff = now - parseIso(iso);
@@ -7,7 +16,11 @@ export function relativeTime(iso: string, now = Date.now()): string {
   if (m < 60) return `${m} min ago`;
   const h = Math.round(m / 60);
   if (h < 48) return `${h} h ago`;
-  return `${Math.round(h / 24)} days ago`;
+  const d = Math.round(h / 24);
+  if (d < 60) return `${d} days ago`;
+  // News of the past (2000 onwards): months, then years.
+  if (d < 730) return `${Math.round(d / 30.44)} months ago`;
+  return `${Math.round(d / 365.25)} years ago`;
 }
 
 const PRECISION_TEXT: Record<string, string> = {

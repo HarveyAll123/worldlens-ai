@@ -4,7 +4,14 @@
  */
 import type { QueryClient } from '@tanstack/react-query';
 import { floorTo, parseIso, toIso, type Resolution } from '@worldlens/shared';
-import { activeOn, followCountry, polityAt, type OhmPolity, type PolityMatch } from '../globe/ohm';
+import {
+  activeOn,
+  followCountry,
+  polityAt,
+  searchPolities,
+  type OhmPolity,
+  type PolityMatch,
+} from '../globe/ohm';
 import { ohmCoarseQuery, ohmIndexQuery, ohmSuccessionQuery } from '../hooks/useData';
 import { useAppStore, type CountrySelection } from '../state/store';
 
@@ -73,6 +80,20 @@ export function reopenCountry(c: CountrySelection): void {
   s.openCountry(c);
   flyToCountry(c);
   s.announce(`Showing ${c.name}`);
+}
+
+/**
+ * A country by name, as on the selected date (the assistant's open_country): the version in
+ * force then, else the nearest one, whose period the timeline moves into. False: no such name.
+ */
+export async function showCountryNamed(qc: QueryClient, name: string): Promise<boolean> {
+  const index = await qc.ensureQueryData(ohmIndexQuery);
+  const exact = name.trim().toLowerCase();
+  const matches = searchPolities(index.polities, name, currentDay(), 6);
+  const m = matches.find((x) => x.polity.name.toLowerCase() === exact) ?? matches[0];
+  if (!m) return false;
+  showCountry(m);
+  return true;
 }
 
 /** A search result: move the timeline into the country's period if needed, fly, select. */

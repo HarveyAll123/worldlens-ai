@@ -17,10 +17,12 @@ import {
   precisionLabel,
   serverToolSchemas,
   temporalSpan,
+  toIso,
   yearOf,
   type ActionOption,
   type ClientAction,
   type EventSummary,
+  type PlaceGroup,
   type ServerToolName,
   type WorldEvent,
 } from '@worldlens/shared';
@@ -30,17 +32,30 @@ import type { EventRepository } from '../data/repository';
 import type { HistoricalBordersProvider } from '../providers/borders';
 import { selectBorderSnapshot } from '../providers/borders';
 import { PaymentError, type PaymentService } from '../payments/service';
+import { describePublishers } from '../data/publishers';
+import type { PublisherDirectory } from '../providers/publisher-directory';
+import { placeKindLabel, type PlaceNameIndex } from '../providers/place-names';
 
 export interface ToolContext {
   repo: EventRepository;
   borders: HistoricalBordersProvider;
   payments: PaymentService;
+  /** Where outlets outside the registry are based (GDELT's list); absent in some tests. */
+  publishers?: PublisherDirectory;
+  /** The globe's place names (highlight_place); absent in some tests. */
+  places?: PlaceNameIndex;
   nowMs: number;
   /** The signed-in user's searches and opened events/countries; absent for guests. */
   activity?: (limit: number) => Promise<ActivityItem[]>;
   /** The user turned "AI reads my history" off in their AI settings. */
   activityOff?: boolean;
+  /** Signed in (not a guest): account settings, AI settings and history exist. */
+  signedIn?: boolean;
 }
+
+/** Panels that belong to an account; a guest gets the sign-in window instead. */
+const ACCOUNT_PANELS = new Set(['account', 'ai_settings', 'history']);
+const NEWS_FROM_MS = Date.UTC(2000, 0, 1);
 
 export interface ActivityItem {
   kind: 'search' | 'event' | 'country';
@@ -167,6 +182,8 @@ export async function runServerTool(
         limit: 40,
         nowMs: ctx.nowMs,
         includeDemo: true,
+        // News of the past (2000 on, from Wikipedia) too.
+        includePast: kind !== 'historical',
         ...(window ? { window } : {}),
       });
       const out = [];
@@ -224,7 +241,10 @@ export async function runServerTool(
       const e = await ctx.repo.getEvent(id, ctx.nowMs);
       if (!e) return { ok: false, result: { error: 'Event not found' }, citations };
       const articles = await ctx.repo.getArticles(id, ctx.nowMs);
-      const sources = await ctx.repo.getSources(articles.map((a) => a.sourceId));
+      const { sources, places } = await describePublishers(
+        await ctx.repo.getSources(articles.map((a) => a.sourceId)),
+        ctx.publishers,
+      );
       const byId = new Map(sources.map((s) => [s.id, s]));
       for (const a of articles) {
         if (!a.isDemo)
@@ -249,10 +269,21 @@ export async function runServerTool(
           publishers: sources.map((s) => ({
             id: s.id,
             name: s.name,
+            domain: s.domain,
             country: s.country,
+            // Where it is based, and how WorldLens knows (registry, Wikidata, the feed, GDELT 2018).
+            based_in: places[s.id]
+              ? { country: places[s.id]!.name, basis: places[s.id]!.basis }
+              : null,
             type: s.sourceType,
+            kind: s.format ?? null,
+            ownership: s.ownership,
             national_perspective: s.nationalPerspective,
             political_rating: s.rating.value,
+            // Where a rating comes from, in its own words, and how sure it is.
+            rating_source: s.rating.source,
+            rating_words: s.rating.statement ?? null,
+            rating_confidence: s.rating.confidence,
             rating_is_illustrative: s.rating.illustrative,
             rating_methodology: s.rating.methodology,
           })),
@@ -420,6 +451,59 @@ export async function runServerTool(
         citations,
       };
     }
+    case 'list_events': {
+      const a = parsed.data as {
+        date: string;
+        span?: 'day' | 'month' | 'year' | 'decade';
+        kind: 'news' | 'historical' | 'any';
+        limit: number;
+      };
+      const ms = parseIso(a.date);
+      if (isBeforeNavigable(ms))
+        return {
+          ok: false,
+          result: {
+            error: `${TEMPORAL_CONFIG.comingSoonLabel}. The earliest year is ${TEMPORAL_CONFIG.minNavigableYear}.`,
+          },
+          citations,
+        };
+      if (ms > ctx.nowMs)
+        return { ok: false, result: { error: 'That date is in the future.' }, citations };
+      const span =
+        a.span ??
+        (/^\d{4}-\d{2}-\d{2}/.test(a.date)
+          ? 'day'
+          : /^\d{4}-\d{2}$/.test(a.date)
+            ? 'month'
+            : 'year');
+      const list = await ctx.repo.listEvents({
+        mode: 'historical',
+        timeMs: ms,
+        resolution: span,
+        nowMs: ctx.nowMs,
+        bbox: null,
+        kinds: a.kind === 'any' ? ['historical', 'news'] : [a.kind],
+        includeDemo: false,
+        limit: a.limit,
+      });
+      const period = periodAt(ms, span);
+      const noNews = a.kind === 'news' && period.endMs <= NEWS_FROM_MS;
+      return {
+        ok: true,
+        result: {
+          period: { from: toIso(period.startMs), to: toIso(period.endMs), span },
+          events: list.events.map(eventBrief),
+          total: list.total,
+          note:
+            list.events.length > 0
+              ? undefined
+              : noNews
+                ? 'News starts in 2000; before that WorldLens has historical events only.'
+                : 'Nothing in WorldLens for this period.',
+        },
+        citations,
+      };
+    }
     case 'get_my_activity': {
       const a = parsed.data as { query?: string; kind: string; limit: number };
       if (!ctx.activity)
@@ -568,6 +652,36 @@ export async function prepareClientAction(
         };
       return queued({ tool: 'highlight_region', args: { country: c.iso3 } }, { resolved: c.name });
     }
+    case 'highlight_place': {
+      const a = parsed.data as { name: string; kind: PlaceGroup | 'any' };
+      if (normalizeText(a.name) === 'none')
+        return queued({ tool: 'highlight_place', args: { name: 'none', kind: 'any' } });
+      const found = ctx.places ? await ctx.places.find(a.name, a.kind) : null;
+      if (found === null)
+        return {
+          ok: false,
+          result: { error: 'The map of place names is unavailable right now.' },
+          citations: [],
+        };
+      const p = found[0];
+      if (!p)
+        return {
+          ok: false,
+          result: {
+            error: `No ${a.kind === 'any' ? 'place' : a.kind} named "${a.name}" on WorldLens's map. Use highlight_region for countries, or fly_to for other places.`,
+          },
+          citations: [],
+        };
+      return queued(
+        { tool: 'highlight_place', args: { name: p.name, kind: a.kind, id: p.id } },
+        {
+          resolved: `${p.name} (${placeKindLabel(p)})`,
+          lat: p.lat,
+          lon: p.lon,
+          note: 'Marked on the globe, which flies there.',
+        },
+      );
+    }
     case 'show_events':
       return queued({
         tool: 'show_events',
@@ -583,6 +697,77 @@ export async function prepareClientAction(
       const e = await ctx.repo.getEvent(a.event_id, ctx.nowMs);
       if (!e) return { ok: false, result: { error: 'Event not found' }, citations: [] };
       return queued({ tool: 'open_event', args: a }, { title: e.title });
+    }
+    case 'set_display':
+      return queued({ tool: 'set_display', args: parsed.data as { quality?: 'auto' } });
+    // Countries of the day (OpenHistoricalMap) are matched in the browser, where their data is.
+    case 'open_country':
+      return queued({ tool: 'open_country', args: parsed.data as { name: string } });
+    case 'set_ai_settings': {
+      const a = parsed.data as {
+        remember_chats?: boolean;
+        read_history?: boolean;
+        agent_mode?: boolean;
+      };
+      if ((a.remember_chats !== undefined || a.read_history !== undefined) && !ctx.signedIn)
+        return {
+          ok: false,
+          result: {
+            error:
+              'The user is a guest: remembering chats and reading history are settings of an account. Offer to open the sign-in window (open_panel sign_in).',
+          },
+          citations: [],
+        };
+      return queued(
+        { tool: 'set_ai_settings', args: a },
+        a.agent_mode === false
+          ? {
+              note: 'After this answer you are in Chat mode: you answer but no longer operate the app. The user switches back with Agent at the top of the chat.',
+            }
+          : {},
+      );
+    }
+    case 'open_panel': {
+      const a = parsed.data as { panel: string; section?: string };
+      if (a.section && a.panel !== 'account')
+        return {
+          ok: false,
+          result: { error: 'section is for panel "account" only' },
+          citations: [],
+        };
+      if (ACCOUNT_PANELS.has(a.panel) && !ctx.signedIn)
+        return queued(
+          { tool: 'open_panel', args: { panel: 'sign_in' } },
+          {
+            note: 'The user is a guest (not signed in), so the sign-in window opened instead: guests have no account settings, AI settings or history.',
+          },
+        );
+      return queued(
+        { tool: 'open_panel', args: a as { panel: 'account' } },
+        a.panel === 'account'
+          ? {
+              note: 'Opened and pointed only. The user types, confirms or deletes anything there themselves: guide them step by step if they need it. Never ask for their password, a code or their email address.',
+            }
+          : {},
+      );
+    }
+    case 'play_timeline': {
+      const a = parsed.data as { playing: boolean; from?: string };
+      if (a.from) {
+        const ms = parseIso(a.from);
+        if (isBeforeNavigable(ms) || ms > ctx.nowMs)
+          return {
+            ok: false,
+            result: {
+              error: `Start between ${TEMPORAL_CONFIG.minNavigableYear} and today.`,
+            },
+            citations: [],
+          };
+      }
+      return queued(
+        { tool: 'play_timeline', args: parsed.data as { playing: boolean } },
+        a.playing ? { note: 'It plays until LIVE, or until the user pauses or takes over.' } : {},
+      );
     }
     case 'open_take_action': {
       const a = parsed.data as { event_id: string; action_option_id: string; amount_usd?: number };

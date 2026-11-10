@@ -4,3 +4,5 @@ export * from './tools';
 export * from './geo';
 export * from './text';
 export * from './account';
+export * from './publishers';
+export * from './place-names';

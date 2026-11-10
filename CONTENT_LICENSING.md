@@ -8,6 +8,8 @@ The WorldLens **code** is MIT-licensed. Data, text and media come from third par
 - Summaries are short and **derived** (written by WorldLens's AI tier from headlines, labelled as AI-generated), not copied.
 - Publisher images (`og:image`/GDELT `socialimage`) are **hotlinked, never cached** (`cachingPermitted: false`), credited to the publisher, and link back to the article. Remove them if a publisher objects.
 - GDELT is used as a discovery index under its open-data terms; it is not treated as ground truth.
+- Where outlets are based (for outlets outside WorldLens's own publisher list) comes from Wikidata where it knows the outlet's website, else from GDELT's open list of news outlets by country (May 2018), credited on the event card where it is used. GDELT's list is a 2018 snapshot and can be out of date or wrong for an outlet; it says nothing about an outlet's politics.
+- Outlet names, kinds, owners and left–right ratings for outlets outside the registry come from Wikidata (CC0; `pnpm data:publishers`). Ratings are Wikidata's community-edited "political alignment" statements, shown with their own words, a link to the item and low (or, with a cited source, medium) confidence. Commercial rating services were not used: AllSides' ratings are licensed for non-commercial use only (CC BY-NC 4.0), and Media Bias/Fact Check and Ad Fontes Media are proprietary.
 - RSS: WorldLens fetches a fixed list of publisher feeds and stores only the headline, a ≤300-character snippet, the canonical URL, the publisher and the publication time. Links point to the publisher; nothing is republished, no images are copied from RSS, and no feed content is rendered as HTML. Each feed remains the publisher's content under its own terms; those terms were **not** reviewed individually for this build, and a feed can be removed on request.
 
 ## DEMO dataset
@@ -26,7 +28,7 @@ Event titles, dates, coordinates and the short summaries / “why it mattered”
 
 ## Natural Earth
 
-Country outlines and the populated-places gazetteer are derived from Natural Earth (public domain), pinned to commit `ca96624a56bd078437bca8184e78163e5039ad19`. Modern boundaries are drawn from Natural Earth's land boundary lines at 1:110m, 1:50m and 1:10m (picked by camera altitude) as depicted by Natural Earth (de facto); disputed lines and lines of control are styled DISPUTED.
+Country outlines and the populated-places gazetteer are derived from Natural Earth (public domain), pinned to commit `ca96624a56bd078437bca8184e78163e5039ad19`. So are the place names on the globe and the shapes used to mark a place (`apps/web/public/data/places/`, `pnpm data:places`): cities, oceans and seas, lakes, rivers (joined across Natural Earth's numbered stretches and lake centrelines), mountain ranges and peaks, deserts and other landforms, with Natural Earth's own label zoom levels. Modern boundaries are drawn from Natural Earth's land boundary lines at 1:110m, 1:50m and 1:10m (picked by camera altitude) as depicted by Natural Earth (de facto); disputed lines and lines of control are styled DISPUTED.
 
 The present-day ceasefire / control lines in the frontline layer (Korea, Kashmir, Golan, Cyprus, Western Sahara) are Natural Earth's "Line of control" boundary lines. Natural Earth gives only the geometry; their names, start dates and sides are WorldLens metadata in `packages/shared/src/data/frontlines.ts`.
 

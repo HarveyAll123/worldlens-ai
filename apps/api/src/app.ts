@@ -35,6 +35,7 @@ import { AiUnavailableError } from './ai/provider';
 import type { ToolContext } from './ai/tools-impl';
 import { AI_HEALTH_NAME, type AppDeps } from './deps';
 import { clientKey, RateLimiter } from './lib/ratelimit';
+import { describePublishers } from './data/publishers';
 import { PaymentError } from './payments/service';
 import { selectBorderSnapshot, type BorderDetail } from './providers/borders';
 import { runCombinedIngestion, type CombinedRun, type IngestionSource } from './pipeline/ingest';
@@ -94,6 +95,15 @@ export function refreshLiveNews(deps: AppDeps, force = false): Promise<CombinedR
     !status.lastIngestedAt || deps.now() - Date.parse(status.lastIngestedAt) > LIVE_REFRESH_MS;
   if (!force && !stale) return Promise.resolve(null);
   return deps.ingestFlight.run('live', async () => {
+    // Another instance (the Worker's cron) stored news recently: load it from the database
+    // rather than reading GDELT again here. The cron itself always ingests (force).
+    if (!force) {
+      const stored = await deps.repo.latestIngestionMs?.(deps.now());
+      if (stored && deps.now() - stored < LIVE_REFRESH_MS) {
+        await deps.repo.hydrateLive?.(deps.now());
+        return null;
+      }
+    }
     const sources: IngestionSource[] = [];
     if (deps.news || deps.gdeltFiles) sources.push(gdeltSource(deps));
     if (deps.rss) sources.push(rssSource(deps));
@@ -140,6 +150,8 @@ export function createApp(deps: AppDeps, defaults: { defer?: Defer } = {}) {
   const aiLimiter = RateLimiter.perMinute(deps.config.ai.requestsPerMinute, deps.now);
   const payLimiter = RateLimiter.perMinute(10, deps.now);
   const readLimiter = RateLimiter.perMinute(600, deps.now);
+  // The search bar's news since 2000 asks Wikipedia: one search per pause in typing.
+  const pastSearchLimiter = RateLimiter.perMinute(40, deps.now);
 
   app.use('*', async (c, next) => {
     c.set(
@@ -238,7 +250,11 @@ export function createApp(deps: AppDeps, defaults: { defer?: Defer } = {}) {
         mail: deps.config.auth.mail.provider,
         appUrl: deps.config.publicAppUrl,
       },
-      news: { liveProvider: deps.news || deps.gdeltFiles ? 'gdelt' : null },
+      news: {
+        liveProvider: deps.news || deps.gdeltFiles ? 'gdelt' : null,
+        // News since 2000 (Wikipedia): the search bar lists it as its own group.
+        past: !!deps.repo.searchPast,
+      },
     });
   });
 
@@ -320,13 +336,20 @@ export function createApp(deps: AppDeps, defaults: { defer?: Defer } = {}) {
     const e = await deps.repo.getEvent(id, now());
     if (!e) return c.json({ error: 'NOT_FOUND', message: 'Event not found' }, 404);
     const articles = await deps.repo.getArticles(id, now());
-    const sources = await deps.repo.getSources(articles.map((a) => a.sourceId));
+    // Outlets named, described and rated from Wikidata where it knows them; and where each is
+    // based (the card's "Based in" flies there and outlines it).
+    const { sources, places } = await describePublishers(
+      await deps.repo.getSources(articles.map((a) => a.sourceId)),
+      deps.publishers,
+    );
     const perspectives = {
       byRating: count(sources.map((s) => s.rating.value)),
-      byCountry: count(sources.map((s) => s.nationalPerspective ?? 'Unknown')),
+      byCountry: count(
+        sources.map((s) => places[s.id]?.name ?? s.nationalPerspective ?? 'Unknown'),
+      ),
       byType: count(sources.map((s) => s.sourceType)),
     };
-    return c.json({ eventId: id, isDemo: e.isDemo, articles, sources, perspectives });
+    return c.json({ eventId: id, isDemo: e.isDemo, articles, sources, perspectives, places });
   });
 
   app.get('/api/events/:id/context', async (c) => {
@@ -436,12 +459,40 @@ export function createApp(deps: AppDeps, defaults: { defer?: Defer } = {}) {
     return c.json({ results });
   });
 
+  /**
+   * The search bar's "News since 2000": past news only, best first. Separate from /api/search so
+   * the bar shows its own results at once and these (which ask Wikipedia) when they arrive.
+   */
+  app.get('/api/search/past', async (c) => {
+    const q = z.object({ q: z.string().trim().min(3).max(200) }).parse(c.req.query());
+    const repo = deps.repo;
+    if (!repo.searchPast) return c.json({ results: [], available: false });
+    const r = pastSearchLimiter.take(clientKey(c.req.raw.headers));
+    if (!r.ok)
+      return c.json({ error: 'RATE_LIMITED', message: 'Too many searches. Try again soon.' }, 429, {
+        'Retry-After': String(r.retryAfterS),
+      });
+    try {
+      const results = await repo.searchPast(q.q, { limit: 8, nowMs: now(), includeDemo: false });
+      // The past changes little: the browser may reuse an answer for a few minutes.
+      c.header('Cache-Control', 'private, max-age=600');
+      return c.json({ results, available: true });
+    } catch {
+      return c.json(
+        { error: 'PAST_NEWS_UNAVAILABLE', message: 'News since 2000 is unavailable right now.' },
+        502,
+      );
+    }
+  });
+
   /* ------------------------------------------------------------- AI */
 
   const toolContext = (): ToolContext => ({
     repo: deps.repo,
     borders: deps.borders,
     payments: deps.payments,
+    publishers: deps.publishers,
+    places: deps.places,
     nowMs: now(),
   });
 
@@ -466,6 +517,7 @@ export function createApp(deps: AppDeps, defaults: { defer?: Defer } = {}) {
             ...toolContext(),
             ...(personal.activity ? { activity: personal.activity } : {}),
             activityOff: personal.activityOff,
+            signedIn: !!user,
           },
           personal: personal.blocks,
         });
