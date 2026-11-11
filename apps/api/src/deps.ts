@@ -191,7 +191,10 @@ export function createDeps(env: Env, o: DepOverrides = {}): AppDeps {
         ? {
             get: () => {
               const pool = new NeonPool({ connectionString: target.url });
-              return { auth: createAuth(authSetup(pool)), release: () => pool.end() };
+              return {
+                auth: createAuth({ ...authSetup(pool), perRequest: true }),
+                release: () => pool.end(),
+              };
             },
           }
         : single(createAuth(authSetup(null)));

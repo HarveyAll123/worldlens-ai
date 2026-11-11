@@ -49,6 +49,11 @@ export interface AuthSetup {
   defer?: (p: Promise<unknown>) => void;
   /** After an account is deleted: remove what it kept (chats, history). */
   onUserDeleted?: (userId: string) => Promise<void>;
+  /**
+   * A new instance for every request (the Worker): Better Auth would check the database schema
+   * again for each one before answering. The schema is ours (db/migrations), so skip it.
+   */
+  perRequest?: boolean;
 }
 
 export const emptyMemory = (): MemoryDB => ({
@@ -177,7 +182,11 @@ export function authOptions(s: AuthSetup) {
         '/change-password': { window: 60, max: 5 },
       },
     },
-    advanced: { cookiePrefix: 'worldlens', useSecureCookies: s.secureCookies },
+    advanced: {
+      cookiePrefix: 'worldlens',
+      useSecureCookies: s.secureCookies,
+      ...(s.perRequest ? { database: { validateSchema: false } } : {}),
+    },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
         const body = ctx.body as Record<string, unknown> | undefined;
