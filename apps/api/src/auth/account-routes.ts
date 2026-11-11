@@ -3,7 +3,7 @@
  * /api/me/* — a signed-in account's profile, username, password, AI chats and viewing history.
  * Every /api/me route answers 401 to guests, who keep nothing on the server.
  */
-import type { Context, Hono } from 'hono';
+import type { Context, Hono, MiddlewareHandler } from 'hono';
 import { APIError } from 'better-auth/api';
 import { z } from 'zod';
 import { passwordProblem, toIso } from '@worldlens/shared';
@@ -120,7 +120,6 @@ export async function signedInUser(
   defer: Defer,
 ): Promise<PersonalUser | null> {
   const { auth, release } = deps.auth.get();
-  defer(release());
   try {
     const user = (await auth.api.getSession({ headers }))?.user as AccountUser | undefined;
     return user
@@ -135,6 +134,9 @@ export async function signedInUser(
       : null;
   } catch {
     return null;
+  } finally {
+    // Only now: on the Worker this ends the request's database pool.
+    defer(release());
   }
 }
 
@@ -156,12 +158,31 @@ const isUniqueViolation = (err: unknown) =>
 export function registerAccountRoutes(app: Hono<Env>, deps: AppDeps): void {
   const now = () => deps.now();
 
-  /** The request's auth instance; on the Worker its database pool ends after the response. */
+  /**
+   * The request's auth instance, made on first use. On the Worker it has its own database pool,
+   * which `releaseAfter` ends once the request is done with it — never before.
+   */
+  const handles = new WeakMap<Request, ReturnType<AppDeps['auth']['get']>>();
   const authFor = (c: Context<Env>) => {
-    const { auth, release } = deps.auth.get();
-    c.get('defer')(release());
-    return auth;
+    let handle = handles.get(c.req.raw);
+    if (!handle) handles.set(c.req.raw, (handle = deps.auth.get()));
+    return handle.auth;
   };
+  const releaseAfter: MiddlewareHandler<Env> = async (c, next) => {
+    try {
+      await next();
+    } finally {
+      const handle = handles.get(c.req.raw);
+      if (handle) {
+        handles.delete(c.req.raw);
+        c.get('defer')(handle.release());
+      }
+    }
+  };
+  // Before the routes, so it wraps them.
+  app.use('/api/auth/*', releaseAfter);
+  app.use('/api/me', releaseAfter);
+  app.use('/api/me/*', releaseAfter);
 
   /** The signed-in account, or a 401 response for guests. */
   const account = async (c: Context<Env>) => {

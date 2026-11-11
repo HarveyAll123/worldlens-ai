@@ -90,6 +90,52 @@ describe('entities, location and category', () => {
       resolveLocation([locationCandidates(extractEntities('Markets rally on rate cut hopes'))]),
     ).toBeNull();
   });
+  describe('place names the headline uses for something else', () => {
+    const where = (headline: string) =>
+      resolveLocation([locationCandidates(extractEntities(headline))]);
+
+    it('a surname is not a country, a first name not a city', () => {
+      expect(where('Jim Jordan Becomes House Minority Leader in Shake-up')).toBeNull();
+      expect(where('Michael Jordan buys stake in NASCAR team')).toBeNull();
+      expect(where('Nancy Pelosi accepts Lifetime Achievement Award')).toBeNull();
+      expect(where('Elizabeth Warren presses Fed on rates')).toBeNull();
+      // Not David, Panama or George, South Africa.
+      expect(where('David Lammy meets EU ministers')).toBeNull();
+      expect(where('Anju Bobby George among four women elected')).toBeNull();
+    });
+
+    it('a place named like a person stays a place', () => {
+      expect(where('San Antonio Spurs Win Title')?.name).toMatch(/San Antonio/);
+      expect(where('Hurricane warning for George Town')?.name).toMatch(/George Town/);
+      expect(where('Coastal flood advisory for Los Angeles County beaches')?.name).toMatch(
+        /Los Angeles/,
+      );
+    });
+
+    it('still finds those places when they are places', () => {
+      expect(where("Jordan's King Abdullah meets EU leaders")?.countryCode).toBe('JOR');
+      expect(where('Floods hit Nancy as river bursts its banks')?.name).toBe('Nancy, France');
+      expect(where('Floods hit Nancy, France')?.name).toBe('Nancy, France');
+      expect(where('Will Britain Rejoin the EU?')?.countryCode).toBe('GBR');
+    });
+
+    it('a US county is not the country it is named after', () => {
+      expect(where('Lebanon County firefighters contain wind-driven brush fire')).toBeNull();
+      expect(where('Strikes in southern Lebanon kill three')?.countryCode).toBe('LBN');
+    });
+
+    it('"Iran-linked", "US-led" say who, not where', () => {
+      expect(
+        where(
+          'Treasury chief Scott Bessent relocates to military base after Iran-linked threats report',
+        ),
+      ).toBeNull();
+      expect(where('US-led strikes hit targets in Iran')?.countryCode).toBe('IRN');
+      expect(where('Russian-made drones shot down over Kyiv')?.name).toMatch(/Kyiv/);
+      expect(where('Iran-Iraq border crossing reopens')?.countryCode).toMatch(/IRN|IRQ/);
+    });
+  });
+
   it('categorises headlines', () => {
     expect(categorize('Magnitude 6.8 earthquake strikes off Sulawesi').category).toBe('disaster');
     expect(categorize('Navy holds drills near Taiwan').category).toBe('military');
@@ -255,8 +301,10 @@ describe('normalizeRss', () => {
 });
 
 describe('place hints from GDELT files', () => {
-  const locate = (headline: string, hints: Parameters<typeof withHints>[0]) =>
-    resolveLocation([withHints(hints, locationCandidates(extractEntities(headline)))]);
+  const locate = (headline: string, hints: Parameters<typeof withHints>[0]) => {
+    const e = extractEntities(headline);
+    return resolveLocation([withHints(hints, locationCandidates(e), e)]);
+  };
 
   it('prefers a hinted place over a country inside its name', () => {
     const where = locate('Competitive New Mexico House races draw big spending', [
@@ -283,6 +331,38 @@ describe('place hints from GDELT files', () => {
         { name: 'Kasilof, Alaska, United States', lat: 60.34, lon: -151.27, precision: 'city' },
       ])?.name,
     ).toBe('Kasilof, Alaska');
+  });
+
+  it('drops hints GDELT made from a name the headline uses for something else', () => {
+    const jordan = { name: 'Jordan', lat: 31.2, lon: 36.5, precision: 'country' as const };
+    expect(locate('Jim Jordan Becomes House Minority Leader in Shake-up', [jordan])).toBeNull();
+    expect(
+      locate('Nancy Pelosi accepts Lifetime Achievement Award', [
+        { name: 'Nancy, Lorraine, France', lat: 48.68, lon: 6.18, precision: 'city' },
+      ]),
+    ).toBeNull();
+    expect(
+      locate('Treasury chief relocates to military base after Iran-linked threats report', [
+        { name: 'Iran', lat: 32, lon: 53, precision: 'country' },
+      ]),
+    ).toBeNull();
+    // The county: not the country Lebanon, but its US namesake town is fine.
+    const lebanonCounty = 'Lebanon County firefighters contain wind-driven brush fire';
+    expect(
+      locate(lebanonCounty, [{ name: 'Lebanon', lat: 33.9, lon: 35.9, precision: 'country' }]),
+    ).toBeNull();
+    expect(
+      locate(lebanonCounty, [
+        {
+          name: 'Lebanon, Pennsylvania, United States',
+          lat: 40.34,
+          lon: -76.41,
+          precision: 'city',
+        },
+      ])?.name,
+    ).toBe('Lebanon, Pennsylvania');
+    // A real mention still counts.
+    expect(locate("Jordan's King Abdullah meets EU leaders", [jordan])?.countryCode).toBe('JOR');
   });
 
   it('keeps the headline lookup and its naming for a place it already knows', () => {

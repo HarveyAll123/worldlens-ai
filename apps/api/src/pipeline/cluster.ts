@@ -105,7 +105,7 @@ export function buildFeatures(articles: NormalizedArticle[]): ArticleFeatures[] 
     const tokens = tokenLists[i]!;
     const entities = extractEntities(article.headline);
     const { specific, broad } = entityKeys(entities);
-    const candidates = withHints(article.placeHints, locationCandidates(entities));
+    const candidates = withHints(article.placeHints, locationCandidates(entities), entities);
     const { category, confidence } = categorize(article.headline);
     return {
       article,

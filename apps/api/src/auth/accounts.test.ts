@@ -470,3 +470,80 @@ describe("the assistant and the user's activity", () => {
     }
   });
 });
+
+describe('the Worker: a database pool per request', () => {
+  /**
+   * Accounts as on the Worker: every request gets its own handle, whose database pool its
+   * `release` closes. Counts handles and releases, and notes anything used after its release.
+   */
+  function perRequestAuth(s: ReturnType<typeof setup>) {
+    const { auth } = s.deps.auth.get();
+    const log = { handles: 0, released: 0, usedAfterRelease: [] as string[] };
+    s.deps.auth = {
+      get: () => {
+        log.handles++;
+        let closed = false;
+        const guard = <T extends object>(target: T, path: string): T =>
+          new Proxy(target, {
+            get(t, key, receiver) {
+              const at = `${path}.${String(key)}`;
+              if (closed) log.usedAfterRelease.push(at);
+              const value = Reflect.get(t, key, receiver) as unknown;
+              // Plain objects only (auth.api): a Promise or Headers breaks behind a Proxy.
+              const plain =
+                typeof value === 'object' &&
+                value !== null &&
+                Object.getPrototypeOf(value) === Object.prototype;
+              return plain ? guard(value, at) : value;
+            },
+          });
+        return {
+          auth: guard(auth, 'auth'),
+          release: async () => {
+            closed = true;
+            log.released++;
+          },
+        };
+      },
+    };
+    return log;
+  }
+
+  it("closes each request's pool once, after the request is done with it", async () => {
+    const s = setup();
+    const log = perRequestAuth(s);
+    const b = await signUp(s, 'pool@example.com');
+    expect((await b('/api/me')).status).toBe(200);
+    expect((await browser(s.app)('/api/me')).status).toBe(401);
+    // The assistant looks up who is asking too.
+    const chat = await b('/api/ai/chat', {
+      body: {
+        messages: [{ role: 'user', content: 'hi' }],
+        context: {
+          mode: 'live',
+          timeIso: '2026-11-11T12:00:00Z',
+          resolution: 'day',
+          selectedEventId: null,
+          camera: null,
+          agent: false,
+        },
+      },
+    });
+    expect(chat.status).toBe(200);
+    expect(log.usedAfterRelease).toEqual([]);
+    expect(log.handles).toBeGreaterThan(3);
+    expect(log.released).toBe(log.handles);
+  });
+
+  it("skips Better Auth's schema check, which would query the database for every request", async () => {
+    const deps = createDeps({
+      ...env,
+      DATABASE_URL:
+        'postgresql://app:not-a-secret@ep-quiet-test-123456-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require',
+    });
+    const { auth, release } = deps.auth.get();
+    const advanced = auth.options.advanced as { database?: { validateSchema?: boolean } };
+    expect(advanced.database?.validateSchema).toBe(false);
+    await release();
+  });
+});

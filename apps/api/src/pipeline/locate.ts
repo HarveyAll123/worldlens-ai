@@ -101,18 +101,28 @@ export function hintCandidates(
 
 /**
  * Headline candidates plus hint candidates, without headline matches that are only part of a
- * longer hinted name ("Mexico" in "New Mexico", "Guinea" in "Papua New Guinea").
+ * longer hinted name ("Mexico" in "New Mexico", "Guinea" in "Papua New Guinea"), and without
+ * hints for names the headline uses for something else: geocoders place "Jim Jordan" in Jordan
+ * and "Nancy Pelosi" in Nancy, France (`headline`: its entities).
  */
 export function withHints(
   hints: PlaceHint[] | undefined,
   fromHeadline: LocationCandidate[],
+  headline?: Pick<Entities, 'notPlaces' | 'notCountries'>,
 ): LocationCandidate[] {
-  const longer = (hints ?? []).map((h) => ` ${normalizeName(h.name.split(',')[0]!)} `);
+  const usable = (hints ?? []).filter((h) => {
+    if (!headline) return true;
+    if (headline.notPlaces.includes(normalizeName(h.name.split(',')[0]!))) return false;
+    if (h.precision !== 'country') return true;
+    const c = countryNear(h.lat, h.lon);
+    return !c || !headline.notCountries.includes(c.iso3);
+  });
+  const longer = usable.map((h) => ` ${normalizeName(h.name.split(',')[0]!)} `);
   const kept = fromHeadline.filter((c) => {
     const own = normalizeName(c.location.name.split(',')[0]!);
     return !longer.some((l) => l !== ` ${own} ` && l.includes(` ${own} `));
   });
-  return [...hintCandidates(hints, kept), ...kept];
+  return [...hintCandidates(usable, kept), ...kept];
 }
 
 export function locationCandidates(e: Entities): LocationCandidate[] {
