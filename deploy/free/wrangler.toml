@@ -14,4 +14,4 @@ run_worker_first = ["/api/*"]
 
 [vars]
 # Your Render backend's address (Render dashboard → your service → its .onrender.com URL).
-API_ORIGIN = "https://YOUR-SERVICE.onrender.com"
+API_ORIGIN = "https://worldlens-api.onrender.com"
