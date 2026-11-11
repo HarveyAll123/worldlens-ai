@@ -1,6 +1,8 @@
 /**
- * Node.js server for local development and end-to-end tests (same Hono app as the Worker).
- * Reads configuration from process.env (and apps/api/.dev.vars if present).
+ * Node.js server (same Hono app as the Worker): local development, end-to-end tests, and the
+ * free one-server deployment (deploy/oracle: systemd passes the settings from the root-only
+ * /etc/worldlens/api.env). Reads configuration from process.env (and apps/api/.dev.vars if
+ * present). Listens on 127.0.0.1 only: in production Caddy is the way in.
  */
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
@@ -14,6 +16,7 @@ import { classifyDatabaseUrl, type SqlClient } from './data/sql';
 import { nodePostgresClient } from './data/sql-node';
 import pg from 'pg';
 import { TestMailbox } from './lib/mailer';
+import { viaTrustedProxy } from './lib/proxy';
 
 function parseDevVarsFile(file: string): Record<string, string> {
   if (!existsSync(file)) return {};
@@ -82,8 +85,24 @@ const deps = createDeps(env, {
   ...(testMailbox ? { testMailbox } : {}),
 });
 const app = createApp(deps);
-const port = Number(process.env.API_PORT ?? 8787);
-serve({ fetch: app.fetch, port, hostname: '127.0.0.1' }, (info) => {
+// On Render (the free deployment) the host gives the port and reaches the server from outside;
+// elsewhere it listens on this machine only.
+const onRender = !!process.env.RENDER;
+const port = Number((onRender ? process.env.PORT : undefined) ?? process.env.API_PORT ?? 8787);
+const hostname = onRender ? '0.0.0.0' : '127.0.0.1';
+// Behind the site's Cloudflare Worker (deploy/free): only its requests are served.
+const proxySecret = env.PROXY_SECRET?.trim();
+if (onRender && !proxySecret)
+  console.warn(
+    '[worldlens-api] PROXY_SECRET is not set: the API answers anyone who calls it directly.',
+  );
+const handle = proxySecret
+  ? (req: Request) => {
+      const checked = viaTrustedProxy(req, proxySecret);
+      return checked instanceof Response ? checked : app.fetch(checked);
+    }
+  : app.fetch;
+serve({ fetch: handle, port, hostname }, (info) => {
   const pp = deps.payments.publicConfig();
   const missing = [
     !deps.config.paypal.clientId && 'PAYPAL_CLIENT_ID',

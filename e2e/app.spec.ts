@@ -270,7 +270,22 @@ test.describe('place names and clusters', () => {
   test('a clicked cluster lists its events (news, history, battles) with Zoom in', async ({
     page,
   }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await openApp(page);
+    // The list closes when the camera moves: wait until the globe has loaded and settled (it
+    // has named places), so its first view cannot close the list under the test.
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            () =>
+              (
+                window as unknown as { __worldlens?: { labelCheck?: () => { names: number } } }
+              ).__worldlens?.labelCheck?.().names ?? 0,
+          ),
+        { timeout: 30_000 },
+      )
+      .toBeGreaterThan(0);
     const ids = await page
       .getByTestId('event-list-item')
       .evaluateAll((rows) => rows.slice(0, 3).map((r) => r.getAttribute('data-event-id')));

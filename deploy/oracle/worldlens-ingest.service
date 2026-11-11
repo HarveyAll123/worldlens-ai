@@ -1,0 +1,12 @@
+# Reads live news now (GDELT into Neon): the API's /api/ingest/run, called by
+# worldlens-ingest.timer. The token goes to curl on its standard input, never on a command line.
+[Unit]
+Description=WorldLens: read live news
+After=worldlens-api.service
+Requires=worldlens-api.service
+
+[Service]
+Type=oneshot
+DynamicUser=true
+EnvironmentFile=/etc/worldlens/api.env
+ExecStart=/bin/sh -c 'printf "Authorization: Bearer %%s\n" "$$INGEST_TOKEN" | curl -fsS -m 300 -X POST -H @- -o /dev/null http://127.0.0.1:8787/api/ingest/run'

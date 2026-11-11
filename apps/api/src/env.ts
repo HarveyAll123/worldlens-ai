@@ -61,6 +61,8 @@ export interface Env {
   /** Sender address (verified in Brevo) and name for account emails. */
   MAIL_FROM?: string;
   MAIL_FROM_NAME?: string;
+  /** Free deployment: the secret the site's Cloudflare Worker sends with every API request. */
+  PROXY_SECRET?: string;
   /**
    * The website's files (apps/web/dist), when this Worker serves them too (wrangler.toml
    * [assets]): the API reads its data files (place names, publisher directory) through it.

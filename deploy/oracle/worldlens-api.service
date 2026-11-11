@@ -1,0 +1,33 @@
+# The WorldLens API (the same app as the Cloudflare Worker, on Node.js), listening on 127.0.0.1.
+# Settings come from /etc/worldlens/api.env, which systemd reads as root before starting the
+# service: the service itself cannot read that file. It runs as "worldlens", which cannot change
+# its own code.
+[Unit]
+Description=WorldLens API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=worldlens
+Group=worldlens
+WorkingDirectory=/srv/worldlens
+EnvironmentFile=/etc/worldlens/api.env
+ExecStart=/srv/worldlens/node_modules/.bin/tsx apps/api/src/node-server.ts
+Restart=always
+RestartSec=5
+
+# Hardening: a read-only system, private /tmp, no new privileges.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictNamespaces=true
+
+[Install]
+WantedBy=multi-user.target

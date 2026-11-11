@@ -597,6 +597,12 @@ export function createApp(deps: AppDeps, defaults: { defer?: Defer } = {}) {
     const token = deps.config.ingestToken;
     const auth = c.req.header('Authorization');
     if (!token || auth !== `Bearer ${token}`) return c.json({ error: 'UNAUTHORIZED' }, 401);
+    // ?wait=0: start and answer at once (a scheduler such as cron-job.org gives up after ~30 s;
+    // on a small server a run can take longer). It carries on in the background.
+    if (c.req.query('wait') === '0') {
+      c.get('defer')(refreshLiveNews(deps, true));
+      return c.json({ ok: true, started: true }, 202);
+    }
     const run = await refreshLiveNews(deps, true);
     return c.json({
       ok: true,

@@ -524,14 +524,25 @@ export class PostgresNewsRepository implements EventRepository {
 
   private hydratedAt = Number.NEGATIVE_INFINITY;
   private hydration: Promise<void> | null = null;
+  /** When this instance's own latest ingestion finished (as the ingestion log records it). */
+  private ownRunMs: number | null = null;
 
   /**
    * Loads the live news stored in the database into this instance's memory, at most every few
    * minutes: on the Worker each instance has its own memory and only the cron's ingests, so
-   * search (the bar, the assistant) would otherwise miss stories the globe shows.
+   * search (the bar, the assistant) would otherwise miss stories the globe shows. A server that
+   * stored the latest news itself (one long-running instance) already holds it, so it skips the
+   * load and spares the database's free compute and transfer.
    */
   async hydrateLive(nowMs: number): Promise<void> {
     if (nowMs - this.hydratedAt < HYDRATE_EVERY_MS) return;
+    if (this.ownRunMs !== null) {
+      const stored = await this.latestIngestionMs(nowMs);
+      if (stored === null || stored <= this.ownRunMs) {
+        this.hydratedAt = nowMs;
+        return;
+      }
+    }
     this.hydration ??= this.guard(
       async () => {
         const rows = await this.db.query<EventRow>(
@@ -766,6 +777,7 @@ export class PostgresNewsRepository implements EventRepository {
   }
 
   async recordIngestionRun(run: IngestionRun): Promise<void> {
+    this.ownRunMs = Date.parse(run.finishedAt);
     await this.guard(
       () =>
         this.db.query(

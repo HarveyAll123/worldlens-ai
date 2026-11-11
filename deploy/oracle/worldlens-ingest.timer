@@ -1,0 +1,11 @@
+# Live news every 15 minutes (and 2 minutes after the server starts).
+[Unit]
+Description=WorldLens: read live news every 15 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=15min
+RandomizedDelaySec=30
+
+[Install]
+WantedBy=timers.target
