@@ -1,0 +1,60 @@
+# Render Blueprint: the WorldLens backend on Render's free plan, behind the site's Cloudflare
+# Worker (deploy/free). Render → New → Blueprint → this repository. Values marked sync: false
+# are asked for in Render's dashboard (stored there, encrypted) — never written in this file.
+services:
+  - type: web
+    name: worldlens-api
+    runtime: node
+    plan: free
+    region: singapore
+    # NODE_ENV=development: the dev tools the server runs with (tsx) are installed too.
+    buildCommand: NODE_ENV=development npx --yes pnpm@10.28.0 install --frozen-lockfile
+    startCommand: node_modules/.bin/tsx apps/api/src/node-server.ts
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: '24'
+      # Fits the free plan's 512 MB (the server uses about 260 MB).
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=384
+      # The site's address on Cloudflare (https://worldlens.<you>.workers.dev), twice.
+      - key: PUBLIC_APP_URL
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      # The same secret as the Cloudflare Worker's PROXY_SECRET.
+      - key: PROXY_SECRET
+        sync: false
+      - key: BETTER_AUTH_SECRET
+        sync: false
+      - key: INGEST_TOKEN
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: MAIL_PROVIDER
+        value: brevo
+      - key: MAIL_FROM_NAME
+        value: WorldLens
+      - key: PAYPAL_ENVIRONMENT
+        value: sandbox
+      - key: GDELT_ENABLED
+        value: 'true'
+      - key: AI_DAILY_BUDGET_USD
+        value: '5'
+      - key: AI_REQUESTS_PER_MINUTE
+        value: '8'

@@ -10,6 +10,8 @@ blob-report
 .env
 .env.*
 !.env.example
+# Server settings files such as deploy/oracle's api.env (the .example template stays).
+*.env
 *.log
 .DS_Store
 apps/web/public/cesium

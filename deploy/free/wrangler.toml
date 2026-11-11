@@ -1,0 +1,17 @@
+# The free deployment's front door: Cloudflare serves the website (apps/web/dist) and forwards
+# /api/* to the backend on Render (worker.ts). Deploy from the repository root:
+#   pnpm deploy:free
+# Secret, once:  pnpm --filter @worldlens/api exec wrangler secret put PROXY_SECRET --config ../../deploy/free/wrangler.toml
+name = "worldlens"
+main = "worker.ts"
+compatibility_date = "2026-10-01"
+
+# The website's files are served without running the Worker (free, unlimited); only /api/* runs it.
+[assets]
+directory = "../../apps/web/dist"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+[vars]
+# Your Render backend's address (Render dashboard → your service → its .onrender.com URL).
+API_ORIGIN = "https://YOUR-SERVICE.onrender.com"

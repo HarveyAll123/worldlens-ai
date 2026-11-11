@@ -1,0 +1,41 @@
+# WorldLens on one server: Caddy serves the site over HTTPS (certificates from Let's Encrypt,
+# renewed automatically) and passes /api/* to the API, which listens only on 127.0.0.1.
+# setup.sh writes this to /etc/caddy/Caddyfile with YOUR-DOMAIN replaced.
+
+YOUR-DOMAIN {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8787 {
+			# Visitors could forge these to dodge rate limits: the API sees the real address in
+			# X-Forwarded-For, which Caddy sets itself.
+			header_up -CF-Connecting-IP
+			header_up -X-Real-IP
+		}
+	}
+
+	handle {
+		root * /srv/worldlens/apps/web/dist
+		# Built files have a content hash in their names: cache them for a year.
+		@hashed path /assets/*
+		header @hashed Cache-Control "public, max-age=31536000, immutable"
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+# The same files for the API's own reads (place names, publisher directory) — this machine only.
+http://127.0.0.1:8080 {
+	bind 127.0.0.1
+	root * /srv/worldlens/apps/web/dist
+	file_server
+}

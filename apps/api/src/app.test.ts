@@ -953,3 +953,23 @@ describe('Wikimedia Commons image URLs', () => {
     expect(commonsFileFromUrl('https://example.com/wikipedia/commons/a/ab/X.jpg')).toBeNull();
   });
 });
+
+describe('reading live news on demand (/api/ingest/run)', () => {
+  const run = (path: string, token?: string) =>
+    setup({ env: { INGEST_TOKEN: 'secret-token', GDELT_ENABLED: 'false' } }).json(path, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+
+  it('needs the token', async () => {
+    expect((await run('/api/ingest/run')).status).toBe(401);
+    expect((await run('/api/ingest/run', 'wrong')).status).toBe(401);
+  });
+
+  it('?wait=0 answers at once and carries on in the background (for a scheduler)', async () => {
+    const r = await run('/api/ingest/run?wait=0', 'secret-token');
+    expect(r.status).toBe(202);
+    expect(r.body).toMatchObject({ ok: true, started: true });
+    expect((await run('/api/ingest/run', 'secret-token')).status).toBe(200);
+  });
+});

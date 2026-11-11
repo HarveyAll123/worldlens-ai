@@ -204,6 +204,31 @@ describe('PostgreSQL repository: news stored by another instance (the Worker’s
     expect(loads()).toBe(2);
   });
 
+  it('a server that stored the latest news itself does not load it back', async () => {
+    let latest = new Date(NOW - MIN);
+    const db = new FakeDb((text) => (text.includes('max(finished_at)') ? [{ at: latest }] : []));
+    const { repo } = repoOn(db);
+    await repo.recordIngestionRun({
+      startedAt: new Date(NOW - 2 * MIN).toISOString(),
+      finishedAt: latest.toISOString(),
+      provider: 'gdelt+rss',
+      queries: 1,
+      fetched: 1,
+      normalized: 1,
+      deduplicated: 1,
+      clusters: 1,
+      located: 1,
+      errors: [],
+    });
+    const loads = () => db.queries.filter((q) => q.text.includes('events_in_window')).length;
+    await repo.search('Congress', { limit: 10, nowMs: NOW, includeDemo: false });
+    expect(loads()).toBe(0);
+    // Another instance stores newer news: loaded at the next check.
+    latest = new Date(NOW + 2 * MIN);
+    await repo.search('Congress', { limit: 10, nowMs: NOW + 6 * MIN, includeDemo: false });
+    expect(loads()).toBe(1);
+  });
+
   it('knows when news was last stored, from the ingestion log (checked once a minute)', async () => {
     const at = new Date(NOW - 5 * MIN);
     const db = new FakeDb((text) => (text.includes('ingestion_runs') ? [{ at }] : []));

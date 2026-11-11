@@ -14,6 +14,7 @@
     "dev:node": "concurrently -k -n api,web -c blue,green \"pnpm --filter @worldlens/api dev:node\" \"pnpm --filter @worldlens/web dev\"",
     "build": "pnpm -r build",
     "deploy": "pnpm --filter @worldlens/web build && pnpm --filter @worldlens/api run deploy",
+    "deploy:free": "pnpm --filter @worldlens/web build && pnpm --filter @worldlens/api exec wrangler deploy --config ../../deploy/free/wrangler.toml",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
     "format": "prettier --write .",
