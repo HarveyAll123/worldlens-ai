@@ -6,3 +6,5 @@ export * from './text';
 export * from './account';
 export * from './publishers';
 export * from './place-names';
+export * from './fronts';
+export * from './rings';

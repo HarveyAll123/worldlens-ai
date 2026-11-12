@@ -4,12 +4,15 @@ import {
   decodePlaceNames,
   floorTo,
   toIso,
+  type Frontline,
   type PlaceNameRaw,
   type Resolution,
 } from '@worldlens/shared';
+import type * as FrontsModule from '@worldlens/shared/fronts-data';
 import { useEffect, useMemo, useState } from 'react';
 import type { BorderLineLike } from '../globe/GeometryLayers';
 import { parseOhmIndex, type Succession } from '../globe/ohm';
+import { LandSource, decodeLand, type LandCellIndex, type LandJson } from '../globe/land';
 import { api } from '../lib/api';
 import { eventsAt } from '../lib/timelineEvents';
 import { useAppStore } from '../state/store';
@@ -166,6 +169,72 @@ export function useFrontlines(enabled: boolean) {
     enabled,
     staleTime: 3_600_000,
   });
+}
+
+/**
+ * The land's outline, for keeping territory colours on land (globe/land.ts): the coarse
+ * world at once, the detailed cells as tiles inside them are painted.
+ */
+export function useLandOutline(enabled: boolean) {
+  return useQuery({
+    queryKey: ['land-outline'],
+    queryFn: async () => {
+      const get = async <T>(name: string): Promise<T> => {
+        const res = await fetch(`/data/land/${name}.json`);
+        if (!res.ok) throw new Error('land outline unavailable');
+        return (await res.json()) as T;
+      };
+      const [low, cells] = await Promise.all([
+        get<LandJson>('low'),
+        // Without the list of cells, close-up tiles use the coarse outline too.
+        get<LandCellIndex>('cells').catch(() => null),
+      ]);
+      return new LandSource(decodeLand(low), cells, (name) => get<LandJson>(name));
+    },
+    enabled,
+    staleTime: Number.POSITIVE_INFINITY,
+    retry: 1,
+  });
+}
+
+export type FrontsData = typeof FrontsModule;
+
+/**
+ * The reconstructed fronts' data and code (packages/shared fronts.ts): a separate chunk,
+ * loaded when a layer that shows them is first on.
+ */
+export function useFrontsData(enabled: boolean): FrontsData | null {
+  const [data, setData] = useState<FrontsData | null>(null);
+  useEffect(() => {
+    if (!enabled || data) return;
+    let stale = false;
+    void import('@worldlens/shared/fronts-data').then((m) => {
+      if (!stale) setData(m);
+    });
+    return () => {
+      stale = true;
+    };
+  }, [enabled, data]);
+  return data;
+}
+
+/** The timeline's moment, to the hour (now, in LIVE mode). */
+export function useTimelineHour(): number {
+  const mode = useAppStore((s) => s.mode);
+  const timeMs = useAppStore((s) => s.timeMs);
+  return floorTo(mode === 'live' ? Date.now() : timeMs, 'hour');
+}
+
+/**
+ * Front lines reconstructed in the browser for the timeline's moment: they move with every
+ * hour of the timeline and need no request.
+ */
+export function useReconstructedFronts(data: FrontsData | null, enabled: boolean): Frontline[] {
+  const hour = useTimelineHour();
+  return useMemo(
+    () => (enabled && data ? data.reconstructedFrontlines(hour) : []),
+    [enabled, data, hour],
+  );
 }
 
 export type BorderLineScale = '110m' | '50m' | '10m';

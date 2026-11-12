@@ -76,7 +76,7 @@ scripts/        Geodata build, basemap fetch, migration runner and test
 
 - Demo current events are synthetic, titled `DEMO:`, use fictional outlets and `.invalid` URLs.
 - Political ratings are `UNRATED` unless a rating with methodology, source, confidence and review date exists (enforced by Zod and a database CHECK constraint). Real outlets are rated only from Wikidata's community-edited "political alignment" statements (spectrum positions only, when they agree; low confidence, medium with a cited source); WorldLens never guesses one.
-- Borders/frontlines come only from dated, cited geometry; otherwise the UI says data is unavailable.
+- Borders and ceasefire lines come only from dated, cited geometry; otherwise the UI says data is unavailable. The fronts of past wars — 38 theatres from Napoleon's invasion of Russia to the wars in Croatia and Bosnia — are reconstructed day by day from when places changed hands and always labelled approximate (see DATA_MODEL.md → Reconstructed fronts); there are no live fronts of ongoing wars. Countries' colours are kept to the land with OpenStreetMap's coastline (© OpenStreetMap contributors, ODbL), and the holes in the dated-borders source are corrected by a listed set of patches (CONTENT_LICENSING.md → OpenHistoricalMap).
 - The AI cannot pay. No tool creates, approves or captures payments; success is shown only from PayPal's server-side response.
 
 ## License

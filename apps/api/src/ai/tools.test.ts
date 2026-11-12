@@ -147,6 +147,65 @@ describe('marking places', () => {
 });
 
 describe('what happened in a period', () => {
+  it('describes the reconstructed fronts of a date by places, as approximate', async () => {
+    const r = await runServerTool('get_frontline_at_date', { date: '1942-11-18' }, ctx());
+    expect(r.ok).toBe(true);
+    const result = r.result as {
+      available: boolean;
+      fronts: Array<{
+        name: string;
+        certainty: string;
+        side_a: string;
+        held_by_side_a_near_the_line: string[];
+        held_by_side_b_near_the_line: string[];
+        sources: string[];
+      }>;
+      fronts_note: string;
+    };
+    expect(result.available).toBe(true);
+    const east = result.fronts.find((f) => f.name === 'Eastern Front')!;
+    expect(east.certainty).toBe('RECONSTRUCTED');
+    expect(east.side_a).toMatch(/Axis/);
+    expect(east.held_by_side_a_near_the_line.length).toBeGreaterThan(5);
+    expect(east.held_by_side_b_near_the_line.length).toBeGreaterThan(5);
+    expect(east.sources.length).toBeLessThanOrEqual(3);
+    expect(result.fronts_note).toMatch(/approximately/);
+    // No war with a front: says so, and what exists.
+    const none = await runServerTool('get_frontline_at_date', { date: '1930-01-01' }, ctx());
+    const empty = none.result as {
+      available: boolean;
+      reconstructed_fronts_exist_for: Array<{ name: string; from: string; to: string }>;
+    };
+    expect(empty.available).toBe(false);
+    expect(empty.reconstructed_fronts_exist_for.map((f) => f.name)).toContain('Eastern Front');
+    // A country held whole by another, with no front to draw, is still reported.
+    const kuwait = await runServerTool('get_frontline_at_date', { date: '1990-10-01' }, ctx());
+    const held = kuwait.result as {
+      available: boolean;
+      occupations_in_force: Array<{ occupier: string; occupied: string; from: string }>;
+    };
+    expect(held.available).toBe(true);
+    expect(held.occupations_in_force).toEqual([
+      expect.objectContaining({ occupier: 'Iraq', occupied: 'Kuwait', from: '1990-08-02' }),
+    ]);
+  });
+
+  it('compares a front at two dates by the places that changed hands', async () => {
+    const r = await runServerTool(
+      'compare_frontlines',
+      { conflict_id: 'conflict-world-war-ii', date_a: '1943-07-04', date_b: '1943-12-31' },
+      ctx(),
+    );
+    const result = r.result as {
+      a: string[];
+      fronts_between_the_dates: Array<Record<string, unknown> & { name: string }>;
+    };
+    expect(result.a).toContain('Eastern Front (reconstructed)');
+    const east = result.fronts_between_the_dates.find((f) => f.name === 'Eastern Front')!;
+    const retaken = east['taken_by_Soviet Union'] as string[];
+    expect(retaken).toEqual(expect.arrayContaining(['Kharkov', 'Smolensk', 'Kiev']));
+  });
+
   it('lists a year of history, most important first; refuses before 1800 and the future', async () => {
     const r = await runServerTool('list_events', { date: '1815', kind: 'historical' }, ctx());
     const events = (r.result as { events: { title: string }[] }).events;

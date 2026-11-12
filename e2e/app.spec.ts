@@ -267,6 +267,58 @@ test.describe('place names and clusters', () => {
     await expect(chip).toHaveCount(0);
   });
 
+  test('a war year: countries are filled with colour and the fronts are drawn', async ({
+    page,
+  }) => {
+    await openApp(page);
+    // Fills are off at the lowest graphics quality (the test browser's software renderer).
+    await page.evaluate(
+      new Function(
+        `return (async () => { ${store}
+          const s = useAppStore.getState();
+          s.setQuality('MEDIUM');
+          s.setTime(Date.parse('1942-11-18T12:00:00Z'), 'day'); })()`,
+      ) as () => Promise<void>,
+    );
+    // The globe may still be starting: no diagnostics yet reads as nothing drawn.
+    const drawn = () =>
+      page.evaluate(() => {
+        const d = (
+          window as unknown as {
+            __worldlens?: {
+              diagnostics: () => {
+                territories: number;
+                warZones: number;
+                frontlines: number;
+                territoryTiles: number;
+              };
+            };
+          }
+        ).__worldlens?.diagnostics();
+        return d
+          ? {
+              territories: d.territories,
+              warZones: d.warZones,
+              frontlines: d.frontlines,
+              tiles: d.territoryTiles,
+            }
+          : null;
+      });
+    await expect
+      .poll(
+        async () => {
+          const d = await drawn();
+          // Countries, war zones (with the occupations in force), fronts — and tiles painted.
+          return !!d && d.territories > 100 && d.warZones >= 4 && d.frontlines >= 4 && d.tiles > 0;
+        },
+        { timeout: 45_000 },
+      )
+      .toBe(true);
+    // Back in LIVE there is no past date to colour and no reconstructed front.
+    await page.getByTestId('return-to-live').first().click();
+    await expect.poll(async () => (await drawn())?.territories, { timeout: 20_000 }).toBe(0);
+  });
+
   test('a clicked cluster lists its events (news, history, battles) with Zoom in', async ({
     page,
   }) => {

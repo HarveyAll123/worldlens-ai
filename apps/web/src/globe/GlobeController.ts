@@ -20,6 +20,8 @@ import {
   type PlaceMarkDraw,
 } from './GeometryLayers';
 import { PlaceLabelLayer } from './PlaceLabelLayer';
+import { TerritoryLayer, territoryPainting } from './TerritoryLayer';
+import type { TerritoryScene } from './territory';
 import type { PlaceName } from '@worldlens/shared';
 import { nightLightsAt, type NightLightsLook } from './nightLights';
 import {
@@ -58,6 +60,13 @@ export interface GlobeDiagnostics {
   clusters: number;
   visiblePolygons: number;
   frontlines: number;
+  /** Countries filled by the Territories layer, and wars whose held ground it colours. */
+  territories: number;
+  warZones: number;
+  /** Territory map tiles painted so far, how many reused a kept picture, and the time taken. */
+  territoryTiles: number;
+  territoryTilesKept: number;
+  territoryPaintMs: number;
   networkRequests: number;
   imagery: ImageryKind | 'loading';
   terrain: TerrainKind;
@@ -112,6 +121,7 @@ export class GlobeController {
   private borders: BordersLayer;
   private highlight: HighlightLayer;
   private frontlines: FrontlineLayer;
+  private territory: TerritoryLayer;
   private countryOutline: OutlineLayer;
   private places: PlaceLabelLayer;
   private placeMark: PlaceMarkLayer;
@@ -201,6 +211,7 @@ export class GlobeController {
     this.borders = new BordersLayer(scene);
     this.highlight = new HighlightLayer(scene);
     this.frontlines = new FrontlineLayer(scene);
+    this.territory = new TerritoryLayer(this.viewer);
     this.countryOutline = new OutlineLayer(scene);
     this.places = new PlaceLabelLayer(scene);
     this.placeMark = new PlaceMarkLayer(scene);
@@ -551,6 +562,17 @@ export class GlobeController {
     this.frontlines.set(this.frontlinesState, this.clampToGround);
   }
 
+  /**
+   * Countries filled with their colours and, in a war, the ground each side holds
+   * (territory.ts); null clears them. Not drawn at the lowest graphics quality.
+   */
+  setTerritories(scene: TerritoryScene | null): void {
+    this.territoryState = scene;
+    this.territory.set(TIER_SETTINGS[this.perf.quality.tier].borderFills ? scene : null);
+  }
+
+  private territoryState: TerritoryScene | null = null;
+
   flyTo(lat: number, lon: number, altitudeKm: number): void {
     const destination = Cesium.Cartesian3.fromDegrees(lon, lat, Math.max(1, altitudeKm) * 1000);
     const camera = this.viewer.camera;
@@ -645,6 +667,11 @@ export class GlobeController {
       clusters: this.events.stats.clusters,
       visiblePolygons: this.borders.stats.polygons,
       frontlines: this.frontlines.stats.lines,
+      territories: this.territory.stats.countries,
+      warZones: this.territory.stats.zones,
+      territoryTiles: territoryPainting.tiles,
+      territoryTilesKept: territoryPainting.kept,
+      territoryPaintMs: Math.round(territoryPainting.ms),
       networkRequests: this.networkRequests,
       imagery: this.imagery,
       terrain: this.terrainKind,

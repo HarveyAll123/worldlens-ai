@@ -21,9 +21,14 @@ const LAYERS: Array<{ id: LayerId; label: string; hint: string }> = [
     hint: 'Change on the exact day (OpenHistoricalMap); today’s from Natural Earth',
   },
   {
+    id: 'territories',
+    label: 'Territories',
+    hint: 'On a past date: countries filled with their colours, and in a war the ground each side holds (reconstructed; approximate). Coastline © OpenStreetMap contributors',
+  },
+  {
     id: 'frontlines',
     label: 'Frontlines / ceasefire lines',
-    hint: 'Dated ceasefire and control lines (Natural Earth); no live war frontlines',
+    hint: 'Fronts of past wars, moving day by day (reconstructed from when places changed hands; approximate), and ceasefire lines (Natural Earth). No live war frontlines',
   },
   { id: 'labels', label: 'Event names', hint: 'Titles beside event markers' },
   {

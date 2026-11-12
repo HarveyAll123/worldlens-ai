@@ -8,6 +8,10 @@ apps/web/public/cesium
 apps/web/public/vendor
 packages/shared/src/data/geo/*.json
 packages/shared/src/data/battles.json
+# Built by `pnpm data:fronts` / `pnpm data:land-mask`
+packages/shared/src/data/fronts/*.json
+scripts/fronts/coords.json
+scripts/fronts/data/*.json
 .wrangler
 apps/web/public/data
 .claude/skills

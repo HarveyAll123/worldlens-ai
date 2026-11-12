@@ -27,6 +27,13 @@ import {
   type WorldEvent,
 } from '@worldlens/shared';
 import { CONFLICTS } from '@worldlens/shared/data';
+import { changesBetween, dayNumber, theatreActive } from '@worldlens/shared';
+import {
+  FRONT_THEATRES,
+  frontBriefs,
+  frontTheatreList,
+  occupationBriefs,
+} from '@worldlens/shared/fronts-data';
 import { findCountry, resolvePlace } from '@worldlens/shared/geo-data';
 import type { EventRepository } from '../data/repository';
 import type { HistoricalBordersProvider } from '../providers/borders';
@@ -349,18 +356,36 @@ export async function runServerTool(
     }
     case 'get_frontline_at_date': {
       const a = parsed.data as { date: string; conflict_id?: string };
-      const lines = await ctx.repo.frontlinesAt(parseIso(a.date), a.conflict_id);
+      const ms = parseIso(a.date);
+      const lines = await ctx.repo.frontlinesAt(ms, a.conflict_id);
+      // Fronts of past wars, reconstructed for this moment from when places changed hands.
+      const fronts = frontBriefs(ms, a.conflict_id).map(({ sources, ...f }) => ({
+        ...f,
+        sources: sources.slice(0, 3),
+      }));
+      // Countries held whole by another on this date (no front to draw): painted on the map.
+      const occupations = occupationBriefs(ms, a.conflict_id);
       return {
         ok: true,
         result:
-          lines.length === 0
+          lines.length === 0 && fronts.length === 0 && occupations.length === 0
             ? {
                 available: false,
                 reason:
-                  'No verified frontline or control-line geometry is loaded for this date. WorldLens does not invent frontlines.',
+                  'No front line or control line is loaded for this date. WorldLens does not invent frontlines.',
+                // What exists, so another date or war can be offered.
+                reconstructed_fronts_exist_for: frontTheatreList(a.conflict_id),
               }
             : {
                 available: true,
+                ...(occupations.length ? { occupations_in_force: occupations } : {}),
+                ...(fronts.length
+                  ? {
+                      fronts,
+                      fronts_note:
+                        'These fronts are reconstructions, not surveyed lines: say "approximately" and name places, not exact courses.',
+                    }
+                  : {}),
                 lines: lines.map((l) => ({
                   id: l.id,
                   name: l.name,
@@ -407,18 +432,41 @@ export async function runServerTool(
     }
     case 'compare_frontlines': {
       const a = parsed.data as { conflict_id: string; date_a: string; date_b: string };
+      const [msA, msB] = [parseIso(a.date_a), parseIso(a.date_b)];
       const [la, lb] = await Promise.all([
-        ctx.repo.frontlinesAt(parseIso(a.date_a), a.conflict_id),
-        ctx.repo.frontlinesAt(parseIso(a.date_b), a.conflict_id),
+        ctx.repo.frontlinesAt(msA, a.conflict_id),
+        ctx.repo.frontlinesAt(msB, a.conflict_id),
       ]);
       const known = CONFLICTS.find((c) => c.id === a.conflict_id);
+      // Reconstructed fronts: what changed hands between the two dates.
+      const [dayA, dayB] = [dayNumber(msA), dayNumber(msB)];
+      const fronts = FRONT_THEATRES.filter(
+        (t) => t.conflictId === a.conflict_id && (theatreActive(t, dayA) || theatreActive(t, dayB)),
+      ).map((t) => {
+        const { toA, toB } = changesBetween(t, Math.min(dayA, dayB), Math.max(dayA, dayB));
+        return {
+          name: t.name,
+          certainty: 'RECONSTRUCTED',
+          [`taken_by_${t.sideA}`]: toA.slice(0, 120),
+          [`taken_by_${t.sideB}`]: toB.slice(0, 120),
+          places_that_changed_hands: toA.length + toB.length,
+        };
+      });
+      const names = (list: typeof la, ms: number) => {
+        const all = [
+          ...list.map((l) => l.name),
+          ...frontBriefs(ms, a.conflict_id).map((f) => `${f.name} (reconstructed)`),
+        ];
+        return all.length ? all : 'unavailable';
+      };
       return {
         ok: true,
         result: {
           conflict: known?.name ?? a.conflict_id,
-          a: la.length ? la.map((l) => l.name) : 'unavailable',
-          b: lb.length ? lb.map((l) => l.name) : 'unavailable',
-          note: 'Frontline comparison is only possible where verified, dated geometry exists for both dates.',
+          a: names(la, msA),
+          b: names(lb, msB),
+          ...(fronts.length ? { fronts_between_the_dates: fronts } : {}),
+          note: 'Reconstructed fronts are approximate: exact where a listed place changed hands, interpolated in between. Ceasefire lines compare only where dated geometry exists for both dates.',
         },
         citations,
       };

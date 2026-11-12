@@ -559,6 +559,9 @@ export class FrontlineLayer {
       // Label the longest part, at its middle vertex.
       const longest = [...parts].sort((a, b) => b.length - a.length)[0];
       const first = longest?.[Math.floor(longest.length / 2)];
+      // A war's front (reconstructed day by day) spans a continent: its name shows from
+      // further out than a ceasefire line's.
+      const front = f.certainty === 'RECONSTRUCTED';
       if (first)
         this.labels.add({
           position: Cesium.Cartesian3.fromDegrees(first[0]!, first[1]!),
@@ -570,7 +573,9 @@ export class FrontlineLayer {
           pixelOffset: new Cesium.Cartesian2(0, -14),
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
           // Names only once zoomed in: from orbit, neighbouring lines' labels pile up.
-          translucencyByDistance: new Cesium.NearFarScalar(3.0e6, 1.0, 7.0e6, 0.0),
+          translucencyByDistance: front
+            ? new Cesium.NearFarScalar(7.0e6, 1.0, 1.3e7, 0.0)
+            : new Cesium.NearFarScalar(3.0e6, 1.0, 7.0e6, 0.0),
         });
     }
     this.lines.set(strokes, clampToGround);

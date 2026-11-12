@@ -1,0 +1,5367 @@
+{
+ "'s-Hertogenbosch": {
+  "lat": 51.7,
+  "lon": 5.3167,
+  "qid": "Q2766547"
+ },
+ "Aachen": {
+  "lat": 50.7762,
+  "lon": 6.0838,
+  "qid": "Q1017"
+ },
+ "Abbeville": {
+  "lat": 50.1053,
+  "lon": 1.8353,
+  "qid": "Q28520"
+ },
+ "Agen": {
+  "lat": 44.2031,
+  "lon": 0.6186,
+  "qid": "Q6625"
+ },
+ "Agrigento": {
+  "lat": 37.3125,
+  "lon": 13.575,
+  "qid": "Q13678"
+ },
+ "Aix-en-Provence": {
+  "lat": 43.5278,
+  "lon": 5.4456,
+  "qid": "Q47465"
+ },
+ "Ajdabiya": {
+  "lat": 30.7556,
+  "lon": 20.2253,
+  "qid": "Q202991"
+ },
+ "Al-Khums": {
+  "lat": 32.6497,
+  "lon": 14.2644,
+  "qid": "Q310381"
+ },
+ "Albert, Somme": {
+  "lat": 50.0019,
+  "lon": 2.6522,
+  "qid": "Q30940"
+ },
+ "Alençon": {
+  "lat": 48.4297,
+  "lon": 0.0919,
+  "qid": "Q181269"
+ },
+ "Alexandria": {
+  "lat": 31.1975,
+  "lon": 29.8925,
+  "qid": "Q87"
+ },
+ "Amiens": {
+  "lat": 49.8919,
+  "lon": 2.2978,
+  "qid": "Q41604"
+ },
+ "Amsterdam": {
+  "lat": 52.3667,
+  "lon": 4.8833,
+  "qid": "Q727"
+ },
+ "Anapa": {
+  "lat": 44.8944,
+  "lon": 37.3167,
+  "qid": "Q15758"
+ },
+ "Ancona": {
+  "lat": 43.6167,
+  "lon": 13.5167,
+  "qid": "Q3415"
+ },
+ "Andong": {
+  "lat": 36.5656,
+  "lon": 128.725,
+  "qid": "Q42116"
+ },
+ "Andreapol": {
+  "lat": 56.65,
+  "lon": 32.2667,
+  "qid": "Q103604"
+ },
+ "Angers": {
+  "lat": 47.4711,
+  "lon": -0.5519,
+  "qid": "Q38380"
+ },
+ "Angoulême": {
+  "lat": 45.6494,
+  "lon": 0.1594,
+  "qid": "Q134346"
+ },
+ "Anju, South Pyongan": {
+  "lat": 39.6167,
+  "lon": 125.6667,
+  "qid": "Q196236"
+ },
+ "Ankang": {
+  "lat": 32.6877,
+  "lon": 109.0235,
+  "qid": "Q515846"
+ },
+ "Annaba": {
+  "lat": 36.9,
+  "lon": 7.7667,
+  "qid": "Q45942"
+ },
+ "Annecy": {
+  "lat": 45.8992,
+  "lon": 6.1294,
+  "qid": "Q50189"
+ },
+ "Anqing": {
+  "lat": 30.5,
+  "lon": 117.0333,
+  "qid": "Q360374"
+ },
+ "Antwerp": {
+  "lat": 51.2211,
+  "lon": 4.3997,
+  "qid": "Q12892"
+ },
+ "Anyang": {
+  "lat": 36.0956,
+  "lon": 114.3461,
+  "qid": "Q324293"
+ },
+ "Anzio": {
+  "lat": 41.4472,
+  "lon": 12.6283,
+  "qid": "Q241717"
+ },
+ "Apeldoorn": {
+  "lat": 52.2167,
+  "lon": 5.95,
+  "qid": "Q101918"
+ },
+ "Aprilia, Lazio": {
+  "lat": 41.5833,
+  "lon": 12.65,
+  "qid": "Q128052"
+ },
+ "Arad, Romania": {
+  "lat": 46.1667,
+  "lon": 21.3167,
+  "qid": "Q173591"
+ },
+ "Arezzo": {
+  "lat": 43.4631,
+  "lon": 11.8781,
+  "qid": "Q13378"
+ },
+ "Argenta, Emilia–Romagna": {
+  "lat": 44.6148,
+  "lon": 11.8368,
+  "qid": "Q95090"
+ },
+ "Argentan": {
+  "lat": 48.7444,
+  "lon": -0.0203,
+  "qid": "Q207622"
+ },
+ "Arlon": {
+  "lat": 49.6836,
+  "lon": 5.8167,
+  "qid": "Q675960"
+ },
+ "Armavir, Russia": {
+  "lat": 45,
+  "lon": 41.1167,
+  "qid": "Q15767"
+ },
+ "Armentières": {
+  "lat": 50.6872,
+  "lon": 2.8803,
+  "qid": "Q193925"
+ },
+ "Armyansk": {
+  "lat": 46.1072,
+  "lon": 33.6933,
+  "qid": "Q688716"
+ },
+ "Arnhem": {
+  "lat": 51.9833,
+  "lon": 5.9167,
+  "qid": "Q1310"
+ },
+ "Arras": {
+  "lat": 50.2892,
+  "lon": 2.78,
+  "qid": "Q131329"
+ },
+ "Asipovichy": {
+  "lat": 53.3,
+  "lon": 28.6333,
+  "qid": "Q742161"
+ },
+ "Astrakhan": {
+  "lat": 46.35,
+  "lon": 48.035,
+  "qid": "Q3927"
+ },
+ "Augsburg": {
+  "lat": 48.3689,
+  "lon": 10.8978,
+  "qid": "Q2749"
+ },
+ "Augusta, Sicily": {
+  "lat": 37.2303,
+  "lon": 15.2194,
+  "qid": "Q194005"
+ },
+ "Autun": {
+  "lat": 46.9511,
+  "lon": 4.2986,
+  "qid": "Q190827"
+ },
+ "Avellino": {
+  "lat": 40.9153,
+  "lon": 14.7897,
+  "qid": "Q13433"
+ },
+ "Avezzano": {
+  "lat": 42.031,
+  "lon": 13.4264,
+  "qid": "Q47125"
+ },
+ "Avignon": {
+  "lat": 43.9486,
+  "lon": 4.8083,
+  "qid": "Q6397"
+ },
+ "Avranches": {
+  "lat": 48.6844,
+  "lon": -1.3569,
+  "qid": "Q204430"
+ },
+ "Azov": {
+  "lat": 47.1,
+  "lon": 39.4167,
+  "qid": "Q102762"
+ },
+ "Babruysk": {
+  "lat": 53.15,
+  "lon": 29.2333,
+  "qid": "Q207294"
+ },
+ "Bahariya Oasis": {
+  "lat": 28.3515,
+  "lon": 28.8624,
+  "qid": "Q738878"
+ },
+ "Bailleul, Nord": {
+  "lat": 50.7375,
+  "lon": 2.7339,
+  "qid": "Q332310"
+ },
+ "Bakhchysarai": {
+  "lat": 44.7528,
+  "lon": 33.8608,
+  "qid": "Q158604"
+ },
+ "Bakhmach": {
+  "lat": 51.181,
+  "lon": 32.8163,
+  "qid": "Q149144"
+ },
+ "Bakhmut": {
+  "lat": 48.5947,
+  "lon": 38.0008,
+  "qid": "Q706857"
+ },
+ "Balta, Ukraine": {
+  "lat": 47.9361,
+  "lon": 29.6225,
+  "qid": "Q805554"
+ },
+ "Bălți": {
+  "lat": 47.7617,
+  "lon": 27.9289,
+  "qid": "Q37801"
+ },
+ "Baltiysk": {
+  "lat": 54.65,
+  "lon": 19.9167,
+  "qid": "Q5660"
+ },
+ "Bamberg": {
+  "lat": 49.8917,
+  "lon": 10.8917,
+  "qid": "Q3936"
+ },
+ "Banská Bystrica": {
+  "lat": 48.7353,
+  "lon": 19.1453,
+  "qid": "Q144983"
+ },
+ "Baoding": {
+  "lat": 38.8671,
+  "lon": 115.4845,
+  "qid": "Q58584"
+ },
+ "Baoshan, Yunnan": {
+  "lat": 25.1211,
+  "lon": 99.169,
+  "qid": "Q496576"
+ },
+ "Baotou": {
+  "lat": 40.6562,
+  "lon": 109.8345,
+  "qid": "Q569907"
+ },
+ "Bapaume": {
+  "lat": 50.1036,
+  "lon": 2.8511,
+  "qid": "Q317235"
+ },
+ "Bar-le-Duc": {
+  "lat": 48.7717,
+  "lon": 5.1672,
+  "qid": "Q185721"
+ },
+ "Baranovichi": {
+  "lat": 53.1325,
+  "lon": 26.0178,
+  "qid": "Q237655"
+ },
+ "Bardia": {
+  "lat": 31.76,
+  "lon": 25.075,
+  "qid": "Q141687"
+ },
+ "Bari": {
+  "lat": 41.1253,
+  "lon": 16.8667,
+  "qid": "Q3519"
+ },
+ "Barvinkove": {
+  "lat": 48.9067,
+  "lon": 37.0131,
+  "qid": "Q809665"
+ },
+ "Barysaw": {
+  "lat": 54.2243,
+  "lon": 28.512,
+  "qid": "Q19313"
+ },
+ "Basel": {
+  "lat": 47.5581,
+  "lon": 7.5878,
+  "qid": "Q78"
+ },
+ "Bassano del Grappa": {
+  "lat": 45.7667,
+  "lon": 11.7342,
+  "qid": "Q47094"
+ },
+ "Bastogne": {
+  "lat": 50.0042,
+  "lon": 5.72,
+  "qid": "Q34021"
+ },
+ "Bataysk": {
+  "lat": 47.1333,
+  "lon": 39.75,
+  "qid": "Q104649"
+ },
+ "Bayeux": {
+  "lat": 49.2786,
+  "lon": -0.7039,
+  "qid": "Q183910"
+ },
+ "Bayonne": {
+  "lat": 43.4925,
+  "lon": -1.4764,
+  "qid": "Q134674"
+ },
+ "Bayreuth": {
+  "lat": 49.9481,
+  "lon": 11.5783,
+  "qid": "Q3923"
+ },
+ "Beauvais": {
+  "lat": 49.4342,
+  "lon": 2.0875,
+  "qid": "Q174257"
+ },
+ "Beijing": {
+  "lat": 39.904,
+  "lon": 116.4075,
+  "qid": "Q956"
+ },
+ "Béja": {
+  "lat": 36.7256,
+  "lon": 9.1817,
+  "qid": "Q814982"
+ },
+ "Belfort": {
+  "lat": 47.6375,
+  "lon": 6.8628,
+  "qid": "Q171545"
+ },
+ "Belgorod": {
+  "lat": 50.6,
+  "lon": 36.6,
+  "qid": "Q3323"
+ },
+ "Belgrade": {
+  "lat": 44.8178,
+  "lon": 20.4569,
+  "qid": "Q3711"
+ },
+ "Belluno": {
+  "lat": 46.1408,
+  "lon": 12.2156,
+  "qid": "Q6558"
+ },
+ "Belomorsk": {
+  "lat": 64.5167,
+  "lon": 34.7667,
+  "qid": "Q104773"
+ },
+ "Bely, Tver Oblast": {
+  "lat": 55.8333,
+  "lon": 32.9333,
+  "qid": "Q104984"
+ },
+ "Belyov": {
+  "lat": 53.8,
+  "lon": 36.1333,
+  "qid": "Q104707"
+ },
+ "Ben Gardane": {
+  "lat": 33.1389,
+  "lon": 11.2167,
+  "qid": "Q1143002"
+ },
+ "Bender, Moldova": {
+  "lat": 46.8333,
+  "lon": 29.4833,
+  "qid": "Q192176"
+ },
+ "Benevento": {
+  "lat": 41.1333,
+  "lon": 14.7833,
+  "qid": "Q13437"
+ },
+ "Bengbu": {
+  "lat": 32.9354,
+  "lon": 117.3531,
+  "qid": "Q360069"
+ },
+ "Benghazi": {
+  "lat": 32.1167,
+  "lon": 20.0667,
+  "qid": "Q40816"
+ },
+ "Berdyansk": {
+  "lat": 46.7556,
+  "lon": 36.7889,
+  "qid": "Q33292"
+ },
+ "Berdychiv": {
+  "lat": 49.8919,
+  "lon": 28.6,
+  "qid": "Q158799"
+ },
+ "Berestyn": {
+  "lat": 49.3719,
+  "lon": 35.4569,
+  "qid": "Q1104739"
+ },
+ "Bergen op Zoom": {
+  "lat": 51.5,
+  "lon": 4.3,
+  "qid": "Q192508"
+ },
+ "Bergerac, Dordogne": {
+  "lat": 44.8536,
+  "lon": 0.4875,
+  "qid": "Q187911"
+ },
+ "Berlin": {
+  "lat": 52.5167,
+  "lon": 13.3833,
+  "qid": "Q64"
+ },
+ "Bern": {
+  "lat": 46.948,
+  "lon": 7.4474,
+  "qid": "Q70"
+ },
+ "Besançon": {
+  "lat": 47.2422,
+  "lon": 6.0214,
+  "qid": "Q37776"
+ },
+ "Béthune": {
+  "lat": 50.5309,
+  "lon": 2.6393,
+  "qid": "Q207145"
+ },
+ "Biała Podlaska": {
+  "lat": 52.0333,
+  "lon": 23.1333,
+  "qid": "Q209932"
+ },
+ "Białystok": {
+  "lat": 53.1324,
+  "lon": 23.1687,
+  "qid": "Q761"
+ },
+ "Bielefeld": {
+  "lat": 52.0167,
+  "lon": 8.5333,
+  "qid": "Q2112"
+ },
+ "Bila Tserkva": {
+  "lat": 49.7956,
+  "lon": 30.1167,
+  "qid": "Q33342"
+ },
+ "Bir Hakeim": {
+  "lat": 31.5939,
+  "lon": 23.48,
+  "qid": "Q864959"
+ },
+ "Bizerte": {
+  "lat": 37.2744,
+  "lon": 9.8739,
+  "qid": "Q189546"
+ },
+ "Boguchar": {
+  "lat": 49.9333,
+  "lon": 40.55,
+  "qid": "Q105264"
+ },
+ "Bolkhov": {
+  "lat": 53.45,
+  "lon": 36,
+  "qid": "Q105323"
+ },
+ "Bologna": {
+  "lat": 44.4939,
+  "lon": 11.3428,
+  "qid": "Q1891"
+ },
+ "Bologoye, Tver Oblast": {
+  "lat": 57.8787,
+  "lon": 34.0789,
+  "qid": "Q105298"
+ },
+ "Bolzano": {
+  "lat": 46.4981,
+  "lon": 11.3548,
+  "qid": "Q6526"
+ },
+ "Bonn": {
+  "lat": 50.7353,
+  "lon": 7.1022,
+  "qid": "Q586"
+ },
+ "Bordeaux": {
+  "lat": 44.8378,
+  "lon": -0.5794,
+  "qid": "Q1479"
+ },
+ "Borisoglebsk": {
+  "lat": 51.3667,
+  "lon": 42.0833,
+  "qid": "Q132698"
+ },
+ "Botoșani": {
+  "lat": 47.7486,
+  "lon": 26.6694,
+  "qid": "Q178855"
+ },
+ "Boulogne-sur-Mer": {
+  "lat": 50.7256,
+  "lon": 1.6139,
+  "qid": "Q81997"
+ },
+ "Bourg-en-Bresse": {
+  "lat": 46.2047,
+  "lon": 5.2281,
+  "qid": "Q133069"
+ },
+ "Bourges": {
+  "lat": 47.0794,
+  "lon": 2.3958,
+  "qid": "Q132404"
+ },
+ "Brașov": {
+  "lat": 45.6522,
+  "lon": 25.6106,
+  "qid": "Q82174"
+ },
+ "Bratislava": {
+  "lat": 48.1517,
+  "lon": 17.1093,
+  "qid": "Q1780"
+ },
+ "Braunschweig": {
+  "lat": 52.2692,
+  "lon": 10.5211,
+  "qid": "Q2773"
+ },
+ "Breda": {
+  "lat": 51.5889,
+  "lon": 4.7758,
+  "qid": "Q40844"
+ },
+ "Brega": {
+  "lat": 30.4061,
+  "lon": 19.5739,
+  "qid": "Q36219"
+ },
+ "Bregenz": {
+  "lat": 47.505,
+  "lon": 9.7492,
+  "qid": "Q1737"
+ },
+ "Bremen": {
+  "lat": 53.0758,
+  "lon": 8.8072,
+  "qid": "Q24879"
+ },
+ "Brescia": {
+  "lat": 45.5389,
+  "lon": 10.2203,
+  "qid": "Q6221"
+ },
+ "Brest, Belarus": {
+  "lat": 52.0847,
+  "lon": 23.6569,
+  "qid": "Q140147"
+ },
+ "Brest, France": {
+  "lat": 48.3906,
+  "lon": -4.4861,
+  "qid": "Q12193"
+ },
+ "Briey": {
+  "lat": 49.2486,
+  "lon": 5.9394,
+  "qid": "Q215053"
+ },
+ "Brindisi": {
+  "lat": 40.6383,
+  "lon": 17.9458,
+  "qid": "Q13496"
+ },
+ "Brno": {
+  "lat": 49.1953,
+  "lon": 16.6083,
+  "qid": "Q14960"
+ },
+ "Brody": {
+  "lat": 50.0781,
+  "lon": 25.1542,
+  "qid": "Q465104"
+ },
+ "Bruges": {
+  "lat": 51.2089,
+  "lon": 3.2242,
+  "qid": "Q12994"
+ },
+ "Brussels": {
+  "lat": 50.8467,
+  "lon": 4.3525,
+  "qid": "Q240"
+ },
+ "Bryansk": {
+  "lat": 53.2425,
+  "lon": 34.3667,
+  "qid": "Q2801"
+ },
+ "Bucharest": {
+  "lat": 44.4134,
+  "lon": 26.0978,
+  "qid": "Q19660"
+ },
+ "Budapest": {
+  "lat": 47.4983,
+  "lon": 19.0408,
+  "qid": "Q1781"
+ },
+ "Busan": {
+  "lat": 35.18,
+  "lon": 129.075,
+  "qid": "Q16520"
+ },
+ "Bydgoszcz": {
+  "lat": 53.1167,
+  "lon": 18,
+  "qid": "Q41252"
+ },
+ "Caen": {
+  "lat": 49.1814,
+  "lon": -0.3636,
+  "qid": "Q41185"
+ },
+ "Cairo": {
+  "lat": 30.0444,
+  "lon": 31.2358,
+  "qid": "Q85"
+ },
+ "Calais": {
+  "lat": 50.9475,
+  "lon": 1.8556,
+  "qid": "Q6454"
+ },
+ "Cambrai": {
+  "lat": 50.1758,
+  "lon": 3.2347,
+  "qid": "Q181285"
+ },
+ "Campobasso": {
+  "lat": 41.561,
+  "lon": 14.6684,
+  "qid": "Q3497"
+ },
+ "Cangzhou": {
+  "lat": 38.3037,
+  "lon": 116.8452,
+  "qid": "Q58695"
+ },
+ "Cannes": {
+  "lat": 43.5525,
+  "lon": 7.0214,
+  "qid": "Q39984"
+ },
+ "Capua": {
+  "lat": 41.1056,
+  "lon": 14.2139,
+  "qid": "Q58477"
+ },
+ "Carentan": {
+  "lat": 49.3033,
+  "lon": -1.2483,
+  "qid": "Q242091"
+ },
+ "Caserta": {
+  "lat": 41.0667,
+  "lon": 14.3333,
+  "qid": "Q1906"
+ },
+ "Cassino": {
+  "lat": 41.4917,
+  "lon": 13.8333,
+  "qid": "Q116592"
+ },
+ "Catania": {
+  "lat": 37.5027,
+  "lon": 15.0873,
+  "qid": "Q1903"
+ },
+ "Celle": {
+  "lat": 52.6256,
+  "lon": 10.0825,
+  "qid": "Q3933"
+ },
+ "Cesena": {
+  "lat": 44.1333,
+  "lon": 12.2333,
+  "qid": "Q6662"
+ },
+ "České Budějovice": {
+  "lat": 48.9747,
+  "lon": 14.4747,
+  "qid": "Q16506"
+ },
+ "Châlons-en-Champagne": {
+  "lat": 48.9567,
+  "lon": 4.3644,
+  "qid": "Q47135"
+ },
+ "Chambéry": {
+  "lat": 45.5664,
+  "lon": 5.9208,
+  "qid": "Q165090"
+ },
+ "Changde": {
+  "lat": 29.0397,
+  "lon": 111.6839,
+  "qid": "Q416544"
+ },
+ "Changsha": {
+  "lat": 28.1987,
+  "lon": 112.9709,
+  "qid": "Q174091"
+ },
+ "Changzhi": {
+  "lat": 36.195,
+  "lon": 113.1111,
+  "qid": "Q72945"
+ },
+ "Charleroi": {
+  "lat": 50.4167,
+  "lon": 4.4442,
+  "qid": "Q81046"
+ },
+ "Charleville-Mézières": {
+  "lat": 49.76,
+  "lon": 4.7194,
+  "qid": "Q47383"
+ },
+ "Chartres": {
+  "lat": 48.4467,
+  "lon": 1.4883,
+  "qid": "Q130272"
+ },
+ "Château-Thierry": {
+  "lat": 49.0464,
+  "lon": 3.4031,
+  "qid": "Q194145"
+ },
+ "Châteauroux": {
+  "lat": 46.8097,
+  "lon": 1.6903,
+  "qid": "Q174251"
+ },
+ "Châtellerault": {
+  "lat": 46.8169,
+  "lon": 0.5453,
+  "qid": "Q205576"
+ },
+ "Chaumont, Haute-Marne": {
+  "lat": 48.1108,
+  "lon": 5.1386,
+  "qid": "Q193880"
+ },
+ "Chauny": {
+  "lat": 49.6156,
+  "lon": 3.2192,
+  "qid": "Q269833"
+ },
+ "Cheb": {
+  "lat": 50.0798,
+  "lon": 12.374,
+  "qid": "Q193719"
+ },
+ "Chełm": {
+  "lat": 51.1333,
+  "lon": 23.4833,
+  "qid": "Q234184"
+ },
+ "Chemnitz": {
+  "lat": 50.8324,
+  "lon": 12.9189,
+  "qid": "Q2795"
+ },
+ "Chengde": {
+  "lat": 40.9739,
+  "lon": 117.9322,
+  "qid": "Q58675"
+ },
+ "Chengdu": {
+  "lat": 30.66,
+  "lon": 104.0633,
+  "qid": "Q30002"
+ },
+ "Cheonan": {
+  "lat": 36.81,
+  "lon": 127.1475,
+  "qid": "Q42146"
+ },
+ "Cheorwon County": {
+  "lat": 38.2092,
+  "lon": 127.2175,
+  "qid": "Q50329"
+ },
+ "Cherbourg-en-Cotentin": {
+  "lat": 49.6389,
+  "lon": -1.625,
+  "qid": "Q21008210"
+ },
+ "Cherkasy": {
+  "lat": 49.4444,
+  "lon": 32.0597,
+  "qid": "Q157055"
+ },
+ "Cherkessk": {
+  "lat": 44.2222,
+  "lon": 42.0575,
+  "qid": "Q5326"
+ },
+ "Chernihiv": {
+  "lat": 51.4939,
+  "lon": 31.2947,
+  "qid": "Q157053"
+ },
+ "Chernivtsi": {
+  "lat": 48.2908,
+  "lon": 25.9344,
+  "qid": "Q157725"
+ },
+ "Chernyakhovsk": {
+  "lat": 54.6333,
+  "lon": 21.8167,
+  "qid": "Q5655"
+ },
+ "Chieti": {
+  "lat": 42.3511,
+  "lon": 14.1674,
+  "qid": "Q13138"
+ },
+ "Chifeng": {
+  "lat": 42.255,
+  "lon": 118.8825,
+  "qid": "Q570829"
+ },
+ "Chișinău": {
+  "lat": 47.0228,
+  "lon": 28.8353,
+  "qid": "Q21197"
+ },
+ "Chongjin": {
+  "lat": 41.7833,
+  "lon": 129.7833,
+  "qid": "Q109336"
+ },
+ "Chongqing": {
+  "lat": 29.55,
+  "lon": 106.5069,
+  "qid": "Q11725"
+ },
+ "Chudovo, Chudovsky District, Novgorod Oblast": {
+  "lat": 59.1281,
+  "lon": 31.6592,
+  "qid": "Q198135"
+ },
+ "Chuhuiv": {
+  "lat": 49.8372,
+  "lon": 36.6899,
+  "qid": "Q889618"
+ },
+ "Chuncheon": {
+  "lat": 37.8747,
+  "lon": 127.7342,
+  "qid": "Q42148"
+ },
+ "Chungju": {
+  "lat": 36.9706,
+  "lon": 127.9322,
+  "qid": "Q31094"
+ },
+ "Chur": {
+  "lat": 46.8521,
+  "lon": 9.5297,
+  "qid": "Q69007"
+ },
+ "Cisterna di Latina": {
+  "lat": 41.5889,
+  "lon": 12.8306,
+  "qid": "Q128065"
+ },
+ "Cividale del Friuli": {
+  "lat": 46.0905,
+  "lon": 13.435,
+  "qid": "Q53245"
+ },
+ "Civitavecchia": {
+  "lat": 42.1,
+  "lon": 11.8,
+  "qid": "Q242533"
+ },
+ "Clermont-Ferrand": {
+  "lat": 45.7797,
+  "lon": 3.0869,
+  "qid": "Q42168"
+ },
+ "Clervaux": {
+  "lat": 50.05,
+  "lon": 6.0333,
+  "qid": "Q836075"
+ },
+ "Cluj-Napoca": {
+  "lat": 46.7689,
+  "lon": 23.5907,
+  "qid": "Q100188"
+ },
+ "Colmar": {
+  "lat": 48.0811,
+  "lon": 7.355,
+  "qid": "Q130994"
+ },
+ "Cologne": {
+  "lat": 50.9422,
+  "lon": 6.9578,
+  "qid": "Q365"
+ },
+ "Como": {
+  "lat": 45.8103,
+  "lon": 9.0861,
+  "qid": "Q1308"
+ },
+ "Compiègne": {
+  "lat": 49.4142,
+  "lon": 2.8222,
+  "qid": "Q180871"
+ },
+ "Conegliano": {
+  "lat": 45.8872,
+  "lon": 12.2969,
+  "qid": "Q47224"
+ },
+ "Constanța": {
+  "lat": 44.1767,
+  "lon": 28.6508,
+  "qid": "Q79808"
+ },
+ "Cortina d'Ampezzo": {
+  "lat": 46.5383,
+  "lon": 12.1374,
+  "qid": "Q41158"
+ },
+ "Cottbus": {
+  "lat": 51.7608,
+  "lon": 14.3319,
+  "qid": "Q3214"
+ },
+ "Coutances": {
+  "lat": 49.0453,
+  "lon": -1.4453,
+  "qid": "Q202565"
+ },
+ "Craiova": {
+  "lat": 44.3333,
+  "lon": 23.8167,
+  "qid": "Q168057"
+ },
+ "Cuxhaven": {
+  "lat": 53.8667,
+  "lon": 8.7,
+  "qid": "Q4197"
+ },
+ "Częstochowa": {
+  "lat": 50.8096,
+  "lon": 19.1222,
+  "qid": "Q103217"
+ },
+ "Daegu": {
+  "lat": 35.8717,
+  "lon": 128.6017,
+  "qid": "Q20927"
+ },
+ "Daejeon": {
+  "lat": 36.35,
+  "lon": 127.385,
+  "qid": "Q20921"
+ },
+ "Dalian": {
+  "lat": 38.9,
+  "lon": 121.6,
+  "qid": "Q74881"
+ },
+ "Darmstadt": {
+  "lat": 49.8667,
+  "lon": 8.65,
+  "qid": "Q2973"
+ },
+ "Datong": {
+  "lat": 40.0936,
+  "lon": 113.2914,
+  "qid": "Q72877"
+ },
+ "Daugavpils": {
+  "lat": 55.8714,
+  "lon": 26.5161,
+  "qid": "Q80021"
+ },
+ "Debrecen": {
+  "lat": 47.53,
+  "lon": 21.6392,
+  "qid": "Q79880"
+ },
+ "Demidov, Smolensk Oblast": {
+  "lat": 55.2667,
+  "lon": 31.5167,
+  "qid": "Q134790"
+ },
+ "Demyansk": {
+  "lat": 57.65,
+  "lon": 32.4667,
+  "qid": "Q372935"
+ },
+ "Den Helder": {
+  "lat": 52.9583,
+  "lon": 4.7589,
+  "qid": "Q9911"
+ },
+ "Derna, Libya": {
+  "lat": 32.7636,
+  "lon": 22.6361,
+  "qid": "Q211866"
+ },
+ "Dessau": {
+  "lat": 51.8342,
+  "lon": 12.2461,
+  "qid": "Q487070"
+ },
+ "Dezhou": {
+  "lat": 37.4513,
+  "lon": 116.3105,
+  "qid": "Q162880"
+ },
+ "Diekirch": {
+  "lat": 49.8681,
+  "lon": 6.1567,
+  "qid": "Q16050"
+ },
+ "Dieppe": {
+  "lat": 49.925,
+  "lon": 1.075,
+  "qid": "Q183557"
+ },
+ "Dijon": {
+  "lat": 47.3231,
+  "lon": 5.0419,
+  "qid": "Q7003"
+ },
+ "Diksmuide": {
+  "lat": 51.0333,
+  "lon": 2.865,
+  "qid": "Q215244"
+ },
+ "Dinant": {
+  "lat": 50.2564,
+  "lon": 4.9136,
+  "qid": "Q108247"
+ },
+ "Dmitriyev (town)": {
+  "lat": 52.1289,
+  "lon": 35.0756,
+  "qid": "Q72360"
+ },
+ "Dmitrov": {
+  "lat": 56.35,
+  "lon": 37.5333,
+  "qid": "Q102334"
+ },
+ "Dnipro": {
+  "lat": 48.4675,
+  "lon": 35.04,
+  "qid": "Q48256"
+ },
+ "Donetsk": {
+  "lat": 48.0158,
+  "lon": 37.8028,
+  "qid": "Q43070"
+ },
+ "Dorogobuzh": {
+  "lat": 54.92,
+  "lon": 33.3078,
+  "qid": "Q135446"
+ },
+ "Dortmund": {
+  "lat": 51.5139,
+  "lon": 7.4653,
+  "qid": "Q1295"
+ },
+ "Douai": {
+  "lat": 50.3708,
+  "lon": 3.0792,
+  "qid": "Q193826"
+ },
+ "Doullens": {
+  "lat": 50.1567,
+  "lon": 2.3403,
+  "qid": "Q69055"
+ },
+ "Draguignan": {
+  "lat": 43.5394,
+  "lon": 6.4661,
+  "qid": "Q194141"
+ },
+ "Dresden": {
+  "lat": 51.0493,
+  "lon": 13.7381,
+  "qid": "Q1731"
+ },
+ "Dreux": {
+  "lat": 48.7364,
+  "lon": 1.3656,
+  "qid": "Q142410"
+ },
+ "Drohobych": {
+  "lat": 49.35,
+  "lon": 23.5,
+  "qid": "Q158821"
+ },
+ "Dubovka, Volgograd Oblast": {
+  "lat": 49.05,
+  "lon": 44.8333,
+  "qid": "Q135473"
+ },
+ "Duisburg": {
+  "lat": 51.4322,
+  "lon": 6.7611,
+  "qid": "Q2100"
+ },
+ "Dukhovshchina, Smolensk Oblast": {
+  "lat": 55.2,
+  "lon": 32.4167,
+  "qid": "Q135543"
+ },
+ "Dukla": {
+  "lat": 49.5583,
+  "lon": 21.6833,
+  "qid": "Q336386"
+ },
+ "Dunkirk": {
+  "lat": 51.0378,
+  "lon": 2.3764,
+  "qid": "Q45797"
+ },
+ "Düren": {
+  "lat": 50.8032,
+  "lon": 6.4821,
+  "qid": "Q1884"
+ },
+ "Dushan County": {
+  "lat": 25.8281,
+  "lon": 107.5384,
+  "qid": "Q1200404"
+ },
+ "Düsseldorf": {
+  "lat": 51.2256,
+  "lon": 6.7767,
+  "qid": "Q1718"
+ },
+ "Dzhankoy": {
+  "lat": 45.7086,
+  "lon": 34.3933,
+  "qid": "Q161978"
+ },
+ "Echternach": {
+  "lat": 49.8117,
+  "lon": 6.4217,
+  "qid": "Q204317"
+ },
+ "Eindhoven": {
+  "lat": 51.4344,
+  "lon": 5.4842,
+  "qid": "Q9832"
+ },
+ "El Agheila": {
+  "lat": 30.2558,
+  "lon": 19.1994,
+  "qid": "Q41339"
+ },
+ "El Alamein": {
+  "lat": 30.8333,
+  "lon": 28.95,
+  "qid": "Q204439"
+ },
+ "El Dabaa": {
+  "lat": 31.0333,
+  "lon": 28.4333,
+  "qid": "Q3136983"
+ },
+ "El Guettar, Tunisia": {
+  "lat": 34.3372,
+  "lon": 8.9528,
+  "qid": "Q2705113"
+ },
+ "El Kef": {
+  "lat": 36.1667,
+  "lon": 8.7,
+  "qid": "Q27155"
+ },
+ "Elbląg": {
+  "lat": 54.1522,
+  "lon": 19.4089,
+  "qid": "Q104712"
+ },
+ "Elista": {
+  "lat": 46.3167,
+  "lon": 44.2667,
+  "qid": "Q3977"
+ },
+ "Emden": {
+  "lat": 53.3669,
+  "lon": 7.2061,
+  "qid": "Q4174"
+ },
+ "Enfidha": {
+  "lat": 36.1353,
+  "lon": 10.3809,
+  "qid": "Q1025361"
+ },
+ "Enna": {
+  "lat": 37.5667,
+  "lon": 14.2667,
+  "qid": "Q13687"
+ },
+ "Enschede": {
+  "lat": 52.2225,
+  "lon": 6.8925,
+  "qid": "Q10002"
+ },
+ "Enshi City": {
+  "lat": 30.2911,
+  "lon": 109.475,
+  "qid": "Q1028110"
+ },
+ "Épernay": {
+  "lat": 49.04,
+  "lon": 3.9592,
+  "qid": "Q205537"
+ },
+ "Épinal": {
+  "lat": 48.1736,
+  "lon": 6.4517,
+  "qid": "Q173695"
+ },
+ "Erfurt": {
+  "lat": 50.9781,
+  "lon": 11.0289,
+  "qid": "Q1729"
+ },
+ "Essen": {
+  "lat": 51.4508,
+  "lon": 7.0131,
+  "qid": "Q2066"
+ },
+ "Évreux": {
+  "lat": 49.0233,
+  "lon": 1.1525,
+  "qid": "Q171800"
+ },
+ "Faenza": {
+  "lat": 44.2856,
+  "lon": 11.8833,
+  "qid": "Q52981"
+ },
+ "Falaise, Calvados": {
+  "lat": 48.8972,
+  "lon": -0.1975,
+  "qid": "Q193306"
+ },
+ "Fastiv": {
+  "lat": 50.0747,
+  "lon": 29.9181,
+  "qid": "Q161984"
+ },
+ "Fatezh": {
+  "lat": 52.0894,
+  "lon": 35.8589,
+  "qid": "Q197356"
+ },
+ "Feltre": {
+  "lat": 46.0167,
+  "lon": 11.9,
+  "qid": "Q1465"
+ },
+ "Feodosia": {
+  "lat": 45.0489,
+  "lon": 35.3792,
+  "qid": "Q158491"
+ },
+ "Fériana": {
+  "lat": 34.9431,
+  "lon": 8.5625,
+  "qid": "Q606165"
+ },
+ "Ferrara": {
+  "lat": 44.8392,
+  "lon": 11.6175,
+  "qid": "Q13362"
+ },
+ "Fismes": {
+  "lat": 49.3072,
+  "lon": 3.6806,
+  "qid": "Q1214970"
+ },
+ "Flensburg": {
+  "lat": 54.7819,
+  "lon": 9.4367,
+  "qid": "Q3798"
+ },
+ "Florence": {
+  "lat": 43.7714,
+  "lon": 11.2542,
+  "qid": "Q2044"
+ },
+ "Focșani": {
+  "lat": 45.6997,
+  "lon": 27.1797,
+  "qid": "Q192265"
+ },
+ "Foggia": {
+  "lat": 41.4584,
+  "lon": 15.5519,
+  "qid": "Q13464"
+ },
+ "Fontainebleau": {
+  "lat": 48.4089,
+  "lon": 2.7017,
+  "qid": "Q182872"
+ },
+ "Forlì": {
+  "lat": 44.2228,
+  "lon": 12.0414,
+  "qid": "Q13367"
+ },
+ "Formia": {
+  "lat": 41.2564,
+  "lon": 13.6069,
+  "qid": "Q128086"
+ },
+ "Frankfurt": {
+  "lat": 50.1106,
+  "lon": 8.6822,
+  "qid": "Q1794"
+ },
+ "Frankfurt (Oder)": {
+  "lat": 52.3421,
+  "lon": 14.5517,
+  "qid": "Q4024"
+ },
+ "Freiburg im Breisgau": {
+  "lat": 47.995,
+  "lon": 7.85,
+  "qid": "Q2833"
+ },
+ "Frolovo": {
+  "lat": 49.767,
+  "lon": 43.6567,
+  "qid": "Q197385"
+ },
+ "Frosinone": {
+  "lat": 41.6333,
+  "lon": 13.35,
+  "qid": "Q13413"
+ },
+ "Fuyang": {
+  "lat": 32.8986,
+  "lon": 115.8045,
+  "qid": "Q360584"
+ },
+ "Fuzhou": {
+  "lat": 26.0769,
+  "lon": 119.2917,
+  "qid": "Q68481"
+ },
+ "Gabès": {
+  "lat": 33.8814,
+  "lon": 10.0983,
+  "qid": "Q215661"
+ },
+ "Gaeta": {
+  "lat": 41.2167,
+  "lon": 13.5667,
+  "qid": "Q128089"
+ },
+ "Gafsa": {
+  "lat": 34.4167,
+  "lon": 8.7833,
+  "qid": "Q466006"
+ },
+ "Gagarin, Smolensk Oblast": {
+  "lat": 55.55,
+  "lon": 35,
+  "qid": "Q134318"
+ },
+ "Galați": {
+  "lat": 45.4336,
+  "lon": 28.0553,
+  "qid": "Q170996"
+ },
+ "Gangneung": {
+  "lat": 37.7556,
+  "lon": 128.8961,
+  "qid": "Q42056"
+ },
+ "Ganzhou": {
+  "lat": 25.8292,
+  "lon": 114.9336,
+  "qid": "Q363166"
+ },
+ "Gatchina": {
+  "lat": 59.5684,
+  "lon": 30.1229,
+  "qid": "Q7436"
+ },
+ "Gdańsk": {
+  "lat": 54.3483,
+  "lon": 18.654,
+  "qid": "Q1792"
+ },
+ "Gdynia": {
+  "lat": 54.5175,
+  "lon": 18.54,
+  "qid": "Q385"
+ },
+ "Geilenkirchen": {
+  "lat": 50.9653,
+  "lon": 6.1194,
+  "qid": "Q205050"
+ },
+ "Gela": {
+  "lat": 37.0667,
+  "lon": 14.25,
+  "qid": "Q39971"
+ },
+ "Gelendzhik": {
+  "lat": 44.5608,
+  "lon": 38.0767,
+  "qid": "Q15775"
+ },
+ "Geneva": {
+  "lat": 46.2,
+  "lon": 6.15,
+  "qid": "Q71"
+ },
+ "Genoa": {
+  "lat": 44.4072,
+  "lon": 8.9339,
+  "qid": "Q1449"
+ },
+ "Gera": {
+  "lat": 50.8782,
+  "lon": 12.0824,
+  "qid": "Q3750"
+ },
+ "Ghent": {
+  "lat": 51.0536,
+  "lon": 3.7253,
+  "qid": "Q1296"
+ },
+ "Giessen": {
+  "lat": 50.5833,
+  "lon": 8.6667,
+  "qid": "Q3874"
+ },
+ "Gimcheon": {
+  "lat": 36.1192,
+  "lon": 128.1153,
+  "qid": "Q42078"
+ },
+ "Gliwice": {
+  "lat": 50.2942,
+  "lon": 18.6658,
+  "qid": "Q105084"
+ },
+ "Głogów": {
+  "lat": 51.6589,
+  "lon": 16.0803,
+  "qid": "Q66013"
+ },
+ "Goch": {
+  "lat": 51.6839,
+  "lon": 6.1619,
+  "qid": "Q16006"
+ },
+ "Gomel": {
+  "lat": 52.4417,
+  "lon": 30.9833,
+  "qid": "Q2678"
+ },
+ "Gorizia": {
+  "lat": 45.9352,
+  "lon": 13.6193,
+  "qid": "Q6596"
+ },
+ "Görlitz": {
+  "lat": 51.1563,
+  "lon": 14.991,
+  "qid": "Q4077"
+ },
+ "Graz": {
+  "lat": 47.0708,
+  "lon": 15.4386,
+  "qid": "Q13298"
+ },
+ "Grenoble": {
+  "lat": 45.1869,
+  "lon": 5.7264,
+  "qid": "Q1289"
+ },
+ "Grodno": {
+  "lat": 53.6667,
+  "lon": 23.8167,
+  "qid": "Q181376"
+ },
+ "Groningen": {
+  "lat": 53.2189,
+  "lon": 6.5675,
+  "qid": "Q749"
+ },
+ "Grosseto": {
+  "lat": 42.7722,
+  "lon": 11.1089,
+  "qid": "Q6716"
+ },
+ "Grozny": {
+  "lat": 43.3125,
+  "lon": 45.6986,
+  "qid": "Q5196"
+ },
+ "Grudziądz": {
+  "lat": 53.4875,
+  "lon": 18.755,
+  "qid": "Q123511"
+ },
+ "Guangzhou": {
+  "lat": 23.13,
+  "lon": 113.26,
+  "qid": "Q16572"
+ },
+ "Guilin": {
+  "lat": 25.2667,
+  "lon": 110.2833,
+  "qid": "Q189633"
+ },
+ "Guise": {
+  "lat": 49.9003,
+  "lon": 3.6275,
+  "qid": "Q271093"
+ },
+ "Guiyang": {
+  "lat": 26.5794,
+  "lon": 106.7078,
+  "qid": "Q192271"
+ },
+ "Gumrak": {
+  "lat": 48.7817,
+  "lon": 44.3467,
+  "qid": "Q1433263"
+ },
+ "Gunsan": {
+  "lat": 35.9786,
+  "lon": 126.7114,
+  "qid": "Q42074"
+ },
+ "Gusev, Kaliningrad Oblast": {
+  "lat": 54.5922,
+  "lon": 22.1997,
+  "qid": "Q5663"
+ },
+ "Gwangju": {
+  "lat": 35.1667,
+  "lon": 126.9167,
+  "qid": "Q41283"
+ },
+ "Gyeongju": {
+  "lat": 35.85,
+  "lon": 129.2167,
+  "qid": "Q42097"
+ },
+ "Győr": {
+  "lat": 47.6842,
+  "lon": 17.6344,
+  "qid": "Q134494"
+ },
+ "Hadong County": {
+  "lat": 35.0694,
+  "lon": 127.7492,
+  "qid": "Q26212"
+ },
+ "Haeju": {
+  "lat": 38.0333,
+  "lon": 125.7167,
+  "qid": "Q714865"
+ },
+ "Haguenau": {
+  "lat": 48.8167,
+  "lon": 7.7878,
+  "qid": "Q22730"
+ },
+ "Haikou": {
+  "lat": 20.02,
+  "lon": 110.32,
+  "qid": "Q189823"
+ },
+ "Halle (Saale)": {
+  "lat": 51.4828,
+  "lon": 11.9697,
+  "qid": "Q2814"
+ },
+ "Ham, Somme": {
+  "lat": 49.7464,
+  "lon": 3.0728,
+  "qid": "Q629049"
+ },
+ "Hamburg": {
+  "lat": 53.55,
+  "lon": 10,
+  "qid": "Q1055"
+ },
+ "Hamhung": {
+  "lat": 39.9167,
+  "lon": 127.5333,
+  "qid": "Q109356"
+ },
+ "Hammamet, Tunisia": {
+  "lat": 36.4167,
+  "lon": 10.6,
+  "qid": "Q339535"
+ },
+ "Handan": {
+  "lat": 36.6116,
+  "lon": 114.4894,
+  "qid": "Q58570"
+ },
+ "Hangzhou": {
+  "lat": 30.25,
+  "lon": 120.1675,
+  "qid": "Q4970"
+ },
+ "Hanover": {
+  "lat": 52.3744,
+  "lon": 9.7386,
+  "qid": "Q1715"
+ },
+ "Hanzhong": {
+  "lat": 33.0794,
+  "lon": 107.026,
+  "qid": "Q515573"
+ },
+ "Hazebrouck": {
+  "lat": 50.7244,
+  "lon": 2.5383,
+  "qid": "Q11131"
+ },
+ "Hefei": {
+  "lat": 31.8639,
+  "lon": 117.2808,
+  "qid": "Q185684"
+ },
+ "Heidelberg": {
+  "lat": 49.4094,
+  "lon": 8.6947,
+  "qid": "Q2966"
+ },
+ "Heilbronn": {
+  "lat": 49.1404,
+  "lon": 9.218,
+  "qid": "Q715"
+ },
+ "Helsinki": {
+  "lat": 60.1708,
+  "lon": 24.9375,
+  "qid": "Q1757"
+ },
+ "Hendaye": {
+  "lat": 43.3586,
+  "lon": -1.7744,
+  "qid": "Q191754"
+ },
+ "Hengyang": {
+  "lat": 26.8968,
+  "lon": 112.5857,
+  "qid": "Q144663"
+ },
+ "Henichesk": {
+  "lat": 46.1769,
+  "lon": 34.7989,
+  "qid": "Q761130"
+ },
+ "Hirson": {
+  "lat": 49.9217,
+  "lon": 4.0839,
+  "qid": "Q271090"
+ },
+ "Hlukhiv": {
+  "lat": 51.6765,
+  "lon": 33.9078,
+  "qid": "Q864827"
+ },
+ "Hof, Bavaria": {
+  "lat": 50.3167,
+  "lon": 11.9167,
+  "qid": "Q6938"
+ },
+ "Hohhot": {
+  "lat": 40.8151,
+  "lon": 111.6629,
+  "qid": "Q535534"
+ },
+ "Hong Kong": {
+  "lat": 22.2783,
+  "lon": 114.1586,
+  "qid": "Q8646"
+ },
+ "Houffalize": {
+  "lat": 50.132,
+  "lon": 5.7894,
+  "qid": "Q650274"
+ },
+ "Huangshan City": {
+  "lat": 29.7132,
+  "lon": 118.3151,
+  "qid": "Q180470"
+ },
+ "Hun, Libya": {
+  "lat": 29.1211,
+  "lon": 15.9403,
+  "qid": "Q1991249"
+ },
+ "Hungnam": {
+  "lat": 39.8333,
+  "lon": 127.6167,
+  "qid": "Q224982"
+ },
+ "Hwacheon County": {
+  "lat": 38.1075,
+  "lon": 127.7144,
+  "qid": "Q50346"
+ },
+ "Hyesan": {
+  "lat": 41.4,
+  "lon": 128.1833,
+  "qid": "Q489829"
+ },
+ "Iași": {
+  "lat": 47.1622,
+  "lon": 27.5889,
+  "qid": "Q46852"
+ },
+ "Idritsa": {
+  "lat": 56.3167,
+  "lon": 28.8833,
+  "qid": "Q3742447"
+ },
+ "Ilomantsi": {
+  "lat": 62.6722,
+  "lon": 30.9306,
+  "qid": "Q283599"
+ },
+ "Imatra": {
+  "lat": 61.1931,
+  "lon": 28.7764,
+  "qid": "Q211020"
+ },
+ "Imola": {
+  "lat": 44.3531,
+  "lon": 11.7147,
+  "qid": "Q50195"
+ },
+ "Incheon": {
+  "lat": 37.4639,
+  "lon": 126.6486,
+  "qid": "Q20934"
+ },
+ "Ingolstadt": {
+  "lat": 48.7631,
+  "lon": 11.425,
+  "qid": "Q3004"
+ },
+ "Inje County": {
+  "lat": 38.0675,
+  "lon": 128.1769,
+  "qid": "Q50318"
+ },
+ "Innsbruck": {
+  "lat": 47.2683,
+  "lon": 11.3933,
+  "qid": "Q1735"
+ },
+ "Isernia": {
+  "lat": 41.6028,
+  "lon": 14.2397,
+  "qid": "Q13450"
+ },
+ "Issoudun": {
+  "lat": 46.9481,
+  "lon": 1.9933,
+  "qid": "Q210772"
+ },
+ "Istra, Istrinsky District, Moscow Oblast": {
+  "lat": 55.9167,
+  "lon": 36.8667,
+  "qid": "Q143297"
+ },
+ "Ivalo": {
+  "lat": 68.6565,
+  "lon": 27.5404,
+  "qid": "Q539767"
+ },
+ "Ivano-Frankivsk": {
+  "lat": 48.9228,
+  "lon": 24.7106,
+  "qid": "Q156726"
+ },
+ "Izium": {
+  "lat": 49.1958,
+  "lon": 37.2803,
+  "qid": "Q544003"
+ },
+ "Izmail": {
+  "lat": 45.3418,
+  "lon": 28.8346,
+  "qid": "Q147739"
+ },
+ "Jaghbub": {
+  "lat": 29.7425,
+  "lon": 24.5169,
+  "qid": "Q284251"
+ },
+ "Jarosław": {
+  "lat": 50.0162,
+  "lon": 22.6778,
+  "qid": "Q721928"
+ },
+ "Jelgava": {
+  "lat": 56.6522,
+  "lon": 23.7244,
+  "qid": "Q179830"
+ },
+ "Jena": {
+  "lat": 50.9272,
+  "lon": 11.5864,
+  "qid": "Q3150"
+ },
+ "Jeonju": {
+  "lat": 35.8239,
+  "lon": 127.1475,
+  "qid": "Q42140"
+ },
+ "Ji'an": {
+  "lat": 27.1172,
+  "lon": 114.9793,
+  "qid": "Q363262"
+ },
+ "Jinan": {
+  "lat": 36.6667,
+  "lon": 116.9833,
+  "qid": "Q170247"
+ },
+ "Jingzhou": {
+  "lat": 30.3244,
+  "lon": 112.2361,
+  "qid": "Q71247"
+ },
+ "Jinhua": {
+  "lat": 29.1046,
+  "lon": 119.6494,
+  "qid": "Q58210"
+ },
+ "Jinju": {
+  "lat": 35.1928,
+  "lon": 128.0847,
+  "qid": "Q42144"
+ },
+ "Jinzhou": {
+  "lat": 41.1144,
+  "lon": 121.1292,
+  "qid": "Q28996"
+ },
+ "Jiujiang": {
+  "lat": 29.7048,
+  "lon": 116.0021,
+  "qid": "Q216077"
+ },
+ "Joensuu": {
+  "lat": 62.6,
+  "lon": 29.7639,
+  "qid": "Q186237"
+ },
+ "Jülich": {
+  "lat": 50.9222,
+  "lon": 6.3583,
+  "qid": "Q16045"
+ },
+ "Kaesong": {
+  "lat": 37.9717,
+  "lon": 126.5528,
+  "qid": "Q109079"
+ },
+ "Kaifeng": {
+  "lat": 34.795,
+  "lon": 114.345,
+  "qid": "Q208471"
+ },
+ "Kairouan": {
+  "lat": 35.6833,
+  "lon": 10.1,
+  "qid": "Q179570"
+ },
+ "Kaiserslautern": {
+  "lat": 49.4447,
+  "lon": 7.7689,
+  "qid": "Q3758"
+ },
+ "Kajaani": {
+  "lat": 64.225,
+  "lon": 27.7333,
+  "qid": "Q193180"
+ },
+ "Kalach-na-Donu": {
+  "lat": 48.6833,
+  "lon": 43.5333,
+  "qid": "Q102435"
+ },
+ "Kaliningrad": {
+  "lat": 54.7167,
+  "lon": 20.5,
+  "qid": "Q1829"
+ },
+ "Kaluga": {
+  "lat": 54.5333,
+  "lon": 36.2667,
+  "qid": "Q2837"
+ },
+ "Kamensk-Shakhtinsky": {
+  "lat": 48.3167,
+  "lon": 40.2667,
+  "qid": "Q144017"
+ },
+ "Kamianets-Podilskyi": {
+  "lat": 48.6806,
+  "lon": 26.5806,
+  "qid": "Q193965"
+ },
+ "Kamianske": {
+  "lat": 48.5167,
+  "lon": 34.6133,
+  "qid": "Q156719"
+ },
+ "Kamyshin": {
+  "lat": 50.0833,
+  "lon": 45.4,
+  "qid": "Q144170"
+ },
+ "Kandalaksha": {
+  "lat": 67.1569,
+  "lon": 32.4117,
+  "qid": "Q144264"
+ },
+ "Kanggye": {
+  "lat": 40.9667,
+  "lon": 126.6,
+  "qid": "Q489825"
+ },
+ "Kaniv": {
+  "lat": 49.7447,
+  "lon": 31.4558,
+  "qid": "Q925340"
+ },
+ "Karachev": {
+  "lat": 53.1167,
+  "lon": 34.9833,
+  "qid": "Q145115"
+ },
+ "Karlovy Vary": {
+  "lat": 50.2306,
+  "lon": 12.8725,
+  "qid": "Q384544"
+ },
+ "Karlsruhe": {
+  "lat": 49.0167,
+  "lon": 8.4,
+  "qid": "Q1040"
+ },
+ "Kashira": {
+  "lat": 54.8333,
+  "lon": 38.15,
+  "qid": "Q145638"
+ },
+ "Kassel": {
+  "lat": 51.3158,
+  "lon": 9.4979,
+  "qid": "Q2865"
+ },
+ "Kasserine": {
+  "lat": 35.1667,
+  "lon": 8.8333,
+  "qid": "Q852735"
+ },
+ "Katowice": {
+  "lat": 50.25,
+  "lon": 19,
+  "qid": "Q588"
+ },
+ "Kaunas": {
+  "lat": 54.9,
+  "lon": 23.9333,
+  "qid": "Q4115712"
+ },
+ "Kelibia": {
+  "lat": 36.8475,
+  "lon": 11.0939,
+  "qid": "Q27241"
+ },
+ "Kem, Russia": {
+  "lat": 64.95,
+  "lon": 34.6,
+  "qid": "Q145717"
+ },
+ "Kemijärvi": {
+  "lat": 66.715,
+  "lon": 27.4306,
+  "qid": "Q744704"
+ },
+ "Kempten": {
+  "lat": 47.7333,
+  "lon": 10.3167,
+  "qid": "Q3994"
+ },
+ "Kerch": {
+  "lat": 45.3386,
+  "lon": 36.4681,
+  "qid": "Q157065"
+ },
+ "Kestenga": {
+  "lat": 65.8855,
+  "lon": 31.8315,
+  "qid": "Q4219791"
+ },
+ "Kharkiv": {
+  "lat": 49.9925,
+  "lon": 36.2311,
+  "qid": "Q42308"
+ },
+ "Kherson": {
+  "lat": 46.6425,
+  "lon": 32.625,
+  "qid": "Q156732"
+ },
+ "Khmelnytskyi, Ukraine": {
+  "lat": 49.42,
+  "lon": 27,
+  "qid": "Q156717"
+ },
+ "Kholm, Kholmsky District, Novgorod Oblast": {
+  "lat": 57.15,
+  "lon": 31.1833,
+  "qid": "Q197595"
+ },
+ "Kiel": {
+  "lat": 54.3233,
+  "lon": 10.1394,
+  "qid": "Q1707"
+ },
+ "Kielce": {
+  "lat": 50.8725,
+  "lon": 20.6319,
+  "qid": "Q102317"
+ },
+ "Kingisepp": {
+  "lat": 59.3667,
+  "lon": 28.6,
+  "qid": "Q15270"
+ },
+ "Kirishi": {
+  "lat": 59.4497,
+  "lon": 32.0086,
+  "qid": "Q7938"
+ },
+ "Kirov, Kaluga Oblast": {
+  "lat": 54.0833,
+  "lon": 34.3,
+  "qid": "Q153490"
+ },
+ "Kizlyar": {
+  "lat": 43.8547,
+  "lon": 46.7139,
+  "qid": "Q145810"
+ },
+ "Klaipėda": {
+  "lat": 55.7125,
+  "lon": 21.135,
+  "qid": "Q776965"
+ },
+ "Kleve": {
+  "lat": 51.79,
+  "lon": 6.14,
+  "qid": "Q6842"
+ },
+ "Klin, Klinsky District, Moscow Oblast": {
+  "lat": 56.3339,
+  "lon": 36.7125,
+  "qid": "Q153698"
+ },
+ "Klintsy": {
+  "lat": 52.7528,
+  "lon": 32.2361,
+  "qid": "Q153715"
+ },
+ "Kobarid": {
+  "lat": 46.2471,
+  "lon": 13.5796,
+  "qid": "Q3618115"
+ },
+ "Koblenz": {
+  "lat": 50.3597,
+  "lon": 7.5978,
+  "qid": "Q3104"
+ },
+ "Kock": {
+  "lat": 51.6413,
+  "lon": 22.448,
+  "qid": "Q991819"
+ },
+ "Kołobrzeg": {
+  "lat": 54.1761,
+  "lon": 15.5761,
+  "qid": "Q110011"
+ },
+ "Kolomna": {
+  "lat": 55.0833,
+  "lon": 38.7833,
+  "qid": "Q133026"
+ },
+ "Kolpino": {
+  "lat": 59.7583,
+  "lon": 30.6,
+  "qid": "Q154738"
+ },
+ "Kondopoga": {
+  "lat": 62.2,
+  "lon": 34.2667,
+  "qid": "Q155108"
+ },
+ "Konotop": {
+  "lat": 51.2375,
+  "lon": 33.2083,
+  "qid": "Q162083"
+ },
+ "Konstanz": {
+  "lat": 47.6633,
+  "lon": 9.1753,
+  "qid": "Q3834"
+ },
+ "Korosten": {
+  "lat": 50.95,
+  "lon": 28.65,
+  "qid": "Q158904"
+ },
+ "Korsun-Shevchenkivskyi": {
+  "lat": 49.4261,
+  "lon": 31.2806,
+  "qid": "Q219766"
+ },
+ "Kortrijk": {
+  "lat": 50.8275,
+  "lon": 3.2658,
+  "qid": "Q12995"
+ },
+ "Košice": {
+  "lat": 48.7167,
+  "lon": 21.25,
+  "qid": "Q25409"
+ },
+ "Kosong County": {
+  "lat": 38.7405,
+  "lon": 128.1863,
+  "qid": "Q486783"
+ },
+ "Kostrzyn nad Odrą": {
+  "lat": 52.5883,
+  "lon": 14.6667,
+  "qid": "Q156837"
+ },
+ "Kotelnikovo, Volgograd Oblast": {
+  "lat": 47.6333,
+  "lon": 43.1333,
+  "qid": "Q155426"
+ },
+ "Kotka": {
+  "lat": 60.4667,
+  "lon": 26.9458,
+  "qid": "Q192155"
+ },
+ "Kovel": {
+  "lat": 51.2167,
+  "lon": 24.7167,
+  "qid": "Q156704"
+ },
+ "Kozelsk": {
+  "lat": 54.0353,
+  "lon": 35.7767,
+  "qid": "Q154661"
+ },
+ "Kraków": {
+  "lat": 50.0614,
+  "lon": 19.9372,
+  "qid": "Q31487"
+ },
+ "Kramatorsk": {
+  "lat": 48.7392,
+  "lon": 37.5839,
+  "qid": "Q33613"
+ },
+ "Krasnodar": {
+  "lat": 45.0333,
+  "lon": 38.9833,
+  "qid": "Q3646"
+ },
+ "Krasnoye Selo": {
+  "lat": 59.7362,
+  "lon": 30.0862,
+  "qid": "Q155587"
+ },
+ "Krefeld": {
+  "lat": 51.3333,
+  "lon": 6.5667,
+  "qid": "Q2805"
+ },
+ "Kremenchuk": {
+  "lat": 49.0631,
+  "lon": 33.4039,
+  "qid": "Q156724"
+ },
+ "Kromy, Oryol Oblast": {
+  "lat": 52.6897,
+  "lon": 35.7675,
+  "qid": "Q137254"
+ },
+ "Kronstadt": {
+  "lat": 59.9908,
+  "lon": 29.7747,
+  "qid": "Q155863"
+ },
+ "Kropotkin, Krasnodar Krai": {
+  "lat": 45.4333,
+  "lon": 40.5667,
+  "qid": "Q16973"
+ },
+ "Kropyvnytskyi": {
+  "lat": 48.5103,
+  "lon": 32.2667,
+  "qid": "Q158292"
+ },
+ "Krychaw": {
+  "lat": 53.7194,
+  "lon": 31.7139,
+  "qid": "Q954914"
+ },
+ "Krymsk": {
+  "lat": 44.9333,
+  "lon": 38,
+  "qid": "Q16978"
+ },
+ "Kryvyi Rih": {
+  "lat": 47.91,
+  "lon": 33.39,
+  "qid": "Q157137"
+ },
+ "Kunming": {
+  "lat": 25.0433,
+  "lon": 102.7061,
+  "qid": "Q182852"
+ },
+ "Kupiansk": {
+  "lat": 49.7114,
+  "lon": 37.6139,
+  "qid": "Q889555"
+ },
+ "Kuressaare": {
+  "lat": 58.2533,
+  "lon": 22.4861,
+  "qid": "Q188179"
+ },
+ "Kursk": {
+  "lat": 51.7372,
+  "lon": 36.1872,
+  "qid": "Q3159"
+ },
+ "Kutno": {
+  "lat": 52.2333,
+  "lon": 19.3667,
+  "qid": "Q202160"
+ },
+ "Kuusamo": {
+  "lat": 65.9667,
+  "lon": 29.1833,
+  "qid": "Q207999"
+ },
+ "Kyiv": {
+  "lat": 50.45,
+  "lon": 30.5236,
+  "qid": "Q1899"
+ },
+ "L'Aquila": {
+  "lat": 42.354,
+  "lon": 13.392,
+  "qid": "Q3476"
+ },
+ "La Fère": {
+  "lat": 49.6617,
+  "lon": 3.3656,
+  "qid": "Q332034"
+ },
+ "La Roche-en-Ardenne": {
+  "lat": 50.1817,
+  "lon": 5.575,
+  "qid": "Q159974"
+ },
+ "La Roche-sur-Yon": {
+  "lat": 46.6697,
+  "lon": -1.4278,
+  "qid": "Q190118"
+ },
+ "La Rochelle": {
+  "lat": 46.1594,
+  "lon": -1.1514,
+  "qid": "Q82185"
+ },
+ "La Spezia": {
+  "lat": 44.108,
+  "lon": 9.8289,
+  "qid": "Q8611"
+ },
+ "Lanciano": {
+  "lat": 42.2312,
+  "lon": 14.3905,
+  "qid": "Q8645"
+ },
+ "Landshut": {
+  "lat": 48.5397,
+  "lon": 12.1508,
+  "qid": "Q3974"
+ },
+ "Lanzhou": {
+  "lat": 36.0617,
+  "lon": 103.8318,
+  "qid": "Q183584"
+ },
+ "Laohekou": {
+  "lat": 32.3849,
+  "lon": 111.6695,
+  "qid": "Q1359204"
+ },
+ "Laon": {
+  "lat": 49.5644,
+  "lon": 3.6206,
+  "qid": "Q167141"
+ },
+ "Lappeenranta": {
+  "lat": 61.0583,
+  "lon": 28.1861,
+  "qid": "Q181854"
+ },
+ "Latina, Lazio": {
+  "lat": 41.4672,
+  "lon": 12.9036,
+  "qid": "Q13410"
+ },
+ "Lausanne": {
+  "lat": 46.5333,
+  "lon": 6.6333,
+  "qid": "Q807"
+ },
+ "Laval, Mayenne": {
+  "lat": 48.0728,
+  "lon": -0.77,
+  "qid": "Q184154"
+ },
+ "Le Blanc, Indre": {
+  "lat": 46.6336,
+  "lon": 1.0628,
+  "qid": "Q213290"
+ },
+ "Le Cateau-Cambrésis": {
+  "lat": 50.1053,
+  "lon": 3.5411,
+  "qid": "Q329103"
+ },
+ "Le Havre": {
+  "lat": 49.4942,
+  "lon": 0.1081,
+  "qid": "Q42810"
+ },
+ "Le Mans": {
+  "lat": 48.0042,
+  "lon": 0.1969,
+  "qid": "Q1476"
+ },
+ "Leeuwarden": {
+  "lat": 53.2,
+  "lon": 5.7833,
+  "qid": "Q25390"
+ },
+ "Legnica": {
+  "lat": 51.2101,
+  "lon": 16.1619,
+  "qid": "Q106274"
+ },
+ "Leipzig": {
+  "lat": 51.3406,
+  "lon": 12.3747,
+  "qid": "Q2079"
+ },
+ "Leninsk, Volgograd Oblast": {
+  "lat": 48.7,
+  "lon": 45.2,
+  "qid": "Q157469"
+ },
+ "Lens, Pas-de-Calais": {
+  "lat": 50.4314,
+  "lon": 2.8325,
+  "qid": "Q165271"
+ },
+ "Lepel": {
+  "lat": 54.8867,
+  "lon": 28.6939,
+  "qid": "Q954132"
+ },
+ "Les Sables-d'Olonne": {
+  "lat": 46.4964,
+  "lon": -1.7847,
+  "qid": "Q50810269"
+ },
+ "Leuven": {
+  "lat": 50.8775,
+  "lon": 4.7044,
+  "qid": "Q118958"
+ },
+ "Lgov, Kursk Oblast": {
+  "lat": 51.6667,
+  "lon": 35.2667,
+  "qid": "Q157790"
+ },
+ "Licata": {
+  "lat": 37.1083,
+  "lon": 13.9469,
+  "qid": "Q431760"
+ },
+ "Lida": {
+  "lat": 53.8956,
+  "lon": 25.2958,
+  "qid": "Q241475"
+ },
+ "Liège": {
+  "lat": 50.6397,
+  "lon": 5.5706,
+  "qid": "Q3992"
+ },
+ "Liepāja": {
+  "lat": 56.5083,
+  "lon": 21.0111,
+  "qid": "Q167668"
+ },
+ "Lille": {
+  "lat": 50.6319,
+  "lon": 3.0575,
+  "qid": "Q648"
+ },
+ "Limoges": {
+  "lat": 45.8344,
+  "lon": 1.2617,
+  "qid": "Q45656"
+ },
+ "Linfen": {
+  "lat": 36.0812,
+  "lon": 111.5087,
+  "qid": "Q73156"
+ },
+ "Linz": {
+  "lat": 48.3058,
+  "lon": 14.2864,
+  "qid": "Q41329"
+ },
+ "Lipetsk": {
+  "lat": 52.6167,
+  "lon": 39.6,
+  "qid": "Q3490"
+ },
+ "Lishui": {
+  "lat": 28.45,
+  "lon": 119.9167,
+  "qid": "Q58294"
+ },
+ "Lisieux": {
+  "lat": 49.1456,
+  "lon": 0.2256,
+  "qid": "Q188743"
+ },
+ "Liski, Voronezh Oblast": {
+  "lat": 50.9822,
+  "lon": 39.4994,
+  "qid": "Q157622"
+ },
+ "Liuzhou": {
+  "lat": 24.3264,
+  "lon": 109.4281,
+  "qid": "Q38968"
+ },
+ "Livny": {
+  "lat": 52.4253,
+  "lon": 37.6083,
+  "qid": "Q157576"
+ },
+ "Livorno": {
+  "lat": 43.55,
+  "lon": 10.3167,
+  "qid": "Q6761"
+ },
+ "Ljubljana": {
+  "lat": 46.0514,
+  "lon": 14.5061,
+  "qid": "Q437"
+ },
+ "Lodeynoye Pole": {
+  "lat": 60.7333,
+  "lon": 33.55,
+  "qid": "Q15275"
+ },
+ "Łódź": {
+  "lat": 51.75,
+  "lon": 19.4667,
+  "qid": "Q580"
+ },
+ "Lomonosov, Russia": {
+  "lat": 59.9167,
+  "lon": 29.7667,
+  "qid": "Q157688"
+ },
+ "Łomża": {
+  "lat": 53.1833,
+  "lon": 22.0833,
+  "qid": "Q215633"
+ },
+ "Longling County": {
+  "lat": 24.5936,
+  "lon": 98.6924,
+  "qid": "Q1200726"
+ },
+ "Longwy": {
+  "lat": 49.5197,
+  "lon": 5.7606,
+  "qid": "Q318535"
+ },
+ "Longyan": {
+  "lat": 25.0881,
+  "lon": 117.0244,
+  "qid": "Q68862"
+ },
+ "Lorient": {
+  "lat": 47.7458,
+  "lon": -3.3664,
+  "qid": "Q71724"
+ },
+ "Loukhi": {
+  "lat": 66.0667,
+  "lon": 33.0333,
+  "qid": "Q2625119"
+ },
+ "Lozova": {
+  "lat": 48.8892,
+  "lon": 36.3161,
+  "qid": "Q889630"
+ },
+ "Lübeck": {
+  "lat": 53.8697,
+  "lon": 10.6864,
+  "qid": "Q2843"
+ },
+ "Lublin": {
+  "lat": 51.25,
+  "lon": 22.5667,
+  "qid": "Q37333"
+ },
+ "Lubny": {
+  "lat": 50.0186,
+  "lon": 32.9869,
+  "qid": "Q269517"
+ },
+ "Lucca": {
+  "lat": 43.85,
+  "lon": 10.5167,
+  "qid": "Q13373"
+ },
+ "Luga, Leningrad Oblast": {
+  "lat": 58.7333,
+  "lon": 29.85,
+  "qid": "Q15322"
+ },
+ "Lugano": {
+  "lat": 46.0103,
+  "lon": 8.9625,
+  "qid": "Q7024"
+ },
+ "Luhansk": {
+  "lat": 48.5717,
+  "lon": 39.2973,
+  "qid": "Q134279"
+ },
+ "Lüneburg": {
+  "lat": 53.2525,
+  "lon": 10.4144,
+  "qid": "Q3920"
+ },
+ "Lunéville": {
+  "lat": 48.5894,
+  "lon": 6.5017,
+  "qid": "Q208794"
+ },
+ "Luoyang": {
+  "lat": 34.6587,
+  "lon": 112.4245,
+  "qid": "Q187136"
+ },
+ "Lutsk": {
+  "lat": 50.7478,
+  "lon": 25.3244,
+  "qid": "Q7550"
+ },
+ "Luxembourg City": {
+  "lat": 49.6114,
+  "lon": 6.13,
+  "qid": "Q1842"
+ },
+ "Lviv": {
+  "lat": 49.842,
+  "lon": 24.0316,
+  "qid": "Q36036"
+ },
+ "Lyon": {
+  "lat": 45.7675,
+  "lon": 4.835,
+  "qid": "Q456"
+ },
+ "Lyuban (town), Leningrad Oblast": {
+  "lat": 59.35,
+  "lon": 31.25,
+  "qid": "Q15279"
+ },
+ "Maastricht": {
+  "lat": 50.8667,
+  "lon": 5.6833,
+  "qid": "Q1309"
+ },
+ "Mâcon": {
+  "lat": 46.3067,
+  "lon": 4.8319,
+  "qid": "Q174247"
+ },
+ "Magdeburg": {
+  "lat": 52.1316,
+  "lon": 11.64,
+  "qid": "Q1733"
+ },
+ "Mainz": {
+  "lat": 49.9994,
+  "lon": 8.2736,
+  "qid": "Q1720"
+ },
+ "Makhachkala": {
+  "lat": 42.9825,
+  "lon": 47.505,
+  "qid": "Q5168"
+ },
+ "Maknassy": {
+  "lat": 34.6042,
+  "lon": 9.6056,
+  "qid": "Q117943"
+ },
+ "Maladzyechna": {
+  "lat": 54.3136,
+  "lon": 26.8517,
+  "qid": "Q201203"
+ },
+ "Malaya Vishera": {
+  "lat": 58.85,
+  "lon": 32.2167,
+  "qid": "Q157945"
+ },
+ "Malmedy": {
+  "lat": 50.4239,
+  "lon": 6.0258,
+  "qid": "Q159838"
+ },
+ "Maloarkhangelsk, Oryol Oblast": {
+  "lat": 52.4,
+  "lon": 36.5,
+  "qid": "Q157990"
+ },
+ "Maloyaroslavets": {
+  "lat": 55,
+  "lon": 36.4667,
+  "qid": "Q158005"
+ },
+ "Mannheim": {
+  "lat": 49.4878,
+  "lon": 8.4661,
+  "qid": "Q2119"
+ },
+ "Mantua": {
+  "lat": 45.1564,
+  "lon": 10.7911,
+  "qid": "Q6247"
+ },
+ "Marburg": {
+  "lat": 50.8167,
+  "lon": 8.7667,
+  "qid": "Q3869"
+ },
+ "Marche-en-Famenne": {
+  "lat": 50.2275,
+  "lon": 5.3444,
+  "qid": "Q269908"
+ },
+ "Mareth": {
+  "lat": 33.6178,
+  "lon": 10.2861,
+  "qid": "Q3105874"
+ },
+ "Mariupol": {
+  "lat": 47.1306,
+  "lon": 37.5639,
+  "qid": "Q37133"
+ },
+ "Marj": {
+  "lat": 32.4867,
+  "lon": 20.8339,
+  "qid": "Q427646"
+ },
+ "Marseille": {
+  "lat": 43.2967,
+  "lon": 5.3764,
+  "qid": "Q23482"
+ },
+ "Masan": {
+  "lat": 35.1833,
+  "lon": 128.55,
+  "qid": "Q495387"
+ },
+ "Massa, Tuscany": {
+  "lat": 44.0333,
+  "lon": 10.1333,
+  "qid": "Q13370"
+ },
+ "Mateur": {
+  "lat": 37.04,
+  "lon": 9.665,
+  "qid": "Q1207738"
+ },
+ "Maubeuge": {
+  "lat": 50.2769,
+  "lon": 3.9725,
+  "qid": "Q138648"
+ },
+ "Maykop": {
+  "lat": 44.6,
+  "lon": 40.0833,
+  "qid": "Q3752"
+ },
+ "Mazyr": {
+  "lat": 52.05,
+  "lon": 29.2333,
+  "qid": "Q386487"
+ },
+ "Meaux": {
+  "lat": 48.9594,
+  "lon": 2.8878,
+  "qid": "Q207620"
+ },
+ "Medenine": {
+  "lat": 33.3547,
+  "lon": 10.5053,
+  "qid": "Q846653"
+ },
+ "Medjez el-Bab": {
+  "lat": 36.6436,
+  "lon": 9.6042,
+  "qid": "Q1153895"
+ },
+ "Medvezhyegorsk": {
+  "lat": 62.9171,
+  "lon": 34.4569,
+  "qid": "Q158411"
+ },
+ "Medyn": {
+  "lat": 54.9667,
+  "lon": 35.8667,
+  "qid": "Q158437"
+ },
+ "Meizhou": {
+  "lat": 24.2998,
+  "lon": 116.1191,
+  "qid": "Q59184"
+ },
+ "Melitopol": {
+  "lat": 46.8489,
+  "lon": 35.3675,
+  "qid": "Q33349"
+ },
+ "Mersa Matruh": {
+  "lat": 31.3333,
+  "lon": 27.2333,
+  "qid": "Q393829"
+ },
+ "Mesen": {
+  "lat": 50.7667,
+  "lon": 2.9,
+  "qid": "Q737077"
+ },
+ "Messina": {
+  "lat": 38.1936,
+  "lon": 15.5542,
+  "qid": "Q13666"
+ },
+ "Metz": {
+  "lat": 49.1197,
+  "lon": 6.1769,
+  "qid": "Q22690"
+ },
+ "Mga": {
+  "lat": 59.7575,
+  "lon": 31.0578,
+  "qid": "Q1926518"
+ },
+ "Michurinsk": {
+  "lat": 52.8922,
+  "lon": 40.4928,
+  "qid": "Q159124"
+ },
+ "Middelburg, Zeeland": {
+  "lat": 51.4997,
+  "lon": 3.6136,
+  "qid": "Q52101"
+ },
+ "Mikhaylov, Ryazan Oblast": {
+  "lat": 54.2333,
+  "lon": 39.0333,
+  "qid": "Q159071"
+ },
+ "Milan": {
+  "lat": 45.4669,
+  "lon": 9.19,
+  "qid": "Q490"
+ },
+ "Mineralnye Vody": {
+  "lat": 44.2008,
+  "lon": 43.1125,
+  "qid": "Q158936"
+ },
+ "Minsk": {
+  "lat": 53.9022,
+  "lon": 27.5618,
+  "qid": "Q2280"
+ },
+ "Miryang": {
+  "lat": 35.4933,
+  "lon": 128.7489,
+  "qid": "Q42096"
+ },
+ "Miskolc": {
+  "lat": 48.1,
+  "lon": 20.7833,
+  "qid": "Q102397"
+ },
+ "Misrata": {
+  "lat": 32.3778,
+  "lon": 15.0901,
+  "qid": "Q131323"
+ },
+ "Mizda": {
+  "lat": 31.445,
+  "lon": 12.9831,
+  "qid": "Q2266662"
+ },
+ "Mława": {
+  "lat": 53.1167,
+  "lon": 20.3667,
+  "qid": "Q983868"
+ },
+ "Modena": {
+  "lat": 44.6458,
+  "lon": 10.9257,
+  "qid": "Q279"
+ },
+ "Modlin Fortress": {
+  "lat": 52.4383,
+  "lon": 20.6819,
+  "qid": "Q47796"
+ },
+ "Mogilev": {
+  "lat": 53.9089,
+  "lon": 30.343,
+  "qid": "Q154835"
+ },
+ "Mohyliv-Podilskyi": {
+  "lat": 48.45,
+  "lon": 27.7833,
+  "qid": "Q997469"
+ },
+ "Mokpo": {
+  "lat": 34.7936,
+  "lon": 126.3886,
+  "qid": "Q42094"
+ },
+ "Mönchengladbach": {
+  "lat": 51.2,
+  "lon": 6.4333,
+  "qid": "Q2758"
+ },
+ "Monfalcone": {
+  "lat": 45.8,
+  "lon": 13.5333,
+  "qid": "Q53133"
+ },
+ "Mons, Belgium": {
+  "lat": 50.4547,
+  "lon": 3.9525,
+  "qid": "Q83407"
+ },
+ "Montdidier, Somme": {
+  "lat": 49.6481,
+  "lon": 2.57,
+  "qid": "Q74308"
+ },
+ "Montélimar": {
+  "lat": 44.5586,
+  "lon": 4.7508,
+  "qid": "Q234270"
+ },
+ "Montluçon": {
+  "lat": 46.34,
+  "lon": 2.6025,
+  "qid": "Q193256"
+ },
+ "Montmédy": {
+  "lat": 49.5194,
+  "lon": 5.3658,
+  "qid": "Q229792"
+ },
+ "Montmirail, Marne": {
+  "lat": 48.8708,
+  "lon": 3.5406,
+  "qid": "Q819568"
+ },
+ "Montpellier": {
+  "lat": 43.6109,
+  "lon": 3.8772,
+  "qid": "Q6441"
+ },
+ "Morozovsk": {
+  "lat": 48.35,
+  "lon": 41.8333,
+  "qid": "Q159222"
+ },
+ "Mortain-Bocage": {
+  "lat": 48.6486,
+  "lon": -0.9397,
+  "qid": "Q21979878"
+ },
+ "Moscow": {
+  "lat": 55.7506,
+  "lon": 37.6175,
+  "qid": "Q649"
+ },
+ "Mozdok": {
+  "lat": 43.75,
+  "lon": 44.65,
+  "qid": "Q46639"
+ },
+ "Mozhaysk": {
+  "lat": 55.5,
+  "lon": 36.0333,
+  "qid": "Q159139"
+ },
+ "Mtsensk": {
+  "lat": 53.2833,
+  "lon": 36.5667,
+  "qid": "Q162698"
+ },
+ "Mulhouse": {
+  "lat": 47.7486,
+  "lon": 7.3392,
+  "qid": "Q79815"
+ },
+ "Munich": {
+  "lat": 48.1375,
+  "lon": 11.575,
+  "qid": "Q1726"
+ },
+ "Münster": {
+  "lat": 51.9625,
+  "lon": 7.6256,
+  "qid": "Q2742"
+ },
+ "Murmansk": {
+  "lat": 68.9667,
+  "lon": 33.0833,
+  "qid": "Q1763"
+ },
+ "Mykolaiv": {
+  "lat": 46.975,
+  "lon": 31.995,
+  "qid": "Q41572"
+ },
+ "Nagykanizsa": {
+  "lat": 46.4558,
+  "lon": 16.9975,
+  "qid": "Q14424"
+ },
+ "Nalchik": {
+  "lat": 43.4833,
+  "lon": 43.6167,
+  "qid": "Q5265"
+ },
+ "Nalut": {
+  "lat": 31.8686,
+  "lon": 10.9811,
+  "qid": "Q132409"
+ },
+ "Nampo": {
+  "lat": 38.7333,
+  "lon": 125.4,
+  "qid": "Q109386"
+ },
+ "Namur": {
+  "lat": 50.4667,
+  "lon": 4.8667,
+  "qid": "Q134121"
+ },
+ "Nanchang": {
+  "lat": 28.6842,
+  "lon": 115.8872,
+  "qid": "Q171943"
+ },
+ "Nancy, France": {
+  "lat": 48.6928,
+  "lon": 6.1836,
+  "qid": "Q40898"
+ },
+ "Nanjing": {
+  "lat": 32.0608,
+  "lon": 118.7789,
+  "qid": "Q16666"
+ },
+ "Nanning": {
+  "lat": 22.8192,
+  "lon": 108.315,
+  "qid": "Q179608"
+ },
+ "Nanping": {
+  "lat": 26.6448,
+  "lon": 118.1728,
+  "qid": "Q68534"
+ },
+ "Nantes": {
+  "lat": 47.2172,
+  "lon": -1.5539,
+  "qid": "Q12191"
+ },
+ "Nantua": {
+  "lat": 46.1533,
+  "lon": 5.6061,
+  "qid": "Q193937"
+ },
+ "Nanyang, Henan": {
+  "lat": 32.9987,
+  "lon": 112.5292,
+  "qid": "Q404763"
+ },
+ "Naples": {
+  "lat": 40.8358,
+  "lon": 14.2486,
+  "qid": "Q2634"
+ },
+ "Naro-Fominsk": {
+  "lat": 55.3833,
+  "lon": 36.7333,
+  "qid": "Q164001"
+ },
+ "Narva": {
+  "lat": 59.3792,
+  "lon": 28.2006,
+  "qid": "Q102158"
+ },
+ "Nevel (town)": {
+  "lat": 56.0167,
+  "lon": 29.9333,
+  "qid": "Q165773"
+ },
+ "Nevers": {
+  "lat": 46.9925,
+  "lon": 3.1567,
+  "qid": "Q166997"
+ },
+ "Nice": {
+  "lat": 43.7019,
+  "lon": 7.2683,
+  "qid": "Q33959"
+ },
+ "Nieuwpoort, Belgium": {
+  "lat": 51.1294,
+  "lon": 2.7514,
+  "qid": "Q623310"
+ },
+ "Nijmegen": {
+  "lat": 51.8475,
+  "lon": 5.8625,
+  "qid": "Q47887"
+ },
+ "Nikopol, Ukraine": {
+  "lat": 47.5667,
+  "lon": 34.4,
+  "qid": "Q156760"
+ },
+ "Ningbo": {
+  "lat": 29.875,
+  "lon": 121.5492,
+  "qid": "Q42780"
+ },
+ "Niort": {
+  "lat": 46.325,
+  "lon": -0.4622,
+  "qid": "Q184159"
+ },
+ "Niš": {
+  "lat": 43.3192,
+  "lon": 21.8961,
+  "qid": "Q129259"
+ },
+ "Nizhyn": {
+  "lat": 51.0474,
+  "lon": 31.8805,
+  "qid": "Q952457"
+ },
+ "Novaya Ladoga": {
+  "lat": 60.1019,
+  "lon": 32.3056,
+  "qid": "Q15287"
+ },
+ "Novhorod-Siverskyi": {
+  "lat": 51.9972,
+  "lon": 33.2667,
+  "qid": "Q147758"
+ },
+ "Novi Sad": {
+  "lat": 45.2644,
+  "lon": 19.8317,
+  "qid": "Q55630"
+ },
+ "Novocherkassk": {
+  "lat": 47.4222,
+  "lon": 40.0939,
+  "qid": "Q175452"
+ },
+ "Novomoskovsk, Russia": {
+  "lat": 54.0333,
+  "lon": 38.2667,
+  "qid": "Q175161"
+ },
+ "Novorossiysk": {
+  "lat": 44.7167,
+  "lon": 37.7667,
+  "qid": "Q15760"
+ },
+ "Novosil": {
+  "lat": 52.9667,
+  "lon": 37.05,
+  "qid": "Q175258"
+ },
+ "Novosokolniki": {
+  "lat": 56.3333,
+  "lon": 30.15,
+  "qid": "Q175353"
+ },
+ "Novy Oskol": {
+  "lat": 50.7667,
+  "lon": 37.8667,
+  "qid": "Q60005"
+ },
+ "Noyon": {
+  "lat": 49.5811,
+  "lon": 2.9989,
+  "qid": "Q49831"
+ },
+ "Nuremberg": {
+  "lat": 49.4539,
+  "lon": 11.0775,
+  "qid": "Q2090"
+ },
+ "Oboyan": {
+  "lat": 51.2088,
+  "lon": 36.2637,
+  "qid": "Q72656"
+ },
+ "Oderzo": {
+  "lat": 45.7808,
+  "lon": 12.4928,
+  "qid": "Q48087"
+ },
+ "Odesa": {
+  "lat": 46.4842,
+  "lon": 30.7325,
+  "qid": "Q1874"
+ },
+ "Okhtyrka": {
+  "lat": 50.3074,
+  "lon": 34.9016,
+  "qid": "Q1013471"
+ },
+ "Oldenburg (city)": {
+  "lat": 53.1439,
+  "lon": 8.2139,
+  "qid": "Q2936"
+ },
+ "Olomouc": {
+  "lat": 49.5939,
+  "lon": 17.2508,
+  "qid": "Q81137"
+ },
+ "Olonets": {
+  "lat": 60.9833,
+  "lon": 32.9667,
+  "qid": "Q49583"
+ },
+ "Olsztyn": {
+  "lat": 53.78,
+  "lon": 20.4942,
+  "qid": "Q82765"
+ },
+ "Opochka": {
+  "lat": 56.7167,
+  "lon": 28.65,
+  "qid": "Q145906"
+ },
+ "Opole": {
+  "lat": 50.6667,
+  "lon": 17.9242,
+  "qid": "Q92212"
+ },
+ "Oradea": {
+  "lat": 47.0722,
+  "lon": 21.9211,
+  "qid": "Q93358"
+ },
+ "Orléans": {
+  "lat": 47.9022,
+  "lon": 1.9042,
+  "qid": "Q6548"
+ },
+ "Orsha": {
+  "lat": 54.5092,
+  "lon": 30.4258,
+  "qid": "Q208609"
+ },
+ "Ortona": {
+  "lat": 42.3557,
+  "lon": 14.4036,
+  "qid": "Q51256"
+ },
+ "Oryol": {
+  "lat": 52.9686,
+  "lon": 36.0694,
+  "qid": "Q3118"
+ },
+ "Osan": {
+  "lat": 37.145,
+  "lon": 127.0694,
+  "qid": "Q42129"
+ },
+ "Osijek": {
+  "lat": 45.5603,
+  "lon": 18.6703,
+  "qid": "Q1640"
+ },
+ "Osnabrück": {
+  "lat": 52.2789,
+  "lon": 8.0431,
+  "qid": "Q2916"
+ },
+ "Ostashkov": {
+  "lat": 57.15,
+  "lon": 33.1,
+  "qid": "Q176761"
+ },
+ "Ostend": {
+  "lat": 51.2258,
+  "lon": 2.9194,
+  "qid": "Q12996"
+ },
+ "Ostrava": {
+  "lat": 49.8356,
+  "lon": 18.2925,
+  "qid": "Q8385"
+ },
+ "Ostrogozhsk": {
+  "lat": 50.8667,
+  "lon": 39.0667,
+  "qid": "Q177737"
+ },
+ "Ostrołęka": {
+  "lat": 53.0833,
+  "lon": 21.5667,
+  "qid": "Q461287"
+ },
+ "Ostrov, Ostrovsky District, Pskov Oblast": {
+  "lat": 57.3333,
+  "lon": 28.35,
+  "qid": "Q176773"
+ },
+ "Paderborn": {
+  "lat": 51.7167,
+  "lon": 8.7667,
+  "qid": "Q2971"
+ },
+ "Padua": {
+  "lat": 45.4078,
+  "lon": 11.8733,
+  "qid": "Q617"
+ },
+ "Palermo": {
+  "lat": 38.1157,
+  "lon": 13.3613,
+  "qid": "Q2656"
+ },
+ "Panevėžys": {
+  "lat": 55.725,
+  "lon": 24.3639,
+  "qid": "Q1719466"
+ },
+ "Paris": {
+  "lat": 48.8567,
+  "lon": 2.3522,
+  "qid": "Q90"
+ },
+ "Parma": {
+  "lat": 44.8015,
+  "lon": 10.328,
+  "qid": "Q2683"
+ },
+ "Pärnu": {
+  "lat": 58.3844,
+  "lon": 24.4989,
+  "qid": "Q102365"
+ },
+ "Passau": {
+  "lat": 48.5748,
+  "lon": 13.461,
+  "qid": "Q4190"
+ },
+ "Passendale": {
+  "lat": 50.9003,
+  "lon": 3.0206,
+  "qid": "Q255575"
+ },
+ "Pau, Pyrénées-Atlantiques": {
+  "lat": 43.3008,
+  "lon": -0.37,
+  "qid": "Q132671"
+ },
+ "Pechenga (urban-type settlement), Murmansk Oblast": {
+  "lat": 69.5539,
+  "lon": 31.2267,
+  "qid": "Q1013438"
+ },
+ "Pécs": {
+  "lat": 46.0708,
+  "lon": 18.2331,
+  "qid": "Q45779"
+ },
+ "Pereyaslav": {
+  "lat": 50.065,
+  "lon": 31.445,
+  "qid": "Q639839"
+ },
+ "Périgueux": {
+  "lat": 45.1842,
+  "lon": 0.7181,
+  "qid": "Q6588"
+ },
+ "Péronne, Somme": {
+  "lat": 49.9292,
+  "lon": 2.9325,
+  "qid": "Q217768"
+ },
+ "Perpignan": {
+  "lat": 42.6975,
+  "lon": 2.8947,
+  "qid": "Q6730"
+ },
+ "Perugia": {
+  "lat": 43.1119,
+  "lon": 12.3885,
+  "qid": "Q3437"
+ },
+ "Pervomaisk, Mykolaiv Oblast": {
+  "lat": 48.05,
+  "lon": 30.85,
+  "qid": "Q1025181"
+ },
+ "Pesaro": {
+  "lat": 43.9102,
+  "lon": 12.9133,
+  "qid": "Q13134"
+ },
+ "Pescara": {
+  "lat": 42.4643,
+  "lon": 14.2142,
+  "qid": "Q2704"
+ },
+ "Petergof": {
+  "lat": 59.8833,
+  "lon": 29.9,
+  "qid": "Q178310"
+ },
+ "Petrozavodsk": {
+  "lat": 61.7833,
+  "lon": 34.35,
+  "qid": "Q1895"
+ },
+ "Piła": {
+  "lat": 53.15,
+  "lon": 16.7333,
+  "qid": "Q556200"
+ },
+ "Pinsk": {
+  "lat": 52.1153,
+  "lon": 26.1031,
+  "qid": "Q204150"
+ },
+ "Pisa": {
+  "lat": 43.7167,
+  "lon": 10.4,
+  "qid": "Q13375"
+ },
+ "Pistoia": {
+  "lat": 43.9333,
+  "lon": 10.9167,
+  "qid": "Q13376"
+ },
+ "Pitkyaranta": {
+  "lat": 61.5667,
+  "lon": 31.4833,
+  "qid": "Q179454"
+ },
+ "Plauen": {
+  "lat": 50.495,
+  "lon": 12.1383,
+  "qid": "Q3952"
+ },
+ "Płock": {
+  "lat": 52.55,
+  "lon": 19.7,
+  "qid": "Q104725"
+ },
+ "Ploiești": {
+  "lat": 44.9411,
+  "lon": 26.0225,
+  "qid": "Q179585"
+ },
+ "Plzeň": {
+  "lat": 49.7414,
+  "lon": 13.3825,
+  "qid": "Q43453"
+ },
+ "Pochep, Bryansk Oblast": {
+  "lat": 52.9333,
+  "lon": 33.45,
+  "qid": "Q183145"
+ },
+ "Pohang": {
+  "lat": 36.0322,
+  "lon": 129.365,
+  "qid": "Q42157"
+ },
+ "Poitiers": {
+  "lat": 46.5811,
+  "lon": 0.3353,
+  "qid": "Q6616"
+ },
+ "Polotsk": {
+  "lat": 55.4833,
+  "lon": 28.8,
+  "qid": "Q200797"
+ },
+ "Poltava": {
+  "lat": 49.5894,
+  "lon": 34.5514,
+  "qid": "Q156747"
+ },
+ "Pontarlier": {
+  "lat": 46.9061,
+  "lon": 6.3547,
+  "qid": "Q214540"
+ },
+ "Pontivy": {
+  "lat": 48.0686,
+  "lon": -2.9628,
+  "qid": "Q55905"
+ },
+ "Pordenone": {
+  "lat": 45.9626,
+  "lon": 12.6563,
+  "qid": "Q6606"
+ },
+ "Portogruaro": {
+  "lat": 45.7833,
+  "lon": 12.8333,
+  "qid": "Q47143"
+ },
+ "Potenza": {
+  "lat": 40.6333,
+  "lon": 15.8,
+  "qid": "Q3543"
+ },
+ "Potsdam": {
+  "lat": 52.4009,
+  "lon": 13.0591,
+  "qid": "Q1711"
+ },
+ "Poznań": {
+  "lat": 52.4083,
+  "lon": 16.9336,
+  "qid": "Q268"
+ },
+ "Prague": {
+  "lat": 50.0875,
+  "lon": 14.4214,
+  "qid": "Q1085"
+ },
+ "Prešov": {
+  "lat": 49,
+  "lon": 21.2333,
+  "qid": "Q26119"
+ },
+ "Primorsk, Leningrad Oblast": {
+  "lat": 60.3667,
+  "lon": 28.6167,
+  "qid": "Q15307"
+ },
+ "Priozersk": {
+  "lat": 61.0393,
+  "lon": 30.1291,
+  "qid": "Q7977"
+ },
+ "Prokhladny, Kabardino-Balkarian Republic": {
+  "lat": 43.7575,
+  "lon": 44.0297,
+  "qid": "Q184200"
+ },
+ "Provins": {
+  "lat": 48.5589,
+  "lon": 3.2994,
+  "qid": "Q203285"
+ },
+ "Prüm": {
+  "lat": 50.2081,
+  "lon": 6.4244,
+  "qid": "Q253696"
+ },
+ "Pryluky": {
+  "lat": 50.6,
+  "lon": 32.4,
+  "qid": "Q1000404"
+ },
+ "Przemyśl": {
+  "lat": 49.7835,
+  "lon": 22.7842,
+  "qid": "Q208473"
+ },
+ "Pskov": {
+  "lat": 57.8167,
+  "lon": 28.3333,
+  "qid": "Q2214"
+ },
+ "Pudozh": {
+  "lat": 61.8,
+  "lon": 36.5333,
+  "qid": "Q184225"
+ },
+ "Pushkin, Saint Petersburg": {
+  "lat": 59.7167,
+  "lon": 30.4167,
+  "qid": "Q7947"
+ },
+ "Pyatigorsk": {
+  "lat": 44.0333,
+  "lon": 43.05,
+  "qid": "Q41970"
+ },
+ "Pyeongtaek": {
+  "lat": 36.9947,
+  "lon": 127.0889,
+  "qid": "Q42154"
+ },
+ "Pyonggang County": {
+  "lat": 38.4167,
+  "lon": 127.2889,
+  "qid": "Q487084"
+ },
+ "Pyongyang": {
+  "lat": 39.0167,
+  "lon": 125.7475,
+  "qid": "Q18808"
+ },
+ "Qingdao": {
+  "lat": 36.1167,
+  "lon": 120.4,
+  "qid": "Q170322"
+ },
+ "Qinhuangdao": {
+  "lat": 39.9398,
+  "lon": 119.5881,
+  "qid": "Q58560"
+ },
+ "Qinzhou": {
+  "lat": 21.95,
+  "lon": 108.6167,
+  "qid": "Q571766"
+ },
+ "Quimper": {
+  "lat": 47.9958,
+  "lon": -4.0978,
+  "qid": "Q342"
+ },
+ "Quzhou": {
+  "lat": 28.9545,
+  "lon": 118.8763,
+  "qid": "Q58235"
+ },
+ "Radom": {
+  "lat": 51.4167,
+  "lon": 21.15,
+  "qid": "Q104740"
+ },
+ "Rahachow": {
+  "lat": 53.0828,
+  "lon": 30.0525,
+  "qid": "Q955468"
+ },
+ "Randazzo": {
+  "lat": 37.8774,
+  "lon": 14.9501,
+  "qid": "Q478776"
+ },
+ "Ravenna": {
+  "lat": 44.4161,
+  "lon": 12.2017,
+  "qid": "Q13364"
+ },
+ "Reboly": {
+  "lat": 63.8336,
+  "lon": 30.8106,
+  "qid": "Q2032124"
+ },
+ "Rechytsa": {
+  "lat": 52.3724,
+  "lon": 30.388,
+  "qid": "Q909612"
+ },
+ "Redon, Ille-et-Vilaine": {
+  "lat": 47.6514,
+  "lon": -2.0847,
+  "qid": "Q206837"
+ },
+ "Regensburg": {
+  "lat": 49.0167,
+  "lon": 12.0833,
+  "qid": "Q2978"
+ },
+ "Reggio Calabria": {
+  "lat": 38.1144,
+  "lon": 15.65,
+  "qid": "Q8471"
+ },
+ "Reims": {
+  "lat": 49.2653,
+  "lon": 4.0286,
+  "qid": "Q41876"
+ },
+ "Remagen": {
+  "lat": 50.5786,
+  "lon": 7.2306,
+  "qid": "Q486548"
+ },
+ "Rennes": {
+  "lat": 48.1142,
+  "lon": -1.6808,
+  "qid": "Q647"
+ },
+ "Rethel": {
+  "lat": 49.5097,
+  "lon": 4.3675,
+  "qid": "Q209790"
+ },
+ "Rēzekne": {
+  "lat": 56.5067,
+  "lon": 27.3308,
+  "qid": "Q180379"
+ },
+ "Riga": {
+  "lat": 56.9475,
+  "lon": 24.1069,
+  "qid": "Q1773"
+ },
+ "Rimini": {
+  "lat": 44.0594,
+  "lon": 12.5683,
+  "qid": "Q13369"
+ },
+ "Riva del Garda": {
+  "lat": 45.8833,
+  "lon": 10.85,
+  "qid": "Q194136"
+ },
+ "Rivne": {
+  "lat": 50.6197,
+  "lon": 26.2514,
+  "qid": "Q156739"
+ },
+ "Rochefort, Belgium": {
+  "lat": 50.159,
+  "lon": 5.2218,
+  "qid": "Q497764"
+ },
+ "Roermond": {
+  "lat": 51.1933,
+  "lon": 5.9872,
+  "qid": "Q9783"
+ },
+ "Roeselare": {
+  "lat": 50.9447,
+  "lon": 3.1233,
+  "qid": "Q211037"
+ },
+ "Rome": {
+  "lat": 41.8931,
+  "lon": 12.4828,
+  "qid": "Q220"
+ },
+ "Romny": {
+  "lat": 50.7428,
+  "lon": 33.4879,
+  "qid": "Q161994"
+ },
+ "Roslavl": {
+  "lat": 53.9492,
+  "lon": 32.8569,
+  "qid": "Q193328"
+ },
+ "Rossosh, Rossoshansky District, Voronezh Oblast": {
+  "lat": 50.1983,
+  "lon": 39.5672,
+  "qid": "Q193333"
+ },
+ "Rostock": {
+  "lat": 54.0833,
+  "lon": 12.1333,
+  "qid": "Q2861"
+ },
+ "Rostov-on-Don": {
+  "lat": 47.2225,
+  "lon": 39.71,
+  "qid": "Q908"
+ },
+ "Rotterdam": {
+  "lat": 51.92,
+  "lon": 4.48,
+  "qid": "Q34370"
+ },
+ "Rouen": {
+  "lat": 49.4431,
+  "lon": 1.1025,
+  "qid": "Q30974"
+ },
+ "Rovaniemi": {
+  "lat": 66.5028,
+  "lon": 25.7285,
+  "qid": "Q103717"
+ },
+ "Rovereto": {
+  "lat": 45.8833,
+  "lon": 11.0342,
+  "qid": "Q279373"
+ },
+ "Royan": {
+  "lat": 45.6231,
+  "lon": -1.0431,
+  "qid": "Q81909"
+ },
+ "Roye, Somme": {
+  "lat": 49.7,
+  "lon": 2.7903,
+  "qid": "Q711557"
+ },
+ "Ruse, Bulgaria": {
+  "lat": 43.8445,
+  "lon": 25.9539,
+  "qid": "Q160173"
+ },
+ "Ryazan": {
+  "lat": 54.63,
+  "lon": 39.7425,
+  "qid": "Q2746"
+ },
+ "Rylsk, Russia": {
+  "lat": 51.5667,
+  "lon": 34.6833,
+  "qid": "Q193425"
+ },
+ "Rzeszów": {
+  "lat": 50.0411,
+  "lon": 21.9989,
+  "qid": "Q598"
+ },
+ "Rzhev": {
+  "lat": 56.2656,
+  "lon": 34.3276,
+  "qid": "Q191465"
+ },
+ "Saarbrücken": {
+  "lat": 49.2333,
+  "lon": 7,
+  "qid": "Q1724"
+ },
+ "Saint Petersburg": {
+  "lat": 59.95,
+  "lon": 30.3167,
+  "qid": "Q656"
+ },
+ "Saint-Dié-des-Vosges": {
+  "lat": 48.2842,
+  "lon": 6.9492,
+  "qid": "Q34427"
+ },
+ "Saint-Étienne": {
+  "lat": 45.4339,
+  "lon": 4.3897,
+  "qid": "Q42716"
+ },
+ "Saint-Lô": {
+  "lat": 49.1144,
+  "lon": -1.0917,
+  "qid": "Q181704"
+ },
+ "Saint-Malo": {
+  "lat": 48.6494,
+  "lon": -2.0261,
+  "qid": "Q163108"
+ },
+ "Saint-Mihiel": {
+  "lat": 48.8894,
+  "lon": 5.54,
+  "qid": "Q194932"
+ },
+ "Saint-Nazaire": {
+  "lat": 47.2736,
+  "lon": -2.2139,
+  "qid": "Q152027"
+ },
+ "Saint-Omer": {
+  "lat": 50.7483,
+  "lon": 2.2608,
+  "qid": "Q208793"
+ },
+ "Saint-Quentin, Aisne": {
+  "lat": 49.8478,
+  "lon": 3.2856,
+  "qid": "Q182744"
+ },
+ "Saint-Tropez": {
+  "lat": 43.2697,
+  "lon": 6.6386,
+  "qid": "Q1813"
+ },
+ "Sainte-Menehould": {
+  "lat": 49.09,
+  "lon": 4.8972,
+  "qid": "Q213307"
+ },
+ "Sainte-Mère-Église": {
+  "lat": 49.4089,
+  "lon": -1.3178,
+  "qid": "Q28464386"
+ },
+ "Saintes, Charente-Maritime": {
+  "lat": 45.7453,
+  "lon": -0.6344,
+  "qid": "Q191126"
+ },
+ "Salerno": {
+  "lat": 40.6806,
+  "lon": 14.7594,
+  "qid": "Q1083"
+ },
+ "Sallum": {
+  "lat": 31.55,
+  "lon": 25.16,
+  "qid": "Q1245502"
+ },
+ "Salsk": {
+  "lat": 46.4833,
+  "lon": 41.5333,
+  "qid": "Q193473"
+ },
+ "Salzburg": {
+  "lat": 47.8,
+  "lon": 13.045,
+  "qid": "Q34713"
+ },
+ "San Donà di Piave": {
+  "lat": 45.6298,
+  "lon": 12.5641,
+  "qid": "Q47557"
+ },
+ "Sandomierz": {
+  "lat": 50.6833,
+  "lon": 21.75,
+  "qid": "Q193177"
+ },
+ "Sangju": {
+  "lat": 36.4153,
+  "lon": 128.1606,
+  "qid": "Q42163"
+ },
+ "Sankt Pölten": {
+  "lat": 48.2,
+  "lon": 15.6167,
+  "qid": "Q82500"
+ },
+ "Saratov": {
+  "lat": 51.53,
+  "lon": 46.035,
+  "qid": "Q5332"
+ },
+ "Sariwon": {
+  "lat": 38.5039,
+  "lon": 125.7589,
+  "qid": "Q505807"
+ },
+ "Sarny": {
+  "lat": 51.3269,
+  "lon": 26.6331,
+  "qid": "Q997512"
+ },
+ "Saverne": {
+  "lat": 48.7414,
+  "lon": 7.3619,
+  "qid": "Q22741"
+ },
+ "Sbeitla": {
+  "lat": 35.2297,
+  "lon": 9.1294,
+  "qid": "Q6471038"
+ },
+ "Sbiba": {
+  "lat": 35.5433,
+  "lon": 9.0736,
+  "qid": "Q971090"
+ },
+ "Schio": {
+  "lat": 45.7111,
+  "lon": 11.3556,
+  "qid": "Q47262"
+ },
+ "Schweinfurt": {
+  "lat": 50.05,
+  "lon": 10.2333,
+  "qid": "Q4126"
+ },
+ "Schwerin": {
+  "lat": 53.6289,
+  "lon": 11.415,
+  "qid": "Q1709"
+ },
+ "Sedan, Ardennes": {
+  "lat": 49.7019,
+  "lon": 4.9403,
+  "qid": "Q184371"
+ },
+ "Segezha": {
+  "lat": 63.7415,
+  "lon": 34.3222,
+  "qid": "Q193922"
+ },
+ "Senlis": {
+  "lat": 49.2072,
+  "lon": 2.5867,
+  "qid": "Q126668"
+ },
+ "Seoul": {
+  "lat": 37.56,
+  "lon": 126.99,
+  "qid": "Q8684"
+ },
+ "Serafimovich (town)": {
+  "lat": 49.5833,
+  "lon": 42.7333,
+  "qid": "Q194020"
+ },
+ "Serpukhov": {
+  "lat": 54.9167,
+  "lon": 37.4,
+  "qid": "Q194067"
+ },
+ "Sestroretsk": {
+  "lat": 60.1,
+  "lon": 29.9667,
+  "qid": "Q194084"
+ },
+ "Sevastopol": {
+  "lat": 44.605,
+  "lon": 33.5225,
+  "qid": "Q7525"
+ },
+ "Sevsk, Bryansk Oblast": {
+  "lat": 52.15,
+  "lon": 34.4939,
+  "qid": "Q193917"
+ },
+ "Sfax": {
+  "lat": 34.74,
+  "lon": 10.76,
+  "qid": "Q46325"
+ },
+ "Shakhty": {
+  "lat": 47.7,
+  "lon": 40.2333,
+  "qid": "Q198206"
+ },
+ "Shanghai": {
+  "lat": 31.2325,
+  "lon": 121.4692,
+  "qid": "Q8686"
+ },
+ "Shangrao": {
+  "lat": 28.4419,
+  "lon": 117.9633,
+  "qid": "Q363479"
+ },
+ "Shantou": {
+  "lat": 23.3539,
+  "lon": 116.6822,
+  "qid": "Q59100"
+ },
+ "Shaoguan": {
+  "lat": 24.8011,
+  "lon": 113.5927,
+  "qid": "Q59107"
+ },
+ "Shaoxing": {
+  "lat": 30,
+  "lon": 120.5833,
+  "qid": "Q42666"
+ },
+ "Shaoyang": {
+  "lat": 27.2418,
+  "lon": 111.4725,
+  "qid": "Q194531"
+ },
+ "Shchigry, Kursk Oblast": {
+  "lat": 51.8714,
+  "lon": 36.9132,
+  "qid": "Q146013"
+ },
+ "Shenyang": {
+  "lat": 41.8025,
+  "lon": 123.4281,
+  "qid": "Q11720"
+ },
+ "Shepetivka": {
+  "lat": 50.1833,
+  "lon": 27.0667,
+  "qid": "Q161965"
+ },
+ "Shijiazhuang": {
+  "lat": 38.0425,
+  "lon": 114.51,
+  "qid": "Q58401"
+ },
+ "Shlisselburg": {
+  "lat": 59.945,
+  "lon": 31.0347,
+  "qid": "Q15339"
+ },
+ "Šiauliai": {
+  "lat": 55.9281,
+  "lon": 23.3167,
+  "qid": "Q134712"
+ },
+ "Sibiu": {
+  "lat": 45.8,
+  "lon": 24.15,
+  "qid": "Q83324"
+ },
+ "Sidi Barrani": {
+  "lat": 31.6108,
+  "lon": 25.9256,
+  "qid": "Q1018010"
+ },
+ "Sidi Bouzid": {
+  "lat": 35.0381,
+  "lon": 9.4858,
+  "qid": "Q692716"
+ },
+ "Siedlce": {
+  "lat": 52.1833,
+  "lon": 22.2833,
+  "qid": "Q319813"
+ },
+ "Siegen": {
+  "lat": 50.8756,
+  "lon": 8.0167,
+  "qid": "Q3167"
+ },
+ "Siena": {
+  "lat": 43.3183,
+  "lon": 11.3314,
+  "qid": "Q2751"
+ },
+ "Simferopol": {
+  "lat": 44.9484,
+  "lon": 34.1,
+  "qid": "Q19566"
+ },
+ "Sinuiju": {
+  "lat": 40.1,
+  "lon": 124.4,
+  "qid": "Q156243"
+ },
+ "Sirte": {
+  "lat": 31.2,
+  "lon": 16.6,
+  "qid": "Q162413"
+ },
+ "Siwa Oasis": {
+  "lat": 29.2053,
+  "lon": 25.5194,
+  "qid": "Q2008735"
+ },
+ "Slavyansk-na-Kubani": {
+  "lat": 45.2586,
+  "lon": 38.1247,
+  "qid": "Q195662"
+ },
+ "Sloviansk": {
+  "lat": 48.8533,
+  "lon": 37.6059,
+  "qid": "Q33581"
+ },
+ "Slutsk": {
+  "lat": 53.0275,
+  "lon": 27.5528,
+  "qid": "Q201243"
+ },
+ "Smolensk": {
+  "lat": 54.7828,
+  "lon": 32.0453,
+  "qid": "Q2337"
+ },
+ "Sochi": {
+  "lat": 43.5853,
+  "lon": 39.7203,
+  "qid": "Q39420"
+ },
+ "Sofia": {
+  "lat": 42.6979,
+  "lon": 23.3217,
+  "qid": "Q472"
+ },
+ "Soissons": {
+  "lat": 49.3811,
+  "lon": 3.3225,
+  "qid": "Q167152"
+ },
+ "Solnechnogorsk": {
+  "lat": 56.1851,
+  "lon": 36.9776,
+  "qid": "Q196386"
+ },
+ "Sortavala": {
+  "lat": 61.7,
+  "lon": 30.6667,
+  "qid": "Q196397"
+ },
+ "Souk Ahras": {
+  "lat": 36.2864,
+  "lon": 7.9511,
+  "qid": "Q402992"
+ },
+ "Sousse": {
+  "lat": 35.8333,
+  "lon": 10.6333,
+  "qid": "Q180717"
+ },
+ "Sovetsk, Kaliningrad Oblast": {
+  "lat": 55.0808,
+  "lon": 21.8864,
+  "qid": "Q5647"
+ },
+ "Spas-Demensk": {
+  "lat": 54.4098,
+  "lon": 34.019,
+  "qid": "Q196435"
+ },
+ "St. Vith": {
+  "lat": 50.2833,
+  "lon": 6.1333,
+  "qid": "Q152748"
+ },
+ "Staraya Russa": {
+  "lat": 57.9833,
+  "lon": 31.35,
+  "qid": "Q196479"
+ },
+ "Staritsa (town), Tver Oblast": {
+  "lat": 56.5075,
+  "lon": 34.9356,
+  "qid": "Q196481"
+ },
+ "Starodub": {
+  "lat": 52.5833,
+  "lon": 32.7667,
+  "qid": "Q196483"
+ },
+ "Stary Oskol": {
+  "lat": 51.2981,
+  "lon": 37.835,
+  "qid": "Q196486"
+ },
+ "Stavropol": {
+  "lat": 45.05,
+  "lon": 41.9833,
+  "qid": "Q5206"
+ },
+ "Stenay": {
+  "lat": 49.49,
+  "lon": 5.1856,
+  "qid": "Q846090"
+ },
+ "Stralsund": {
+  "lat": 54.3092,
+  "lon": 13.0819,
+  "qid": "Q4065"
+ },
+ "Strasbourg": {
+  "lat": 48.5733,
+  "lon": 7.7522,
+  "qid": "Q6602"
+ },
+ "Stuttgart": {
+  "lat": 48.7775,
+  "lon": 9.18,
+  "qid": "Q1022"
+ },
+ "Subotica": {
+  "lat": 46.1002,
+  "lon": 19.6653,
+  "qid": "Q170287"
+ },
+ "Sukhinichi": {
+  "lat": 54.1,
+  "lon": 35.35,
+  "qid": "Q196526"
+ },
+ "Sukhumi": {
+  "lat": 43.0036,
+  "lon": 41.0192,
+  "qid": "Q40811"
+ },
+ "Sulmona": {
+  "lat": 42.048,
+  "lon": 13.9262,
+  "qid": "Q50157"
+ },
+ "Sumy": {
+  "lat": 50.9067,
+  "lon": 34.7992,
+  "qid": "Q156752"
+ },
+ "Suncheon": {
+  "lat": 34.9506,
+  "lon": 127.4875,
+  "qid": "Q42112"
+ },
+ "Suoyarvi": {
+  "lat": 62.0833,
+  "lon": 32.3667,
+  "qid": "Q196514"
+ },
+ "Suwałki": {
+  "lat": 54.1,
+  "lon": 22.9333,
+  "qid": "Q236083"
+ },
+ "Suwon": {
+  "lat": 37.2858,
+  "lon": 127.01,
+  "qid": "Q20714"
+ },
+ "Suzhou": {
+  "lat": 31.3,
+  "lon": 120.6194,
+  "qid": "Q42622"
+ },
+ "Sychyovka, Sychyovsky District, Smolensk Oblast": {
+  "lat": 55.8253,
+  "lon": 34.2736,
+  "qid": "Q196533"
+ },
+ "Syracuse, Sicily": {
+  "lat": 37.0692,
+  "lon": 15.2875,
+  "qid": "Q13670"
+ },
+ "Szczecin": {
+  "lat": 53.4247,
+  "lon": 14.5553,
+  "qid": "Q393"
+ },
+ "Szeged": {
+  "lat": 46.25,
+  "lon": 20.1667,
+  "qid": "Q81581"
+ },
+ "Székesfehérvár": {
+  "lat": 47.191,
+  "lon": 18.4108,
+  "qid": "Q130212"
+ },
+ "Tabarka": {
+  "lat": 36.955,
+  "lon": 8.755,
+  "qid": "Q986213"
+ },
+ "Taganrog": {
+  "lat": 47.2333,
+  "lon": 38.9,
+  "qid": "Q170513"
+ },
+ "Taiyuan": {
+  "lat": 37.8733,
+  "lon": 112.5425,
+  "qid": "Q72778"
+ },
+ "Tallinn": {
+  "lat": 59.4372,
+  "lon": 24.745,
+  "qid": "Q1770"
+ },
+ "Tambov": {
+  "lat": 52.7231,
+  "lon": 41.4539,
+  "qid": "Q3544"
+ },
+ "Tangshan": {
+  "lat": 39.6294,
+  "lon": 118.1739,
+  "qid": "Q58422"
+ },
+ "Taranto": {
+  "lat": 40.4711,
+  "lon": 17.2431,
+  "qid": "Q13498"
+ },
+ "Tarbes": {
+  "lat": 43.2328,
+  "lon": 0.0744,
+  "qid": "Q184023"
+ },
+ "Târgu Mureș": {
+  "lat": 46.5497,
+  "lon": 24.5597,
+  "qid": "Q186349"
+ },
+ "Tarnów": {
+  "lat": 50.0125,
+  "lon": 20.9883,
+  "qid": "Q106281"
+ },
+ "Tartu": {
+  "lat": 58.38,
+  "lon": 26.7225,
+  "qid": "Q13972"
+ },
+ "Tarvisio": {
+  "lat": 46.5053,
+  "lon": 13.5784,
+  "qid": "Q18801"
+ },
+ "Tauragė": {
+  "lat": 55.25,
+  "lon": 22.2833,
+  "qid": "Q193787"
+ },
+ "Tébessa": {
+  "lat": 35.4,
+  "lon": 8.1167,
+  "qid": "Q984575"
+ },
+ "Tebourba": {
+  "lat": 36.8295,
+  "lon": 9.8411,
+  "qid": "Q3099155"
+ },
+ "Temryuk": {
+  "lat": 45.2667,
+  "lon": 37.3833,
+  "qid": "Q15759"
+ },
+ "Tengchong": {
+  "lat": 25.0208,
+  "lon": 98.4972,
+  "qid": "Q1355705"
+ },
+ "Termoli": {
+  "lat": 42.0028,
+  "lon": 14.9947,
+  "qid": "Q118642"
+ },
+ "Terni": {
+  "lat": 42.5608,
+  "lon": 12.6468,
+  "qid": "Q8621"
+ },
+ "Ternopil": {
+  "lat": 49.5667,
+  "lon": 25.6,
+  "qid": "Q156743"
+ },
+ "Terracina": {
+  "lat": 41.2833,
+  "lon": 13.25,
+  "qid": "Q128226"
+ },
+ "Thala, Tunisia": {
+  "lat": 35.5667,
+  "lon": 8.6667,
+  "qid": "Q1975233"
+ },
+ "Thann, Haut-Rhin": {
+  "lat": 47.8067,
+  "lon": 7.1044,
+  "qid": "Q207570"
+ },
+ "The Hague": {
+  "lat": 52.08,
+  "lon": 4.31,
+  "qid": "Q36600"
+ },
+ "Thiaucourt-Regniéville": {
+  "lat": 48.9542,
+  "lon": 5.8661,
+  "qid": "Q497719"
+ },
+ "Thionville": {
+  "lat": 49.3581,
+  "lon": 6.1683,
+  "qid": "Q22640"
+ },
+ "Tianjin": {
+  "lat": 39.1467,
+  "lon": 117.2056,
+  "qid": "Q11736"
+ },
+ "Tikhoretsk": {
+  "lat": 45.85,
+  "lon": 40.1167,
+  "qid": "Q196658"
+ },
+ "Tikhvin": {
+  "lat": 59.6442,
+  "lon": 33.5422,
+  "qid": "Q15336"
+ },
+ "Tilburg": {
+  "lat": 51.5575,
+  "lon": 5.0906,
+  "qid": "Q26430"
+ },
+ "Timișoara": {
+  "lat": 45.7597,
+  "lon": 21.23,
+  "qid": "Q83404"
+ },
+ "Tiraspol": {
+  "lat": 46.85,
+  "lon": 29.6333,
+  "qid": "Q132572"
+ },
+ "Tobruk": {
+  "lat": 32.0833,
+  "lon": 23.95,
+  "qid": "Q182092"
+ },
+ "Toksovo": {
+  "lat": 60.1664,
+  "lon": 30.5431,
+  "qid": "Q2541893"
+ },
+ "Tolmezzo": {
+  "lat": 46.4,
+  "lon": 13.0167,
+  "qid": "Q53381"
+ },
+ "Tolmin": {
+  "lat": 46.183,
+  "lon": 13.733,
+  "qid": "Q8011223"
+ },
+ "Tongguan County": {
+  "lat": 34.5443,
+  "lon": 110.2408,
+  "qid": "Q733141"
+ },
+ "Torgau": {
+  "lat": 51.5603,
+  "lon": 13.0056,
+  "qid": "Q12062"
+ },
+ "Tormosin": {
+  "lat": 48.1694,
+  "lon": 42.6833,
+  "qid": "Q4461153"
+ },
+ "Toropets": {
+  "lat": 56.5,
+  "lon": 31.6333,
+  "qid": "Q48562"
+ },
+ "Toruń": {
+  "lat": 53.0167,
+  "lon": 18.6167,
+  "qid": "Q47554"
+ },
+ "Torzhok": {
+  "lat": 57.0333,
+  "lon": 34.9667,
+  "qid": "Q196678"
+ },
+ "Tosno": {
+  "lat": 59.5411,
+  "lon": 30.875,
+  "qid": "Q15337"
+ },
+ "Toul": {
+  "lat": 48.6761,
+  "lon": 5.8944,
+  "qid": "Q154728"
+ },
+ "Toulon": {
+  "lat": 43.125,
+  "lon": 5.9306,
+  "qid": "Q44160"
+ },
+ "Toulouse": {
+  "lat": 43.6044,
+  "lon": 1.4433,
+  "qid": "Q7880"
+ },
+ "Tournai": {
+  "lat": 50.6056,
+  "lon": 3.3881,
+  "qid": "Q173219"
+ },
+ "Tours": {
+  "lat": 47.3928,
+  "lon": 0.6883,
+  "qid": "Q288"
+ },
+ "Trapani": {
+  "lat": 38.0175,
+  "lon": 12.515,
+  "qid": "Q13664"
+ },
+ "Trento": {
+  "lat": 46.0667,
+  "lon": 11.1167,
+  "qid": "Q3376"
+ },
+ "Treviso": {
+  "lat": 45.6658,
+  "lon": 12.2456,
+  "qid": "Q5475"
+ },
+ "Trier": {
+  "lat": 49.7557,
+  "lon": 6.6394,
+  "qid": "Q3138"
+ },
+ "Trieste": {
+  "lat": 45.6503,
+  "lon": 13.7703,
+  "qid": "Q546"
+ },
+ "Tripoli, Libya": {
+  "lat": 32.8875,
+  "lon": 13.1875,
+  "qid": "Q3579"
+ },
+ "Troina": {
+  "lat": 37.7833,
+  "lon": 14.6,
+  "qid": "Q56212"
+ },
+ "Troyes": {
+  "lat": 48.2989,
+  "lon": 4.0781,
+  "qid": "Q5489"
+ },
+ "Trubchevsk": {
+  "lat": 52.5833,
+  "lon": 33.7667,
+  "qid": "Q196700"
+ },
+ "Tuapse": {
+  "lat": 44.1,
+  "lon": 39.0833,
+  "qid": "Q196702"
+ },
+ "Tübingen": {
+  "lat": 48.52,
+  "lon": 9.0556,
+  "qid": "Q3806"
+ },
+ "Tukums": {
+  "lat": 56.9669,
+  "lon": 23.153,
+  "qid": "Q636935"
+ },
+ "Tula, Russia": {
+  "lat": 54.2,
+  "lon": 37.6167,
+  "qid": "Q2770"
+ },
+ "Tunis": {
+  "lat": 36.8008,
+  "lon": 10.18,
+  "qid": "Q3572"
+ },
+ "Turin": {
+  "lat": 45.0792,
+  "lon": 7.6761,
+  "qid": "Q495"
+ },
+ "Tver": {
+  "lat": 56.8578,
+  "lon": 35.9219,
+  "qid": "Q2288"
+ },
+ "Udine": {
+  "lat": 46.0667,
+  "lon": 13.2333,
+  "qid": "Q2790"
+ },
+ "Uijeongbu": {
+  "lat": 37.7486,
+  "lon": 127.0389,
+  "qid": "Q42135"
+ },
+ "Ulm": {
+  "lat": 48.3986,
+  "lon": 9.9911,
+  "qid": "Q3012"
+ },
+ "Ulsan": {
+  "lat": 35.55,
+  "lon": 129.3167,
+  "qid": "Q41278"
+ },
+ "Uman": {
+  "lat": 48.75,
+  "lon": 30.2167,
+  "qid": "Q208499"
+ },
+ "Unecha": {
+  "lat": 52.85,
+  "lon": 32.6833,
+  "qid": "Q196827"
+ },
+ "Unsan County": {
+  "lat": 40.0833,
+  "lon": 125.75,
+  "qid": "Q708507"
+ },
+ "Uryupinsk": {
+  "lat": 50.8,
+  "lon": 42.0167,
+  "qid": "Q105538"
+ },
+ "Utrecht": {
+  "lat": 52.0908,
+  "lon": 5.1217,
+  "qid": "Q803"
+ },
+ "Uzhhorod": {
+  "lat": 48.6239,
+  "lon": 22.295,
+  "qid": "Q156711"
+ },
+ "Valday, Novgorod Oblast": {
+  "lat": 57.9667,
+  "lon": 33.25,
+  "qid": "Q132947"
+ },
+ "Valence, Drôme": {
+  "lat": 44.9325,
+  "lon": 4.8908,
+  "qid": "Q8848"
+ },
+ "Valenciennes": {
+  "lat": 50.3581,
+  "lon": 3.5233,
+  "qid": "Q163795"
+ },
+ "Valuyki, Belgorod Oblast": {
+  "lat": 50.1833,
+  "lon": 38.1167,
+  "qid": "Q132957"
+ },
+ "Vannes": {
+  "lat": 47.655,
+  "lon": -2.7617,
+  "qid": "Q6593"
+ },
+ "Varennes-en-Argonne": {
+  "lat": 49.2281,
+  "lon": 5.0358,
+  "qid": "Q59220"
+ },
+ "Varna, Bulgaria": {
+  "lat": 43.2114,
+  "lon": 27.9111,
+  "qid": "Q6506"
+ },
+ "Vasto": {
+  "lat": 42.1116,
+  "lon": 14.7082,
+  "qid": "Q51313"
+ },
+ "Velikiye Luki": {
+  "lat": 56.35,
+  "lon": 30.5167,
+  "qid": "Q101825"
+ },
+ "Veliky Novgorod": {
+  "lat": 58.521,
+  "lon": 31.2758,
+  "qid": "Q2235"
+ },
+ "Velizh": {
+  "lat": 55.6,
+  "lon": 31.2,
+  "qid": "Q132960"
+ },
+ "Velletri": {
+  "lat": 41.6667,
+  "lon": 12.7833,
+  "qid": "Q189236"
+ },
+ "Venice": {
+  "lat": 45.4397,
+  "lon": 12.3319,
+  "qid": "Q641"
+ },
+ "Venlo": {
+  "lat": 51.3667,
+  "lon": 6.1667,
+  "qid": "Q9777"
+ },
+ "Ventspils": {
+  "lat": 57.3897,
+  "lon": 21.5644,
+  "qid": "Q104036"
+ },
+ "Venyov": {
+  "lat": 54.35,
+  "lon": 38.2667,
+  "qid": "Q132974"
+ },
+ "Verdun": {
+  "lat": 49.1597,
+  "lon": 5.3828,
+  "qid": "Q154748"
+ },
+ "Verona": {
+  "lat": 45.4386,
+  "lon": 10.9928,
+  "qid": "Q2028"
+ },
+ "Veurne": {
+  "lat": 51.0722,
+  "lon": 2.6622,
+  "qid": "Q506707"
+ },
+ "Vicenza": {
+  "lat": 45.55,
+  "lon": 11.55,
+  "qid": "Q6537"
+ },
+ "Vichy": {
+  "lat": 46.1269,
+  "lon": 3.4258,
+  "qid": "Q93351"
+ },
+ "Vielsalm": {
+  "lat": 50.2861,
+  "lon": 5.9181,
+  "qid": "Q650172"
+ },
+ "Vienna": {
+  "lat": 48.2083,
+  "lon": 16.3725,
+  "qid": "Q1741"
+ },
+ "Villach": {
+  "lat": 46.6167,
+  "lon": 13.8333,
+  "qid": "Q483522"
+ },
+ "Villers-Cotterêts": {
+  "lat": 49.2531,
+  "lon": 3.0903,
+  "qid": "Q213883"
+ },
+ "Vilnius": {
+  "lat": 54.6872,
+  "lon": 25.28,
+  "qid": "Q216"
+ },
+ "Vinnytsia": {
+  "lat": 49.2372,
+  "lon": 28.4672,
+  "qid": "Q157144"
+ },
+ "Vire Normandie": {
+  "lat": 48.8386,
+  "lon": -0.8892,
+  "qid": "Q21979810"
+ },
+ "Vitebsk": {
+  "lat": 55.1833,
+  "lon": 30.1667,
+  "qid": "Q102217"
+ },
+ "Viterbo": {
+  "lat": 42.4186,
+  "lon": 12.1042,
+  "qid": "Q13395"
+ },
+ "Vitry-le-François": {
+  "lat": 48.7247,
+  "lon": 4.5844,
+  "qid": "Q623374"
+ },
+ "Vittorio Veneto": {
+  "lat": 45.9833,
+  "lon": 12.3,
+  "qid": "Q47578"
+ },
+ "Vladikavkaz": {
+  "lat": 43.04,
+  "lon": 44.6775,
+  "qid": "Q5239"
+ },
+ "Volgograd": {
+  "lat": 48.7086,
+  "lon": 44.5147,
+  "qid": "Q914"
+ },
+ "Volkhov": {
+  "lat": 59.9167,
+  "lon": 32.3333,
+  "qid": "Q15245"
+ },
+ "Volodymyr (city)": {
+  "lat": 50.8481,
+  "lon": 24.3222,
+  "qid": "Q33544"
+ },
+ "Volokolamsk": {
+  "lat": 56.0333,
+  "lon": 35.95,
+  "qid": "Q102152"
+ },
+ "Voronezh": {
+  "lat": 51.6717,
+  "lon": 39.2106,
+  "qid": "Q3426"
+ },
+ "Vouziers": {
+  "lat": 49.3981,
+  "lon": 4.7011,
+  "qid": "Q28731525"
+ },
+ "Voznesensk": {
+  "lat": 47.5725,
+  "lon": 31.3119,
+  "qid": "Q615451"
+ },
+ "Vukovar": {
+  "lat": 45.35,
+  "lon": 19.0033,
+  "qid": "Q5867"
+ },
+ "Vyazma": {
+  "lat": 55.2103,
+  "lon": 34.285,
+  "qid": "Q102307"
+ },
+ "Vyborg": {
+  "lat": 60.7106,
+  "lon": 28.7497,
+  "qid": "Q14657"
+ },
+ "Vyshny Volochyok": {
+  "lat": 57.5913,
+  "lon": 34.5645,
+  "qid": "Q134181"
+ },
+ "Wadi El Natrun": {
+  "lat": 30.4167,
+  "lon": 30.3333,
+  "qid": "Q1074945"
+ },
+ "Wanzhou, Chongqing": {
+  "lat": 30.9,
+  "lon": 108.467,
+  "qid": "Q713825"
+ },
+ "Warsaw": {
+  "lat": 52.23,
+  "lon": 21.0111,
+  "qid": "Q270"
+ },
+ "Weimar": {
+  "lat": 50.9811,
+  "lon": 11.3294,
+  "qid": "Q3955"
+ },
+ "Wenzhou": {
+  "lat": 27.9991,
+  "lon": 120.6561,
+  "qid": "Q42635"
+ },
+ "Wesel": {
+  "lat": 51.6586,
+  "lon": 6.6178,
+  "qid": "Q4011"
+ },
+ "Wiener Neustadt": {
+  "lat": 47.8167,
+  "lon": 16.25,
+  "qid": "Q131612"
+ },
+ "Wiesbaden": {
+  "lat": 50.0825,
+  "lon": 8.24,
+  "qid": "Q1721"
+ },
+ "Wilhelmshaven": {
+  "lat": 53.5286,
+  "lon": 8.1056,
+  "qid": "Q3857"
+ },
+ "Wiltz": {
+  "lat": 49.9661,
+  "lon": 5.9325,
+  "qid": "Q741589"
+ },
+ "Wismar": {
+  "lat": 53.8925,
+  "lon": 11.465,
+  "qid": "Q7030"
+ },
+ "Wittenberg": {
+  "lat": 51.8671,
+  "lon": 12.6484,
+  "qid": "Q6837"
+ },
+ "Wonju": {
+  "lat": 37.3417,
+  "lon": 127.9208,
+  "qid": "Q42131"
+ },
+ "Wonsan": {
+  "lat": 39.1475,
+  "lon": 127.4461,
+  "qid": "Q109374"
+ },
+ "Worms, Germany": {
+  "lat": 49.6303,
+  "lon": 8.3621,
+  "qid": "Q3852"
+ },
+ "Wrocław": {
+  "lat": 51.11,
+  "lon": 17.0325,
+  "qid": "Q1799"
+ },
+ "Wuhan": {
+  "lat": 30.595,
+  "lon": 114.2975,
+  "qid": "Q11746"
+ },
+ "Wuhu": {
+  "lat": 31.334,
+  "lon": 118.3622,
+  "qid": "Q359990"
+ },
+ "Wuppertal": {
+  "lat": 51.2667,
+  "lon": 7.1833,
+  "qid": "Q2107"
+ },
+ "Würzburg": {
+  "lat": 49.7944,
+  "lon": 9.9294,
+  "qid": "Q2999"
+ },
+ "Wuxi": {
+  "lat": 31.5667,
+  "lon": 120.2833,
+  "qid": "Q42651"
+ },
+ "Wuyuan County, Inner Mongolia": {
+  "lat": 41.0938,
+  "lon": 108.2683,
+  "qid": "Q1354003"
+ },
+ "Xanten": {
+  "lat": 51.6622,
+  "lon": 6.4539,
+  "qid": "Q162890"
+ },
+ "Xi'an": {
+  "lat": 34.2611,
+  "lon": 108.9422,
+  "qid": "Q5826"
+ },
+ "Xiamen": {
+  "lat": 24.4797,
+  "lon": 118.0819,
+  "qid": "Q68744"
+ },
+ "Xiangyang": {
+  "lat": 32.0654,
+  "lon": 112.1531,
+  "qid": "Q71284"
+ },
+ "Xinxiang": {
+  "lat": 35.2992,
+  "lon": 113.8851,
+  "qid": "Q404362"
+ },
+ "Xinyang": {
+  "lat": 32.1264,
+  "lon": 114.0672,
+  "qid": "Q404873"
+ },
+ "Xuchang": {
+  "lat": 34.0244,
+  "lon": 113.8201,
+  "qid": "Q404529"
+ },
+ "Xuzhou": {
+  "lat": 34.261,
+  "lon": 117.1859,
+  "qid": "Q57719"
+ },
+ "Yalta": {
+  "lat": 44.4994,
+  "lon": 34.1553,
+  "qid": "Q128499"
+ },
+ "Yan'an": {
+  "lat": 36.5952,
+  "lon": 109.4863,
+  "qid": "Q515388"
+ },
+ "Yanggu County, Gangwon": {
+  "lat": 38.1081,
+  "lon": 127.9894,
+  "qid": "Q50253"
+ },
+ "Yangyang County": {
+  "lat": 38.0667,
+  "lon": 128.6167,
+  "qid": "Q50254"
+ },
+ "Yantai": {
+  "lat": 37.4644,
+  "lon": 121.4478,
+  "qid": "Q210493"
+ },
+ "Yartsevo, Smolensk Oblast": {
+  "lat": 55.0667,
+  "lon": 32.6833,
+  "qid": "Q199004"
+ },
+ "Yefremov (town)": {
+  "lat": 53.1492,
+  "lon": 38.0826,
+  "qid": "Q135809"
+ },
+ "Yelets": {
+  "lat": 52.6167,
+  "lon": 38.4667,
+  "qid": "Q102346"
+ },
+ "Yelnya, Yelninsky District, Smolensk Oblast": {
+  "lat": 54.5667,
+  "lon": 33.1667,
+  "qid": "Q102364"
+ },
+ "Yeongdeok County": {
+  "lat": 36.41,
+  "lon": 129.375,
+  "qid": "Q50260"
+ },
+ "Yeongdong County": {
+  "lat": 36.175,
+  "lon": 127.7764,
+  "qid": "Q50261"
+ },
+ "Yevpatoria": {
+  "lat": 45.2,
+  "lon": 33.3583,
+  "qid": "Q33345"
+ },
+ "Yeysk": {
+  "lat": 46.7111,
+  "lon": 38.2733,
+  "qid": "Q135616"
+ },
+ "Yichang": {
+  "lat": 30.7083,
+  "lon": 111.2803,
+  "qid": "Q71266"
+ },
+ "Yinchuan": {
+  "lat": 38.485,
+  "lon": 106.225,
+  "qid": "Q211243"
+ },
+ "Yongzhou": {
+  "lat": 26.4515,
+  "lon": 111.5953,
+  "qid": "Q266014"
+ },
+ "Ypres": {
+  "lat": 50.8508,
+  "lon": 2.885,
+  "qid": "Q102728"
+ },
+ "Yueyang": {
+  "lat": 29.3647,
+  "lon": 113.1309,
+  "qid": "Q151958"
+ },
+ "Yukhnov": {
+  "lat": 54.75,
+  "lon": 35.2333,
+  "qid": "Q198852"
+ },
+ "Yulin, Shaanxi": {
+  "lat": 38.2655,
+  "lon": 109.7388,
+  "qid": "Q515712"
+ },
+ "Yuncheng": {
+  "lat": 35.0304,
+  "lon": 110.998,
+  "qid": "Q73073"
+ },
+ "Zaghouan": {
+  "lat": 36.4028,
+  "lon": 10.1433,
+  "qid": "Q12912434"
+ },
+ "Zagreb": {
+  "lat": 45.8131,
+  "lon": 15.9772,
+  "qid": "Q1435"
+ },
+ "Zamość": {
+  "lat": 50.7206,
+  "lon": 23.2586,
+  "qid": "Q145972"
+ },
+ "Zaporizhzhia": {
+  "lat": 47.85,
+  "lon": 35.1175,
+  "qid": "Q157835"
+ },
+ "Zelenogorsk, Saint Petersburg": {
+  "lat": 60.2,
+  "lon": 29.7,
+  "qid": "Q46850"
+ },
+ "Zhangjiakou": {
+  "lat": 40.8108,
+  "lon": 114.8811,
+  "qid": "Q58650"
+ },
+ "Zhanjiang": {
+  "lat": 21.1967,
+  "lon": 110.4031,
+  "qid": "Q59144"
+ },
+ "Zhengzhou": {
+  "lat": 34.7492,
+  "lon": 113.6605,
+  "qid": "Q30340"
+ },
+ "Zhenjiang": {
+  "lat": 32.2109,
+  "lon": 119.4551,
+  "qid": "Q57958"
+ },
+ "Zhijiang Dong Autonomous County": {
+  "lat": 27.4396,
+  "lon": 109.6859,
+  "qid": "Q197787"
+ },
+ "Zhizdra": {
+  "lat": 53.7503,
+  "lon": 34.7361,
+  "qid": "Q136340"
+ },
+ "Zhlobin": {
+  "lat": 52.9,
+  "lon": 30.0333,
+  "qid": "Q837765"
+ },
+ "Zhytomyr": {
+  "lat": 50.2544,
+  "lon": 28.6578,
+  "qid": "Q156713"
+ },
+ "Žilina": {
+  "lat": 49.2167,
+  "lon": 18.7333,
+  "qid": "Q25797"
+ },
+ "Zimovniki": {
+  "lat": 47.145,
+  "lon": 42.4667,
+  "qid": "Q1000856"
+ },
+ "Zubtsov": {
+  "lat": 56.1667,
+  "lon": 34.5833,
+  "qid": "Q141342"
+ },
+ "Zürich": {
+  "lat": 47.3744,
+  "lon": 8.5411,
+  "qid": "Q72"
+ },
+ "Zuwarah": {
+  "lat": 32.9333,
+  "lon": 12.0833,
+  "qid": "Q231167"
+ },
+ "Zviahel": {
+  "lat": 50.5833,
+  "lon": 27.6333,
+  "qid": "Q149024"
+ },
+ "Zwickau": {
+  "lat": 50.7189,
+  "lon": 12.4961,
+  "qid": "Q3778"
+ },
+ "Zwolle": {
+  "lat": 52.5167,
+  "lon": 6.1,
+  "qid": "Q793"
+ }
+}

@@ -7,7 +7,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./data": "./src/data/index.ts",
-    "./geo-data": "./src/data/geo/index.ts"
+    "./geo-data": "./src/data/geo/index.ts",
+    "./fronts-data": "./src/data/fronts/index.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

@@ -29,6 +29,7 @@ export const LAYERS = [
   'battles',
   'demo',
   'borders',
+  'territories',
   'frontlines',
   'labels',
   'places',
@@ -268,11 +269,11 @@ export const TOOL_DESCRIPTIONS: Record<ToolName, string> = {
   get_border_at_date:
     'Look up which verified border geometry exists for a date. Returns the snapshot used, its distance from the date, certainty, and whether the named polity appears. If data is unavailable, say so — never invent borders.',
   get_frontline_at_date:
-    'Look up verified frontline/control-line geometry for a date. Often unavailable; never invent frontlines.',
+    'Front lines on a date: the fronts of past wars as WorldLens reconstructs them day by day from when places changed hands (approximate — say so), and ceasefire / control lines. For each front: the places each side held near the line and what changed hands in the last 30 days. Not every war is covered and there are no live fronts of ongoing wars; when unavailable it lists the fronts that exist. Never invent frontlines.',
   compare_dates:
     'Compare two dates: events in each window and which border snapshots apply. Optionally focus on a region.',
   compare_frontlines:
-    'Compare frontline records of one conflict at two dates, if verified data exists.',
+    'Compare the front lines of one conflict at two dates: which places changed hands in between (reconstructed fronts), and which ceasefire lines applied.',
   find_action_options:
     'List Take Action options (PayPal SANDBOX demo donations) relevant to humanitarian events, optionally within a budget. Does not move money.',
   get_payment_status:
@@ -282,7 +283,7 @@ export const TOOL_DESCRIPTIONS: Record<ToolName, string> = {
   get_my_activity:
     "The signed-in user's own WorldLens activity, newest first: what they searched for and which events and countries they opened (not their AI chats). Use it to understand what they are interested in or asking about, or to answer questions like 'what did I look at yesterday'. Guests have none.",
   set_display:
-    'Change display settings: graphics quality (auto, low, medium, high), night shading, city lights, developer diagnostics. Layers (news, history, battles, borders, frontlines, labels, demo) are toggle_layer.',
+    'Change display settings: graphics quality (auto, low, medium, high), night shading, city lights, developer diagnostics. Layers (news, history, battles, borders, territories, frontlines, labels, demo) are toggle_layer.',
   set_ai_settings:
     'Change how the assistant works, only when the user asks: remember their earlier AI chats and read their history (searches, opened events and countries) — signed-in users only; agent_mode false switches you to Chat (you then answer without operating the app; the user switches Agent back on).',
   open_panel:
@@ -303,7 +304,7 @@ export const TOOL_DESCRIPTIONS: Record<ToolName, string> = {
   open_country:
     "Open a country's card as it was on the selected date — historical ones too (Ottoman Empire, Prussia, Soviet Union) — fly to it and show the borders of the day. If it did not exist then, the timeline moves into its period. Call set_time first for a particular date.",
   toggle_layer:
-    'Turn a globe layer on or off: news, history, battles, demo, borders, frontlines, labels (event names), places (names of cities, rivers, seas, mountains and deserts).',
+    'Turn a globe layer on or off: news, history, battles, demo, borders, territories (countries filled with their colours on a past date; in a war with a reconstructed front, the ground each side holds), frontlines, labels (event names), places (names of cities, rivers, seas, mountains and deserts).',
   open_take_action:
     'Open the human review screen for a Take Action option with a suggested amount. The user must review and press PayPal themselves; this tool cannot pay.',
 };

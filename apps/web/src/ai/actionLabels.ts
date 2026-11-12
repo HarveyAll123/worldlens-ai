@@ -12,6 +12,7 @@ const LAYER: Record<LayerId, string> = {
   battles: 'Battles',
   demo: 'Demo scenarios',
   borders: 'Borders',
+  territories: 'Territories',
   frontlines: 'Frontlines',
   labels: 'Event names',
   places: 'Place names',

@@ -5,6 +5,7 @@ import { TIER_SETTINGS } from '../perf/tiers';
 import type { QualityState } from '../perf/PerformanceManager';
 import type { GlobeController } from '../globe/GlobeController';
 import type { BorderFeatureLike } from '../globe/GeometryLayers';
+import { territoryScene, warZone, type WarZone } from '../globe/territory';
 import {
   activeOn,
   borderLines as ohmLines,
@@ -17,6 +18,10 @@ import {
   useBorders,
   useCountryOutlines,
   useFrontlines,
+  useFrontsData,
+  useLandOutline,
+  useReconstructedFronts,
+  useTimelineHour,
   useOhmCoarseWays,
   useOhmDetail,
   useOhmIndex,
@@ -272,17 +277,20 @@ export function GlobeView({
   const altitudeKm = useAppStore((s) => s.camera.altitudeKm);
   const viewBox = useAppStore((s) => s.camera.bbox);
   const historicalBorders = layers.borders && mode === 'historical';
+  // Countries filled with their colours on a past date (the Territories layer).
+  const territories = layers.territories && mode === 'historical';
   const selectedCountry = useAppStore((s) => s.selectedCountry);
-  const ohmIndex = useOhmIndex(historicalBorders);
-  const ohmCoarse = useOhmCoarseWays(historicalBorders || !!selectedCountry);
+  const ohmIndex = useOhmIndex(historicalBorders || territories);
+  const ohmCoarse = useOhmCoarseWays(historicalBorders || territories || !!selectedCountry);
   const ohm = historicalBorders && !ohmIndex.isError && !ohmCoarse.isError;
   const day = toIso(floorTo(timeMs, 'day')).slice(0, 10);
+  // Detailed lines for the area in view, once close: for the borders and for the colours.
   const detailTiles = useMemo(
     () =>
-      ohm && ohmIndex.data && altitudeKm < OHM_DETAIL_BELOW_KM
+      (ohm || territories) && ohmIndex.data && altitudeKm < OHM_DETAIL_BELOW_KM
         ? tilesInView(viewBox, ohmIndex.data)
         : [],
-    [ohm, ohmIndex.data, altitudeKm, viewBox],
+    [ohm, territories, ohmIndex.data, altitudeKm, viewBox],
   );
   const ohmDetail = useOhmDetail(detailTiles);
   const ohmActive = useMemo(
@@ -291,6 +299,12 @@ export function GlobeView({
   );
   // Borders only change when the set of polities does — not on every day scrubbed through.
   const activeKey = ohmActive?.map((p) => `${p.start} ${p.name}`).join('\n') ?? '';
+  // Ground the data's corrections carry where nobody is mapped: for the colours only.
+  const ohmCarried = useMemo(
+    () => (ohmIndex.data && territories ? activeOn(ohmIndex.data.carried, day) : []),
+    [ohmIndex.data, territories, day],
+  );
+  const carriedKey = ohmCarried.map((p) => `${p.start} ${p.name}`).join('\n');
   // Zoomed in, only borders around the view are drawn (draping thousands on terrain is slow).
   const ohmCullBox = altitudeKm < OHM_DETAIL_BELOW_KM ? viewBox : null;
   const ohmLinesToDraw = useMemo(
@@ -381,13 +395,77 @@ export function GlobeView({
     });
   }, [globe, selectedCountry, ohmCoarse.data, ohmDetail]);
 
+  // Ceasefire and control lines from the API, and the fronts of wars reconstructed here for
+  // the timeline's moment (they move as it does).
   const frontlines = useFrontlines(layers.frontlines);
+  const frontsData = useFrontsData(layers.frontlines || territories);
+  const fronts = useReconstructedFronts(frontsData, layers.frontlines);
   useEffect(() => {
     if (globe)
       safely('frontlines', () =>
-        globe.setFrontlines(layers.frontlines ? (frontlines.data?.frontlines ?? []) : []),
+        globe.setFrontlines(
+          layers.frontlines ? [...(frontlines.data?.frontlines ?? []), ...fronts] : [],
+        ),
       );
-  }, [globe, layers.frontlines, frontlines.data]);
+  }, [globe, layers.frontlines, frontlines.data, fronts]);
+
+  // Territories: the countries of the day in their colours and, where a front is
+  // reconstructed, the ground each side holds — repainted when either changes.
+  const hour = useTimelineHour();
+  const land = useLandOutline(territories);
+  const zones = useMemo(
+    () =>
+      territories && frontsData
+        ? frontsData
+            .controlAt(hour)
+            .map(({ theatre, a, b }) => warZone(theatre, { a, b }))
+            .filter((z): z is WarZone => !!z)
+        : [],
+    [territories, frontsData, hour],
+  );
+  // The same ground as an hour ago paints the same picture: no repaint.
+  const zonesKey = useMemo(() => {
+    let sum = 0;
+    for (const z of zones)
+      for (const poly of [...z.a, ...z.b]) for (const [x, y] of poly) sum += x * 31 + y * 17;
+    return `${zones.map((z) => z.id).join(',')}:${Math.round(sum * 100)}`;
+  }, [zones]);
+  // Which detailed lines are loaded: the colours are repainted from them when that changes.
+  const detailKey = useMemo(() => {
+    let sum = 0;
+    for (const way of ohmDetail.keys()) sum = (sum + way * 2654435761) >>> 0;
+    return `${ohmDetail.size}:${sum}`;
+  }, [ohmDetail]);
+  useEffect(() => {
+    if (!globe) return;
+    safely('territories', () => {
+      if (!territories || !ohmActive || !ohmCoarse.data) return globe.setTerritories(null);
+      globe.setTerritories(
+        territoryScene({
+          active: ohmActive,
+          carried: ohmCarried,
+          coarse: ohmCoarse.data.ways,
+          classes: ohmCoarse.data.classes,
+          fine: ohmDetail,
+          zones,
+          land: land.data ?? null,
+          baseKey: `${activeKey}|${carriedKey}|${detailKey}`,
+          zonesKey,
+        }),
+      );
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    globe,
+    territories,
+    activeKey,
+    carriedKey,
+    zonesKey,
+    detailKey,
+    ohmCoarse.data,
+    land.data,
+    tier,
+  ]);
 
   useEffect(() => {
     globe?.setEventsVisible(layers.news || layers.history);

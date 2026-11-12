@@ -264,6 +264,7 @@ export const useAppStore = create<AppState>()(
       battles: true,
       demo: true,
       borders: false,
+      territories: true,
       frontlines: true,
       labels: true,
       places: true,

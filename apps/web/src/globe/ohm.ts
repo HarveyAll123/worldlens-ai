@@ -21,6 +21,8 @@ export interface OhmPolity {
   ways: number[];
   /** 2 = state; 3 = occupation regime or dependent territory (General Government, …). */
   tier: 2 | 3;
+  /** Carried ground only: the part of the shape that counts (west, south, east, north). */
+  clip?: [number, number, number, number];
 }
 
 export interface OhmIndex {
@@ -28,6 +30,12 @@ export interface OhmIndex {
   tileDeg: number;
   tiles: Set<string>;
   polities: OhmPolity[];
+  /**
+   * Ground the build's corrections carry where OpenHistoricalMap maps nobody
+   * (scripts/lib/ohm-patches.ts): painted by the Territories layer under the countries, with
+   * no border or label of its own.
+   */
+  carried: OhmPolity[];
 }
 
 type Row = [
@@ -39,6 +47,7 @@ type Row = [
   [number, number, number, number],
   number[],
   (2 | 3)?,
+  [number, number, number, number]?,
 ];
 
 export function parseOhmIndex(json: {
@@ -46,16 +55,29 @@ export function parseOhmIndex(json: {
   tileDeg: number;
   tiles: string[];
   polities: Row[];
+  carried?: Row[];
 }): OhmIndex {
+  const row = ([name, start, end, wikidata, label, bbox, deltas, tier, clip]: Row): OhmPolity => {
+    let acc = 0;
+    const ways = deltas.map((d) => (acc += d));
+    return {
+      name,
+      start,
+      end,
+      wikidata,
+      label,
+      bbox,
+      ways,
+      tier: tier ?? 2,
+      ...(clip ? { clip } : {}),
+    };
+  };
   return {
     retrieved: json.retrieved,
     tileDeg: json.tileDeg,
     tiles: new Set(json.tiles),
-    polities: json.polities.map(([name, start, end, wikidata, label, bbox, deltas, tier]) => {
-      let acc = 0;
-      const ways = deltas.map((d) => (acc += d));
-      return { name, start, end, wikidata, label, bbox, ways, tier: tier ?? 2 };
-    }),
+    polities: json.polities.map(row),
+    carried: (json.carried ?? []).map(row),
   };
 }
 
