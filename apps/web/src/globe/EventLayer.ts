@@ -11,7 +11,14 @@
  */
 import * as Cesium from 'cesium';
 import type { EventSummary } from '@worldlens/shared';
-import { atOnePlace, clusterGeo, clusterLevel, placeLabels } from './clustering';
+import {
+  atOnePlace,
+  clearOfMarkers,
+  clusterGeo,
+  clusterLevel,
+  placeLabels,
+  type MarkerBox,
+} from './clustering';
 import type { Rect } from './placeNames';
 import { COLORS, eventColor } from './styles';
 
@@ -44,6 +51,8 @@ interface Drawn {
   title: Cesium.Label | null;
   /** Which side of the marker the title sits on (flips near the screen edge). */
   titleSide?: 'left' | 'right';
+  /** The title's box, from the marker: how far its left edge is, and how wide it is (px). */
+  titleBox?: { dx: number; width: number };
   visible: boolean;
 }
 
@@ -76,8 +85,6 @@ export class EventLayer {
   private visible = true;
   private level: number | null = null;
   private drawn = new Map<string, Drawn>();
-  /** Screen boxes of the titles placed last (for what is placed after them: place names). */
-  private titleRects: Rect[] = [];
   /** Called after every re-placement of titles (the place names follow). */
   onRelabel: (() => void) | null = null;
   stats = { visibleEvents: 0, visibleLabels: 0, clusters: 0 };
@@ -304,44 +311,62 @@ export class EventLayer {
       weight: number;
     };
     const candidates: Candidate[] = [];
-    const wanted = new Map<string, { side: 'left' | 'right'; text: string }>();
-    if (this.settings.labels)
+    const wanted = new Map<
+      string,
+      { side: 'left' | 'right'; text: string; dx: number; width: number }
+    >();
+    if (this.settings.labels) {
+      // Every marker on screen — single events, battles and clusters: a title may sit beside
+      // its own marker only, never across another one.
+      const markers: MarkerBox[] = [];
+      const single: Array<{ key: string; d: Drawn; x: number; y: number }> = [];
       for (const [key, d] of this.drawn) {
-        if (d.ids.length !== 1 || !d.visible) continue;
+        if (!d.visible) continue;
         const w = Cesium.SceneTransforms.worldToWindowCoordinates(
           this.scene,
           d.position,
           scratchWin,
         );
         if (!w || w.x < 0 || w.y < 0 || w.x > width || w.y > height) continue;
-        if (w.y < safe.top || w.y > height - safe.bottom) continue;
-        const e = this.byId.get(d.ids[0]!)!;
-        const roomRight = width - safe.left - (w.x + 14);
-        const roomLeft = w.x - 14 - safe.left;
-        const side: 'left' | 'right' = roomRight >= 120 || roomRight >= roomLeft ? 'right' : 'left';
-        const room = side === 'right' ? roomRight : roomLeft;
-        const maxChars = Math.floor((room - 20) / 7.2);
-        const chars = Math.min(TITLE_CHARS, e.title.length, maxChars);
-        if (chars < 10) continue;
-        const text = truncate(e.title, chars);
-        const labelWidth = chars * 7.2 + 18;
-        const labelX = side === 'right' ? w.x + 10 : w.x - 10 - labelWidth;
-        if (labelX < safe.left || labelX + labelWidth > width - safe.left) continue;
-        if (obscured(labelX, w.y - 11, labelWidth, 22)) continue;
-        candidates.push({
-          id: key,
-          x: labelX,
-          y: w.y - 11,
-          width: labelWidth,
-          height: 22,
-          weight: e.importance + (e.id === this.selectedId ? 100 : 0),
-        });
-        wanted.set(key, { side, text });
+        const size = d.point.pixelSize + 4;
+        markers.push({ id: key, x: w.x - size / 2, y: w.y - size / 2, width: size, height: size });
+        if (d.ids.length === 1 && w.y >= safe.top && w.y <= height - safe.bottom)
+          single.push({ key, d, x: w.x, y: w.y });
       }
+      for (const { key, d, x, y } of single) {
+        const e = this.byId.get(d.ids[0]!)!;
+        const roomRight = width - safe.left - (x + 14);
+        const roomLeft = x - 14 - safe.left;
+        const first: 'left' | 'right' =
+          roomRight >= 120 || roomRight >= roomLeft ? 'right' : 'left';
+        // The roomier side first; the other one when a neighbouring marker is in the way.
+        for (const side of [first, first === 'right' ? 'left' : 'right'] as const) {
+          const room = side === 'right' ? roomRight : roomLeft;
+          const maxChars = Math.floor((room - 20) / 7.2);
+          const chars = Math.min(TITLE_CHARS, e.title.length, maxChars);
+          if (chars < 10) continue;
+          const labelWidth = chars * 7.2 + 18;
+          const labelX = side === 'right' ? x + 10 : x - 10 - labelWidth;
+          if (labelX < safe.left || labelX + labelWidth > width - safe.left) continue;
+          const box = { x: labelX, y: y - 11, width: labelWidth, height: 22 };
+          if (obscured(box.x, box.y, box.width, box.height)) continue;
+          if (!clearOfMarkers(box, key, markers)) continue;
+          candidates.push({
+            id: key,
+            ...box,
+            weight: e.importance + (e.id === this.selectedId ? 100 : 0),
+          });
+          wanted.set(key, {
+            side,
+            text: truncate(e.title, chars),
+            dx: labelX - x,
+            width: labelWidth,
+          });
+          break;
+        }
+      }
+    }
     const chosen = placeLabels(candidates, this.settings.maxLabels);
-    this.titleRects = candidates
-      .filter((c) => chosen.has(c.id))
-      .map(({ x, y, width, height }) => ({ x, y, width, height }));
     for (const [key, d] of this.drawn) {
       const want = chosen.has(key) ? wanted.get(key) : undefined;
       if (want) {
@@ -366,10 +391,12 @@ export class EventLayer {
           });
           d.titleSide = want.side;
         }
+        d.titleBox = { dx: want.dx, width: want.width };
       } else if (d.title) {
         this.labels.remove(d.title);
         d.title = null;
         d.titleSide = undefined;
+        d.titleBox = undefined;
       }
     }
     this.cull();
@@ -378,8 +405,9 @@ export class EventLayer {
   }
 
   /**
-   * What events take on screen now: every visible marker (with a margin) and the titles placed
-   * beside them. Nothing placed after them may cover these.
+   * What events take on screen now: every visible marker (with a margin) and the title beside
+   * it, where they are in this frame — a title travels with its marker, so the boxes are right
+   * while the view moves too. Nothing placed after them may cover these.
    */
   obstacles(): Rect[] {
     const out: Rect[] = [];
@@ -390,7 +418,9 @@ export class EventLayer {
       if (!w) continue;
       const size = d.point.pixelSize + 8;
       out.push({ x: w.x - size / 2, y: w.y - size / 2, width: size, height: size });
+      if (d.title && d.titleBox)
+        out.push({ x: w.x + d.titleBox.dx, y: w.y - 11, width: d.titleBox.width, height: 22 });
     }
-    return [...out, ...this.titleRects];
+    return out;
   }
 }

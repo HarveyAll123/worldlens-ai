@@ -84,6 +84,34 @@ export function atOnePlace(points: Array<{ lat: number; lon: number }>, km = 1):
   return rest.every((p) => Math.hypot((p.lon - first.lon) * cos, p.lat - first.lat) * 111.2 <= km);
 }
 
+export interface MarkerBox {
+  /** The marker's own key: its title may touch it. */
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Whether a title's box is clear of every marker but its own. A title beside one battle used
+ * to lie across the next battle's marker, or under a cluster's count.
+ */
+export function clearOfMarkers(
+  box: { x: number; y: number; width: number; height: number },
+  ownId: string,
+  markers: MarkerBox[],
+): boolean {
+  return !markers.some(
+    (m) =>
+      m.id !== ownId &&
+      box.x < m.x + m.width &&
+      box.x + box.width > m.x &&
+      box.y < m.y + m.height &&
+      box.y + box.height > m.y,
+  );
+}
+
 export function placeLabels(items: LabelCandidate[], budget: number): Set<string> {
   const placed: LabelCandidate[] = [];
   const out = new Set<string>();

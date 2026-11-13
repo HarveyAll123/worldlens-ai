@@ -173,6 +173,12 @@ function borderMaterial(c: Certainty): Cesium.Material {
   }
 }
 
+const rectScratch = {
+  window: new Cesium.Cartesian2(),
+  normal: new Cesium.Cartesian3(),
+  toCamera: new Cesium.Cartesian3(),
+};
+
 export class BordersLayer {
   private lines: LineSet;
   private labels = new Cesium.LabelCollection();
@@ -309,12 +315,13 @@ export class BordersLayer {
     const out: { x: number; y: number; width: number; height: number }[] = [];
     const camera = this.scene.camera.positionWC;
     const ellipsoid = this.scene.globe.ellipsoid;
-    const scratch = new Cesium.Cartesian2();
+    // Asked with every frame while the view moves (place names step aside): no garbage.
+    const scratch = rectScratch.window;
     for (let i = 0; i < this.labels.length; i++) {
       const label = this.labels.get(i);
       if (!label.show) continue;
-      const n = ellipsoid.geodeticSurfaceNormal(label.position, new Cesium.Cartesian3());
-      const toCamera = Cesium.Cartesian3.subtract(camera, label.position, new Cesium.Cartesian3());
+      const n = ellipsoid.geodeticSurfaceNormal(label.position, rectScratch.normal);
+      const toCamera = Cesium.Cartesian3.subtract(camera, label.position, rectScratch.toCamera);
       if (Cesium.Cartesian3.dot(toCamera, n) <= 0) continue;
       const w = Cesium.SceneTransforms.worldToWindowCoordinates(
         this.scene,

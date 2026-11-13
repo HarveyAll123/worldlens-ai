@@ -91,6 +91,7 @@ export function GlobeView({
   const containerRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const creditsRef = useRef<HTMLDivElement>(null);
+  const namesRef = useRef<HTMLCanvasElement>(null);
   const [globe, setGlobe] = useState<GlobeController | null>(null);
   const [error, setError] = useState<string | null>(null);
   const reducedMotion = useReducedMotion();
@@ -160,6 +161,7 @@ export function GlobeView({
             mapTilerKey: import.meta.env.VITE_MAPTILER_API_KEY,
             quality: useAppStore.getState().quality,
             reducedMotion,
+            ...(namesRef.current ? { namesCanvas: namesRef.current } : {}),
           },
         );
       } catch (err) {
@@ -401,6 +403,14 @@ export function GlobeView({
         role="application"
         aria-label="Interactive 3D globe. Use the events list for a text alternative."
         data-testid="globe"
+      />
+      {/* Place names: a 2D layer at the screen's full resolution, over the 3D picture and
+          under every panel (globe/PlaceLabelLayer.ts draws on it). Clicks pass through. */}
+      <canvas
+        ref={namesRef}
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        aria-hidden="true"
+        data-testid="place-names"
       />
       {error && (
         <div className="absolute inset-0 grid place-items-center p-6 text-center text-sm text-white/70">

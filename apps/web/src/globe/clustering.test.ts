@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { atOnePlace, cellDegForLevel, clusterGeo, clusterLevel, placeLabels } from './clustering';
+import {
+  atOnePlace,
+  cellDegForLevel,
+  clearOfMarkers,
+  clusterGeo,
+  clusterLevel,
+  placeLabels,
+} from './clustering';
 
 describe('map-anchored clustering', () => {
   it('groups points in the same map cell and keeps distant ones apart', () => {
@@ -59,5 +66,23 @@ describe('events at one place', () => {
     expect(atOnePlace([berlin, { lat: 52.525, lon: 13.41 }])).toBe(true); // ~650 m
     expect(atOnePlace([berlin, { lat: 52.6, lon: 13.405 }])).toBe(false); // ~9 km
     expect(atOnePlace([berlin])).toBe(false); // one event is not a choice
+  });
+
+  it('a title may sit beside its own marker, never across another event’s or a cluster’s', () => {
+    const marker = (id: string, x: number, y: number, size = 14) => ({
+      id,
+      x: x - size / 2,
+      y: y - size / 2,
+      width: size,
+      height: size,
+    });
+    const markers = [marker('saint-malo', 100, 100), marker('cluster-of-10', 150, 96, 34)];
+    // "Battle of Saint-Malo" to the right of its marker runs under the cluster's count…
+    const right = { x: 110, y: 89, width: 150, height: 22 };
+    expect(clearOfMarkers(right, 'saint-malo', markers)).toBe(false);
+    // …so it goes to the left, where only its own marker is near.
+    const left = { x: -60, y: 89, width: 150, height: 22 };
+    expect(clearOfMarkers(left, 'saint-malo', markers)).toBe(true);
+    expect(clearOfMarkers(right, 'saint-malo', [marker('saint-malo', 100, 100)])).toBe(true);
   });
 });

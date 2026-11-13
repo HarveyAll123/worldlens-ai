@@ -248,6 +248,44 @@ test.describe('place names and clusters', () => {
     await expect.poll(async () => (await check()).names).toBe(0);
   });
 
+  test('names stay sharp when the globe is rendered below the screen’s resolution', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await openApp(page);
+    // The globe loads after the page. One canvas inside it, as ever: the names' canvas lies
+    // over the globe, not in it.
+    await expect(page.getByTestId('globe').locator('canvas')).toHaveCount(1, { timeout: 30_000 });
+    // The lowest quality renders the 3D picture at a fraction of the screen's pixels.
+    await page.evaluate(
+      new Function(
+        `return (async () => { ${store} useAppStore.getState().setQuality('LOW'); })()`,
+      ) as () => Promise<void>,
+    );
+    const canvases = () =>
+      page.evaluate(() => {
+        const names = document.querySelector<HTMLCanvasElement>('[data-testid="place-names"]')!;
+        const globe = document.querySelector<HTMLCanvasElement>('[data-testid="globe"] canvas')!;
+        const pixels = names.getContext('2d')!.getImageData(0, 0, names.width, names.height).data;
+        let solid = 0;
+        for (let i = 3; i < pixels.length; i += 4) if (pixels[i]! > 250) solid++;
+        return {
+          names: names.width,
+          globe: globe.width,
+          full: Math.round(names.clientWidth * Math.min(3, window.devicePixelRatio)),
+          solid,
+        };
+      });
+    // Names are drawn — letters with solid pixels — on a canvas of their own…
+    await expect
+      .poll(async () => (await canvases()).solid, { timeout: 30_000 })
+      .toBeGreaterThan(200);
+    const c = await canvases();
+    // …that has every pixel of the screen, while the globe's own canvas has fewer.
+    expect(c.names).toBe(c.full);
+    expect(c.globe).toBeLessThan(c.names);
+  });
+
   test('marking a place: shown, named under the top bar, cleared with ×', async ({ page }) => {
     await openApp(page);
     await page.evaluate(async () => {

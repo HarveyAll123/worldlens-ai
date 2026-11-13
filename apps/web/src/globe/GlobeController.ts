@@ -129,7 +129,13 @@ export class GlobeController {
     container: HTMLElement,
     creditContainer: HTMLElement,
     private readonly cb: GlobeCallbacks,
-    opts: { mapTilerKey?: string; quality: QualityPreference; reducedMotion: boolean },
+    opts: {
+      mapTilerKey?: string;
+      quality: QualityPreference;
+      reducedMotion: boolean;
+      /** The 2D canvas over the globe that place names are drawn on (one is made if absent). */
+      namesCanvas?: HTMLCanvasElement;
+    },
   ) {
     this.reducedMotion = opts.reducedMotion;
     this.mapTilerKey = opts.mapTilerKey;
@@ -202,10 +208,18 @@ export class GlobeController {
     this.highlight = new HighlightLayer(scene);
     this.frontlines = new FrontlineLayer(scene);
     this.countryOutline = new OutlineLayer(scene);
-    this.places = new PlaceLabelLayer(scene);
+    this.places = new PlaceLabelLayer(scene, opts.namesCanvas);
     this.placeMark = new PlaceMarkLayer(scene);
-    // Place names are placed after the event titles, around them.
+    // Place names are placed after the event titles, around them — and while the view moves,
+    // a name that would run into an event (a marker or its title), a country name or a marked
+    // place steps aside.
     this.events.onRelabel = () => this.relabelPlaces();
+    this.places.liveObstacles = () => [
+      ...this.events.obstacles(),
+      ...this.borders.labelRects(),
+      ...this.placeMark.rects(),
+    ];
+    this.places.onInvalidate = () => this.relabelPlaces();
 
     this.applyQuality(this.perf.quality);
     this.removeListeners.push(
@@ -600,31 +614,29 @@ export class GlobeController {
   }
 
   /**
-   * Place names on screen and what they must leave free (event markers and titles, country
-   * names, the marked place), with every overlap between them — none expected.
+   * Place names on screen and what they must leave free (event markers and titles — battles
+   * are events too — country names, the marked place), with every overlap between them: none
+   * expected, in a settled view or a moving one.
    */
   labelCheck(): {
     names: number;
     obstacles: number;
-    overlaps: { name: string; with: 'name' | 'event or country name' }[];
+    overlaps: { name: string; with: 'name' | 'event' | 'country name' }[];
   } {
     const names = this.places.boxes();
-    const obstacles = [
-      ...this.events.obstacles(),
-      ...this.borders.labelRects(),
-      ...this.placeMark.rects(),
-    ];
+    const events = this.events.obstacles();
+    const others = [...this.borders.labelRects(), ...this.placeMark.rects()];
     const hit = (
       a: { x: number; y: number; width: number; height: number },
       b: { x: number; y: number; width: number; height: number },
     ) => a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
-    const overlaps: { name: string; with: 'name' | 'event or country name' }[] = [];
+    const overlaps: { name: string; with: 'name' | 'event' | 'country name' }[] = [];
     names.forEach((n, i) => {
-      if (obstacles.some((o) => hit(n, o)))
-        overlaps.push({ name: n.name, with: 'event or country name' });
+      if (events.some((o) => hit(n, o))) overlaps.push({ name: n.name, with: 'event' });
+      if (others.some((o) => hit(n, o))) overlaps.push({ name: n.name, with: 'country name' });
       if (names.some((m, j) => j > i && hit(n, m))) overlaps.push({ name: n.name, with: 'name' });
     });
-    return { names: names.length, obstacles: obstacles.length, overlaps };
+    return { names: names.length, obstacles: events.length + others.length, overlaps };
   }
 
   diagnostics(): GlobeDiagnostics {
